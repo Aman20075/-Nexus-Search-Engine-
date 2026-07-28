@@ -1,7 +1,74 @@
-from flask import Flask, request, redirect, url_for
+from flask import Flask, request, redirect, url_for, session, render_template_string
+import sqlite3
 import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse
+import threading
 
 app = Flask(__name__)
+app.secret_key = 'yahan_apna_koi_bhi_secret_password_rakh_sakte_ho'  # Session secure rakhne ke liye
+DB_PATH = 'search_engine.db'
+
+# Database Setup (Permanent & Secure)
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            url TEXT UNIQUE,
+            title TEXT,
+            content TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# 🕷️ Background Crawler (Permanent Saving)
+def auto_crawl_worker(start_url, max_pages=15):
+    urls_to_visit = [start_url]
+    visited_urls = set()
+    pages_crawled = 0
+
+    while urls_to_visit and pages_crawled < max_pages:
+        current_url = urls_to_visit.pop(0)
+        if current_url in visited_urls:
+            continue
+
+        try:
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            response = requests.get(current_url, headers=headers, timeout=5)
+            visited_urls.add(current_url)
+
+            if "text/html" not in response.headers.get('Content-Type', ''):
+                continue
+
+            soup = BeautifulSoup(response.text, 'html.parser')
+            title = soup.title.string.strip() if soup.title and soup.title.string else current_url
+            paragraphs = [p.get_text().strip() for p in soup.find_all('p')]
+            text_content = ' '.join(paragraphs)
+
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR IGNORE INTO pages (url, title, content)
+                VALUES (?, ?, ?)
+            ''', (current_url, title, text_content))
+            conn.commit()
+            conn.close()
+
+            pages_crawled += 1
+
+            for link in soup.find_all('a', href=True):
+                full_url = urljoin(current_url, link['href'])
+                parsed = urlparse(full_url)
+                if parsed.scheme in ['http', 'https']:
+                    if full_url not in visited_urls and full_url not in urls_to_visit:
+                        urls_to_visit.append(full_url)
+        except Exception as e:
+            continue
 
 HTML_HEADER = """<!DOCTYPE html>
 <html lang="en">
@@ -15,42 +82,22 @@ HTML_HEADER = """<!DOCTYPE html>
         body { background: #ffffff; font-family: 'Segoe UI', Roboto, Arial, sans-serif; }
         .bharat-logo { font-size: 65px; font-weight: 700; letter-spacing: -2px; }
         .search-box-container { max-width: 584px; margin: 0 auto; position: relative; }
-        .search-input { height: 46px; border-radius: 24px; padding-left: 45px; padding-right: 45px; border: 1px solid #dfe1e5; box-shadow: none; }
+        .search-input { height: 46px; border-radius: 24px; padding-left: 45px; padding-right: 20px; border: 1px solid #dfe1e5; box-shadow: none; }
         .search-input:focus { border-color: transparent; box-shadow: 0 1px 6px rgba(32,33,36,0.28); }
         .search-icon { position: absolute; left: 16px; top: 13px; color: #9aa0a6; font-size: 16px; }
-        .mic-icon { position: absolute; right: 16px; top: 11px; color: #FF9933; font-size: 20px; cursor: pointer; }
         .result-card { max-width: 650px; margin-bottom: 24px; }
         .result-title { color: #1a0dab; text-decoration: none; font-size: 20px; font-weight: 400; }
         .result-title:hover { text-decoration: underline; }
         .result-url { color: #202124; font-size: 14px; margin-bottom: 2px; }
         .result-snippet { color: #4d5156; font-size: 14px; line-height: 1.58; }
-        .nav-link.active { border-bottom: 3px solid #000080 !important; color: #000080 !important; font-weight: bold; }
     </style>
 </head>
 <body>
 """
 
-HTML_FOOTER = """
-<script>
-function startVoiceSearch() {
-    if ('webkitSpeechRecognition' in window) {
-        var recognition = new webkitSpeechRecognition();
-        recognition.lang = 'en-IN';
-        recognition.start();
-        recognition.onresult = function(event) {
-            document.getElementById('searchInput').value = event.results[0][0].transcript;
-            document.getElementById('searchForm').submit();
-        };
-    } else {
-        alert("Voice search aapke browser me supported nahi hai.");
-    }
-}
-</script>
-</body>
-</html>
-"""
+HTML_FOOTER = "</body></html>"
 
-# ----------------- HOME PAGE -----------------
+# ----------------- HOME PAGE (SEARCH ENGINE) -----------------
 @app.route("/")
 def home():
     return HTML_HEADER + """
@@ -58,17 +105,20 @@ def home():
         <div class="bharat-logo mb-2">
             <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
         </div>
-        <p class="text-muted mb-4">India's Own Web Search Engine 🇮🇳</p>
+        <p class="text-muted mb-4">India's Own Secure Web Search Engine 🇮🇳</p>
 
-        <form action="/search" method="GET" id="searchForm" class="search-box-container mb-4">
+        <form action="/search" method="GET" class="search-box-container mb-4">
             <i class="bi bi-search search-icon"></i>
-            <input type="text" name="q" id="searchInput" class="form-control search-input" placeholder="Search any website, video, or topic..." required autocomplete="off">
-            <i class="bi bi-mic-fill mic-icon" onclick="startVoiceSearch()" title="Search by voice"></i>
+            <input type="text" name="q" class="form-control search-input" placeholder="Search the web database..." required autocomplete="off">
             
             <div class="mt-4">
                 <button type="submit" class="btn btn-light border px-4 py-2 me-2 text-secondary">Bharat Search</button>
             </div>
         </form>
+
+        <div class="mt-5">
+            <a href="/admin_login" class="text-muted small text-decoration-none">🔒 Admin Portal Login</a>
+        </div>
     </div>
     """ + HTML_FOOTER
 
@@ -79,34 +129,15 @@ def search():
     if not query:
         return redirect("/")
 
-    results = []
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT url, title, content FROM pages 
+        WHERE title LIKE ? OR content LIKE ?
+    ''', (f'%{query}%', f'%{query}%'))
     
-    # 🌐 Multi-Source Search (Wikipedia + DuckDuckGo Instant Answers)
-    try:
-        # Wikipedia Search
-        url_wiki = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&format=json"
-        res_wiki = requests.get(url_wiki).json()
-        
-        for i in range(len(res_wiki[1])):
-            results.append({
-                'title': res_wiki[1][i],
-                'snippet': res_wiki[2][i] if res_wiki[2][i] else "Click to view complete webpage details.",
-                'link': res_wiki[3][i]
-            })
-            
-        # DuckDuckGo Direct Related Search
-        url_ddg = f"https://api.duckduckgo.com/?q={query}&format=json"
-        res_ddg = requests.get(url_ddg).json()
-        
-        if res_ddg.get('AbstractText'):
-            results.insert(0, {
-                'title': res_ddg.get('Heading', query),
-                'snippet': res_ddg.get('AbstractText'),
-                'link': res_ddg.get('AbstractURL', f"https://duckduckgo.com/?q={query}")
-            })
-            
-    except Exception as e:
-        results = []
+    rows = cursor.fetchall()
+    conn.close()
 
     header_nav = f"""
     <div class="border-bottom pt-3 px-4">
@@ -114,45 +145,128 @@ def search():
             <a href="/" class="bharat-logo text-decoration-none me-4" style="font-size: 30px;">
                 <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
             </a>
-            <form action="/search" method="GET" id="searchForm" class="search-box-container ms-0 flex-grow-1" style="max-width: 600px;">
+            <form action="/search" method="GET" class="search-box-container ms-0 flex-grow-1" style="max-width: 600px;">
                 <i class="bi bi-search search-icon"></i>
-                <input type="text" name="q" id="searchInput" value="{query}" class="form-control search-input" required>
-                <i class="bi bi-mic-fill mic-icon" onclick="startVoiceSearch()"></i>
+                <input type="text" name="q" value="{query}" class="form-control search-input" required>
             </form>
         </div>
-        
-        <ul class="nav nav-tabs border-0 mt-2" style="margin-left: 130px;">
-            <li class="nav-item"><a class="nav-link active border-0" href="#"><i class="bi bi-search me-1"></i> All</a></li>
-            <li class="nav-item"><a class="nav-link border-0 text-secondary" href="https://www.google.com/search?tbm=isch&q={query}" target="_blank"><i class="bi bi-image me-1"></i> Images</a></li>
-            <li class="nav-item"><a class="nav-link border-0 text-secondary" href="https://www.google.com/search?tbm=nws&q={query}" target="_blank"><i class="bi bi-newspaper me-1"></i> News</a></li>
-        </ul>
     </div>
     
     <div class="container-fluid px-5 pt-3" style="margin-left: 110px;">
-        <p class="text-muted small">Top search results for <b>{query}</b></p>
+        <p class="text-muted small">Found {len(rows)} results for <b>{query}</b></p>
     """
 
     body_results = ""
-    if results:
-        for item in results:
+    if rows:
+        for row in rows:
+            url, title, content = row[0], row[1], row[2]
+            snippet = content[:180] + "..." if len(content) > 180 else content
             body_results += f"""
             <div class="result-card">
-                <div class="result-url">{item['link']}</div>
-                <a href="{item['link']}" target="_blank" class="result-title">{item['title']}</a>
-                <div class="result-snippet mt-1">{item['snippet']}</div>
+                <div class="result-url">{url}</div>
+                <a href="{url}" target="_blank" class="result-title">{title}</a>
+                <div class="result-snippet mt-1">{snippet}</div>
             </div>
             """
     else:
         body_results = f"""
-        <div class='result-card'>
-            <div class='result-url'>https://google.com/search?q={query}</div>
-            <a href='https://www.google.com/search?q={query}' target='_blank' class='result-title'>Search "{query}" on Web</a>
-            <div class='result-snippet mt-1'>Direct web search results for your query.</div>
+        <div class="alert alert-warning" style="max-width: 600px;">
+            Aapke database me <b>"{query}"</b> se related koi link nahi mila. Sirf Admin hi naye links add kar sakta hai.
         </div>
         """
 
     body_results += "</div>"
     return HTML_HEADER + header_nav + body_results + HTML_FOOTER
+
+# ----------------- ADMIN LOGIN & PANEL -----------------
+@app.route("/admin_login", methods=['GET', 'POST'])
+def admin_login():
+    error = ""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        # 🔑 Yahan aap apna username aur password set kar sakte hain!
+        if username == "admin" and password == "Bharat123@#$":
+            session['logged_in'] = True
+            return redirect("/admin_dashboard")
+        else:
+            error = "Galat Username ya Password!"
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 400px;">
+        <h3 class="mb-3 text-center">🔒 Admin Login</h3>
+        {f'<div class="alert alert-danger">{error}</div>' if error else ''}
+        <form method="POST">
+            <div class="mb-3">
+                <label>Admin Username</label>
+                <input type="text" name="username" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label>Admin Password</label>
+                <input type="password" name="password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Login</button>
+        </form>
+        <div class="text-center mt-3"><a href="/" class="text-decoration-none">← Back to Search</a></div>
+    </div>
+    """ + HTML_FOOTER
+
+@app.route("/admin_dashboard")
+def admin_dashboard():
+    if not session.get('logged_in'):
+        return redirect("/admin_login")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM pages")
+    count = cursor.fetchone()[0]
+    conn.close()
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 600px;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>⚙️ Admin Control Panel</h3>
+            <a href="/admin_logout" class="btn btn-outline-danger btn-sm">Logout</a>
+        </div>
+        <div class="alert alert-success">
+            Total Indexed Links in Permanent DB: <b>{count}</b>
+        </div>
+        <div class="card p-4">
+            <h5 class="mb-3">🤖 Add New Website Link (Crawler Bot)</h5>
+            <form action="/admin_add" method="POST">
+                <input type="url" name="seed_url" class="form-control mb-3" placeholder="https://example.com" required>
+                <button type="submit" class="btn btn-success w-100">Crawl & Save Permanently</button>
+            </form>
+        </div>
+        <div class="mt-4 text-center"><a href="/" class="btn btn-light border">Go to Search Engine</a></div>
+    </div>
+    """ + HTML_FOOTER
+
+@app.route("/admin_add", methods=['POST'])
+def admin_add():
+    if not session.get('logged_in'):
+        return redirect("/admin_login")
+    
+    seed_url = request.form.get('seed_url')
+    # Background thread se crawl karega taaki page freeze na ho
+    thread = threading.Thread(target=auto_crawl_worker, args=(seed_url, 15))
+    thread.start()
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5 text-center" style="max-width: 500px;">
+        <div class="alert alert-info">
+            🚀 Link successfully queue me daal diya gaya hai!<br>
+            Bot background me website crawl karke database me save kar raha hai. Yeh data permanent rahega aur delete nahi hoga.<br><br>
+            <a href="/admin_dashboard" class="btn btn-primary">Back to Dashboard</a>
+        </div>
+    </div>
+    """ + HTML_FOOTER
+
+@app.route("/admin_logout")
+def admin_logout():
+    session.pop('logged_in', None)
+    return redirect("/")
 
 if __name__ == "__main__":
     app.run(debug=True)
