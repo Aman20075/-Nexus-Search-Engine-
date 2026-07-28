@@ -62,7 +62,7 @@ def home():
 
         <form action="/search" method="GET" id="searchForm" class="search-box-container mb-4">
             <i class="bi bi-search search-icon"></i>
-            <input type="text" name="q" id="searchInput" class="form-control search-input" placeholder="Search the web with Bharat..." required autocomplete="off">
+            <input type="text" name="q" id="searchInput" class="form-control search-input" placeholder="Search any website, video, or topic..." required autocomplete="off">
             <i class="bi bi-mic-fill mic-icon" onclick="startVoiceSearch()" title="Search by voice"></i>
             
             <div class="mt-4">
@@ -80,20 +80,31 @@ def search():
         return redirect("/")
 
     results = []
+    
+    # 🌐 Multi-Source Search (Wikipedia + DuckDuckGo Instant Answers)
     try:
-        url = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=7&format=json"
-        response = requests.get(url).json()
-        titles = response[1]
-        descriptions = response[2]
-        urls = response[3]
-
-        for i in range(len(titles)):
-            snippet_text = descriptions[i] if descriptions[i] else "Click to view complete details."
+        # Wikipedia Search
+        url_wiki = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&format=json"
+        res_wiki = requests.get(url_wiki).json()
+        
+        for i in range(len(res_wiki[1])):
             results.append({
-                'title': titles[i],
-                'snippet': snippet_text,
-                'link': urls[i]
+                'title': res_wiki[1][i],
+                'snippet': res_wiki[2][i] if res_wiki[2][i] else "Click to view complete webpage details.",
+                'link': res_wiki[3][i]
             })
+            
+        # DuckDuckGo Direct Related Search
+        url_ddg = f"https://api.duckduckgo.com/?q={query}&format=json"
+        res_ddg = requests.get(url_ddg).json()
+        
+        if res_ddg.get('AbstractText'):
+            results.insert(0, {
+                'title': res_ddg.get('Heading', query),
+                'snippet': res_ddg.get('AbstractText'),
+                'link': res_ddg.get('AbstractURL', f"https://duckduckgo.com/?q={query}")
+            })
+            
     except Exception as e:
         results = []
 
@@ -112,13 +123,13 @@ def search():
         
         <ul class="nav nav-tabs border-0 mt-2" style="margin-left: 130px;">
             <li class="nav-item"><a class="nav-link active border-0" href="#"><i class="bi bi-search me-1"></i> All</a></li>
-            <li class="nav-item"><a class="nav-link border-0 text-secondary" href="#"><i class="bi bi-image me-1"></i> Images</a></li>
-            <li class="nav-item"><a class="nav-link border-0 text-secondary" href="#"><i class="bi bi-newspaper me-1"></i> News</a></li>
+            <li class="nav-item"><a class="nav-link border-0 text-secondary" href="https://www.google.com/search?tbm=isch&q={query}" target="_blank"><i class="bi bi-image me-1"></i> Images</a></li>
+            <li class="nav-item"><a class="nav-link border-0 text-secondary" href="https://www.google.com/search?tbm=nws&q={query}" target="_blank"><i class="bi bi-newspaper me-1"></i> News</a></li>
         </ul>
     </div>
     
     <div class="container-fluid px-5 pt-3" style="margin-left: 110px;">
-        <p class="text-muted small">About {len(results)} search results for <b>{query}</b></p>
+        <p class="text-muted small">Top search results for <b>{query}</b></p>
     """
 
     body_results = ""
@@ -132,7 +143,13 @@ def search():
             </div>
             """
     else:
-        body_results = "<div class='alert alert-light border'>Koi result nahi mila.</div>"
+        body_results = f"""
+        <div class='result-card'>
+            <div class='result-url'>https://google.com/search?q={query}</div>
+            <a href='https://www.google.com/search?q={query}' target='_blank' class='result-title'>Search "{query}" on Web</a>
+            <div class='result-snippet mt-1'>Direct web search results for your query.</div>
+        </div>
+        """
 
     body_results += "</div>"
     return HTML_HEADER + header_nav + body_results + HTML_FOOTER
