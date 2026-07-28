@@ -6,6 +6,13 @@ app = Flask(__name__)
 DB_PATH = 'users.db'
 
 def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)from flask import Flask, request, redirect, url_for
+import sqlite3
+
+app = Flask(__name__)
+DB_PATH = 'users.db'
+
+def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
@@ -25,38 +32,72 @@ def init_db():
 
 init_db()
 
-# Home Page (Registration & Login Links)
+# Universal HTML Header with Bootstrap 5
+HTML_HEADER = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Cloud Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border-radius: 12px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .btn-custom { background: #6c5ce7; color: white; border-radius: 8px; }
+        .btn-custom:hover { background: #5b4cc4; color: white; }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+"""
+
+HTML_FOOTER = """
+</div>
+</body>
+</html>
+"""
+
 @app.route("/")
 def home():
-    return """
-    <div style='text-align: center; font-family: Arial; margin-top: 50px;'>
-        <h1 style='color: #2c3e50;'>🌐 Welcome to Web Auth Portal</h1>
-        <div style='background: #ecf0f1; display: inline-block; padding: 30px; border-radius: 10px;'>
-            <h3>Chhooniye Aap Kya Karna Chahte Hain:</h3>
-            <br>
-            <a href='/register_page' style='padding: 10px 20px; background: #27ae60; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>1. New Account Banayein (Register)</a>
-            <br><br><br>
-            <a href='/login_page' style='padding: 10px 20px; background: #2980b9; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>2. Existing User Login Karein</a>
+    return HTML_HEADER + """
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="card p-5">
+                <h1 class="text-primary fw-bold mb-3">🚀 Nexus Web Portal</h1>
+                <p class="text-muted mb-4">User Authentication & Full-Stack Portal</p>
+                <div class="d-grid gap-3">
+                    <a href="/register_page" class="btn btn-success btn-lg">New Account (Register)</a>
+                    <a href="/login_page" class="btn btn-primary btn-lg">Existing User (Login)</a>
+                </div>
+            </div>
         </div>
     </div>
-    """
+    """ + HTML_FOOTER
 
-# ----------------- REGISTRATION -----------------
 @app.route("/register_page")
 def register_page():
-    return """
-    <div style='text-align: center; font-family: Arial; margin-top: 50px;'>
-        <h2>📝 Create New Account</h2>
-        <form action='/register' method='POST' style='display: inline-block; background: #f8f9fa; padding: 25px; border-radius: 8px; border: 1px solid #ddd;'>
-            <label><b>Username:</b></label><br>
-            <input type='text' name='username' required style='padding: 8px; width: 200px; margin: 10px 0;'><br>
-            <label><b>Password:</b></label><br>
-            <input type='password' name='password' required style='padding: 8px; width: 200px; margin: 10px 0;'><br><br>
-            <button type='submit' style='padding: 8px 20px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer;'>Register</button>
-        </form>
-        <br><br><a href='/'>← Home Page</a>
+    return HTML_HEADER + """
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card p-4">
+                <h3 class="mb-3 text-center">📝 Register</h3>
+                <form action="/register" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" name="username" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Create Account</button>
+                </form>
+                <div class="text-center mt-3"><a href="/">← Back to Home</a></div>
+            </div>
+        </div>
     </div>
-    """
+    """ + HTML_FOOTER
 
 @app.route("/register", methods=['POST'])
 def register():
@@ -68,38 +109,51 @@ def register():
         cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
         conn.commit()
         conn.close()
-        return f"""
-        <div style='text-align: center; font-family: Arial; margin-top: 50px;'>
-            <h2 style='color: #27ae60;'>✅ Account Created Successfully!</h2>
-            <p>Ab aap login kar sakte hain.</p>
-            <a href='/login_page' style='color: #2980b9;'>Click Here to Login ➔</a>
+        return HTML_HEADER + f"""
+        <div class="text-center mt-5">
+            <div class="alert alert-success">
+                <h4>✅ Registration Successful!</h4>
+                <p>Welcome onboard, {username}!</p>
+            </div>
+            <a href="/login_page" class="btn btn-primary">Go to Login Page</a>
         </div>
-        """
+        """ + HTML_FOOTER
     except sqlite3.IntegrityError:
-        return "<div style='text-align: center; font-family: Arial; margin-top: 50px;'><h2 style='color: red;'>❌ Username Pehle Se Maujood Hai!</h2><a href='/register_page'>Try Again</a></div>"
+        return HTML_HEADER + """
+        <div class="text-center mt-5">
+            <div class="alert alert-danger">❌ Username already exists!</div>
+            <a href="/register_page" class="btn btn-secondary">Try Again</a>
+        </div>
+        """ + HTML_FOOTER
 
-# ----------------- LOGIN -----------------
 @app.route("/login_page")
 def login_page():
-    return """
-    <div style='text-align: center; font-family: Arial; margin-top: 50px;'>
-        <h2>🔐 User Login</h2>
-        <form action='/login' method='POST' style='display: inline-block; background: #f8f9fa; padding: 25px; border-radius: 8px; border: 1px solid #ddd;'>
-            <label><b>Username:</b></label><br>
-            <input type='text' name='username' required style='padding: 8px; width: 200px; margin: 10px 0;'><br>
-            <label><b>Password:</b></label><br>
-            <input type='password' name='password' required style='padding: 8px; width: 200px; margin: 10px 0;'><br><br>
-            <button type='submit' style='padding: 8px 20px; background: #2980b9; color: white; border: none; border-radius: 4px; cursor: pointer;'>Login</button>
-        </form>
-        <br><br><a href='/'>← Home Page</a>
+    return HTML_HEADER + """
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card p-4">
+                <h3 class="mb-3 text-center">🔐 Login</h3>
+                <form action="/login" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" name="username" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                </form>
+                <div class="text-center mt-3"><a href="/">← Back to Home</a></div>
+            </div>
+        </div>
     </div>
-    """
+    """ + HTML_FOOTER
 
 @app.route("/login", methods=['POST'])
 def login():
     username = request.form['username']
     password = request.form['password']
-    
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
@@ -107,21 +161,26 @@ def login():
     conn.close()
 
     if user:
-        return f"""
-        <div style='text-align: center; font-family: Arial; margin-top: 50px;'>
-            <h1 style='color: #27ae60;'>🎉 Welcome to Your Dashboard, {username}!</h1>
-            <p style='font-size: 18px;'>Aapne successfully database me authentication verify kar liya hai!</p>
-            <br>
-            <a href='/' style='color: #e74c3c; font-size: 16px;'>Logout</a>
+        return HTML_HEADER + f"""
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <div class="card p-5">
+                    <h2 class="text-success">🎉 Welcome to Dashboard, {username}!</h2>
+                    <p class="text-muted mt-2">Authentication, DB persistence, and UI rendering verified.</p>
+                    <div class="mt-4">
+                        <a href="/" class="btn btn-outline-danger">Logout</a>
+                    </div>
+                </div>
+            </div>
         </div>
-        """
+        """ + HTML_FOOTER
     else:
-        return """
-        <div style='text-align: center; font-family: Arial; margin-top: 50px;'>
-            <h2 style='color: #e74c3c;'>❌ Invalid Username or Password!</h2>
-            <a href='/login_page'>Try Again ➔</a>
+        return HTML_HEADER + """
+        <div class="text-center mt-5">
+            <div class="alert alert-danger">❌ Invalid Credentials!</div>
+            <a href="/login_page" class="btn btn-secondary">Try Again</a>
         </div>
-        """
+        """ + HTML_FOOTER
 
 if __name__ == "__main__":
     app.run(debug=True)
