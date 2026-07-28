@@ -8,11 +8,11 @@ HTML_HEADER = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bharat Search Engine</title>
+    <title>Nexus Search Engine</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background: #ffffff; font-family: Arial, sans-serif; }
-        .bharat-logo { font-size: 60px; font-weight: 700; }
+        .google-logo { font-size: 60px; font-weight: 700; }
         .search-box { max-width: 580px; margin: 0 auto; }
         .search-input { height: 46px; border-radius: 24px; padding: 0 20px; border: 1px solid #dfe1e5; }
     </style>
@@ -26,14 +26,14 @@ HTML_FOOTER = "</body></html>"
 def home():
     return HTML_HEADER + """
     <div class="container text-center mt-5 pt-4">
-        <div class="bharat-logo mb-2">
-            <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
+        <div class="google-logo mb-2">
+            <span style="color:#4285F4">N</span><span style="color:#EA4335">e</span><span style="color:#FBBC05">x</span><span style="color:#4285F4">u</span><span style="color:#34A853">s</span>
         </div>
-        <p class="text-muted mb-4">India's Own Web Search Engine 🇮🇳</p>
+        <p class="text-muted mb-4">Python Powered Search Engine</p>
 
         <form action="/search" method="GET" class="search-box">
-            <input type="text" name="q" class="form-control search-input mb-3" placeholder="Search the web with Bharat..." required>
-            <button type="submit" class="btn btn-light border px-4 py-2">Bharat Search</button>
+            <input type="text" name="q" class="form-control search-input mb-3" placeholder="Search Nexus or type a URL..." required>
+            <button type="submit" class="btn btn-light border px-4 py-2">Nexus Search</button>
         </form>
     </div>
     """ + HTML_FOOTER
@@ -65,8 +65,8 @@ def search():
     results_html = f"""
     <div class="container mt-4">
         <div class="d-flex align-items-center mb-4">
-            <a href="/" class="bharat-logo text-decoration-none me-4" style="font-size: 28px;">
-                <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
+            <a href="/" class="google-logo text-decoration-none me-4" style="font-size: 28px;">
+                <span style="color:#4285F4">N</span><span style="color:#EA4335">e</span><span style="color:#FBBC05">x</span><span style="color:#4285F4">u</span><span style="color:#34A853">s</span>
             </a>
             <form action="/search" method="GET" class="flex-grow-1" style="max-width: 500px;">
                 <input type="text" name="q" value="{query}" class="form-control search-input" required>
