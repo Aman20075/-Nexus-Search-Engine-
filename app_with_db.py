@@ -4,12 +4,12 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import threading
+import os
 
 app = Flask(__name__)
 app.secret_key = 'bharat_search_super_secret_key_2026'
 DB_PATH = 'search_engine.db'
 
-# Database Setup
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -26,7 +26,6 @@ def init_db():
 
 init_db()
 
-# 🕷️ Permanent Bot Crawler
 def auto_crawl_worker(start_url, max_pages=15):
     urls_to_visit = [start_url]
     visited_urls = set()
@@ -117,7 +116,6 @@ function startVoiceSearch() {
 </html>
 """
 
-# ----------------- HOME PAGE -----------------
 @app.route("/")
 def home():
     return HTML_HEADER + """
@@ -143,14 +141,12 @@ def home():
     </div>
     """ + HTML_FOOTER
 
-# ----------------- SEARCH RESULTS PAGE (WITH AI SUMMARY) -----------------
 @app.route("/search")
 def search():
     query = request.args.get('q', '')
     if not query:
         return redirect("/")
 
-    # 1. Database Search
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -160,18 +156,16 @@ def search():
     rows = cursor.fetchall()
     conn.close()
 
-    # 2. AI Smart Summary Generator (Fallback to DuckDuckGo/Wikipedia if local DB is empty)
     ai_summary = ""
     try:
         wiki_api = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&format=json"
         res = requests.get(wiki_api).json()
         if res['query']['search']:
             snippet_raw = res['query']['search'][0]['snippet']
-            # Clean HTML tags from snippet
             clean_snippet = BeautifulSoup(snippet_raw, "html.parser").get_text()
             ai_summary = f"✨ <b>Bharat AI Overview:</b> {clean_snippet} Based on verified web knowledge bases, {query} is an important subject with widespread global and national relevance."
     except:
-        ai_summary = f"✨ <b>Bharat AI Overview:</b> {query} ke baare mein search results neeche diye gaye hain. Aap kisi bhi link par click karke poori jankari padh sakte hain."
+        ai_summary = f"✨ <b>Bharat AI Overview:</b> {query} ke baare mein search results neeche diye gaye hain."
 
     header_nav = f"""
     <div class="border-bottom pt-3 px-4">
@@ -191,7 +185,6 @@ def search():
         <div class="ai-card">
             <div class="text-dark" style="font-size: 15px; line-height: 1.6;">{ai_summary}</div>
         </div>
-
         <p class="text-muted small">Web database search results for: <b>{query}</b></p>
     """
 
@@ -210,14 +203,13 @@ def search():
     else:
         body_results += f"""
         <div class="alert alert-light border" style="max-width: 650px;">
-            Local database mein direct match nahi mila, lekin aap upar diye gaye <b>Bharat AI Overview</b> se apna jawab dekh sakte hain! Naye links add karne ke liye Admin Panel ka use karein.
+            Local database mein direct match nahi mila, lekin aap upar diye gaye <b>Bharat AI Overview</b> se apna jawab dekh sakte hain!
         </div>
         """
 
     body_results += "</div>"
     return HTML_HEADER + header_nav + body_results + HTML_FOOTER
 
-# ----------------- ADMIN PANEL -----------------
 @app.route("/admin_login", methods=['GET', 'POST'])
 def admin_login():
     error = ""
@@ -300,4 +292,5 @@ def admin_logout():
     return redirect("/")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
