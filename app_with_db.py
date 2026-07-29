@@ -92,20 +92,91 @@ HTML_HEADER = """<!DOCTYPE html>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        body { background: #ffffff; font-family: 'Segoe UI', Roboto, Arial, sans-serif; }
-        .bharat-logo { font-size: 65px; font-weight: 700; letter-spacing: -2px; }
-        .search-box-container { max-width: 584px; margin: 0 auto; position: relative; }
-        .search-input { height: 48px; border-radius: 24px; padding-left: 45px; padding-right: 45px; border: 1px solid #dfe1e5; box-shadow: none; }
-        .search-input:focus { border-color: transparent; box-shadow: 0 1px 6px rgba(32,33,36,0.28); }
-        .search-icon { position: absolute; left: 16px; top: 14px; color: #9aa0a6; font-size: 16px; }
-        .mic-icon { position: absolute; right: 16px; top: 13px; color: #FF9933; font-size: 20px; cursor: pointer; }
-        .ai-card { max-width: 650px; background: #f8f9fa; border-left: 4px solid #000080; border-radius: 8px; padding: 18px; margin-bottom: 25px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .result-card { max-width: 650px; margin-bottom: 24px; }
-        .result-title { color: #1a0dab; text-decoration: none; font-size: 20px; font-weight: 400; }
-        .result-title:hover { text-decoration: underline; }
-        .result-url { color: #202124; font-size: 14px; margin-bottom: 2px; }
-        .result-snippet { color: #4d5156; font-size: 14px; line-height: 1.58; }
-        .top-nav { position: absolute; right: 20px; top: 20px; }
+        body { 
+            background: #ffffff; 
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif; 
+            overflow-x: hidden; 
+        }
+        .bharat-logo { 
+            font-size: 65px; 
+            font-weight: 700; 
+            letter-spacing: -2px; 
+        }
+        .search-box-container { 
+            max-width: 584px; 
+            width: 100%;
+            margin: 0 auto; 
+            position: relative; 
+        }
+        .search-input { 
+            height: 48px; 
+            border-radius: 24px; 
+            padding-left: 45px; 
+            padding-right: 45px; 
+            border: 1px solid #dfe1e5; 
+            box-shadow: none; 
+        }
+        .search-input:focus { 
+            border-color: transparent; 
+            box-shadow: 0 1px 6px rgba(32,33,36,0.28); 
+        }
+        .search-icon { 
+            position: absolute; 
+            left: 16px; 
+            top: 14px; 
+            color: #9aa0a6; 
+            font-size: 16px; 
+        }
+        .mic-icon { 
+            position: absolute; 
+            right: 16px; 
+            top: 13px; 
+            color: #FF9933; 
+            font-size: 20px; 
+            cursor: pointer; 
+        }
+        .results-wrapper {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .ai-card { 
+            background: #f8f9fa; 
+            border-left: 4px solid #000080; 
+            border-radius: 8px; 
+            padding: 18px; 
+            margin-bottom: 25px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+        }
+        .result-card { 
+            margin-bottom: 24px; 
+            word-break: break-word;
+        }
+        .result-title { 
+            color: #1a0dab; 
+            text-decoration: none; 
+            font-size: 18px; 
+            font-weight: 400; 
+            display: block;
+        }
+        .result-title:hover { 
+            text-decoration: underline; 
+        }
+        .result-url { 
+            color: #202124; 
+            font-size: 13px; 
+            margin-bottom: 2px; 
+        }
+        .result-snippet { 
+            color: #4d5156; 
+            font-size: 14px; 
+            line-height: 1.58; 
+        }
+        .top-nav { 
+            position: absolute; 
+            right: 20px; 
+            top: 20px; 
+        }
     </style>
 </head>
 <body>
@@ -195,9 +266,9 @@ def search():
         ai_summary = f"✨ <b>Bharat AI Overview:</b> Results for {query} are listed below."
 
     header_nav = f"""
-    <div class="border-bottom pt-3 px-4">
-        <div class="d-flex align-items-center mb-3">
-            <a href="/" class="bharat-logo text-decoration-none me-4" style="font-size: 30px;">
+    <div class="border-bottom pt-3 px-3">
+        <div class="d-flex align-items-center mb-3 flex-wrap">
+            <a href="/" class="bharat-logo text-decoration-none me-4 mb-2 mb-md-0" style="font-size: 30px;">
                 <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
             </a>
             <form action="/search" method="GET" id="searchForm" class="search-box-container ms-0 flex-grow-1" style="max-width: 600px;">
@@ -208,180 +279,6 @@ def search():
         </div>
     </div>
     
-    <div class="container-fluid px-5 pt-3" style="margin-left: 110px;">
+    <div class="results-wrapper pt-4">
         <div class="ai-card">
-            <div class="text-dark" style="font-size: 15px; line-height: 1.6;">{ai_summary}</div>
-        </div>
-        <p class="text-muted small">Database search results for: <b>{query}</b></p>
-    """
-
-    body_results = ""
-    if rows:
-        for row in rows:
-            url, title, content = row[0], row[1], row[2]
-            snippet = content[:180] + "..." if len(content) > 180 else content
-            body_results += f"""
-            <div class="result-card">
-                <div class="result-url">{url}</div>
-                <a href="{url}" target="_blank" class="result-title">{title}</a>
-                <div class="result-snippet mt-1">{snippet}</div>
-            </div>
-            """
-    else:
-        body_results += f"""
-        <div class="alert alert-light border" style="max-width: 650px;">
-            Aapke search query se milte-julte results database mein nahi mile, lekin upar diye gaye <b>Bharat AI Overview</b> ka use kar sakte hain.
-        </div>
-        """
-
-    body_results += "</div>"
-    return HTML_HEADER + header_nav + body_results + HTML_FOOTER
-
-# ----------------- USER SIGNUP / LOGIN / LOGOUT -----------------
-@app.route("/user_signup", methods=['GET', 'POST'])
-def user_signup():
-    msg = ""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
-            conn.commit()
-            conn.close()
-            return redirect("/user_login")
-        except:
-            msg = "Yeh username pehle se registered hai!"
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 400px;">
-        <h3 class="mb-3 text-center">📝 User Sign Up</h3>
-        {f'<div class="alert alert-danger">{msg}</div>' if msg else ''}
-        <form method="POST">
-            <div class="mb-3"><label>Username</label><input type="text" name="username" class="form-control" required></div>
-            <div class="mb-3"><label>Password</label><input type="password" name="password" class="form-control" required></div>
-            <button type="submit" class="btn btn-primary w-100">Register</button>
-        </form>
-        <div class="text-center mt-3"><a href="/user_login" class="text-decoration-none">Already have account? Login</a> | <a href="/" class="text-decoration-none">Home</a></div>
-    </div>
-    """ + HTML_FOOTER
-
-@app.route("/user_login", methods=['GET', 'POST'])
-def user_login():
-    error = ""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
-        user = cursor.fetchone()
-        conn.close()
-
-        if user:
-            session['user_logged'] = True
-            session['username'] = username
-            return redirect("/")
-        else:
-            error = "Galat username ya password!"
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 400px;">
-        <h3 class="mb-3 text-center">👤 User Login</h3>
-        {f'<div class="alert alert-danger">{error}</div>' if error else ''}
-        <form method="POST">
-            <div class="mb-3"><label>Username</label><input type="text" name="username" class="form-control" required></div>
-            <div class="mb-3"><label>Password</label><input type="password" name="password" class="form-control" required></div>
-            <button type="submit" class="btn btn-success w-100">Login</button>
-        </form>
-        <div class="text-center mt-3"><a href="/user_signup" class="text-decoration-none">Create Account</a> | <a href="/" class="text-decoration-none">Home</a></div>
-    </div>
-    """ + HTML_FOOTER
-
-@app.route("/user_logout")
-def user_logout():
-    session.pop('user_logged', None)
-    session.pop('username', None)
-    return redirect("/")
-
-# ----------------- ADMIN PANEL (ONLY FOR YOU) -----------------
-@app.route("/admin_login", methods=['GET', 'POST'])
-def admin_login():
-    error = ""
-    if request.method == 'POST':
-        if request.form.get('username') == "admin" and request.form.get('password') == "Bharat123@#$":
-            session['admin_logged'] = True
-            return redirect("/admin_dashboard")
-        else:
-            error = "Galat Admin Credentials!"
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 400px;">
-        <h3 class="mb-3 text-center">🔒 Admin Portal</h3>
-        {f'<div class="alert alert-danger">{error}</div>' if error else ''}
-        <form method="POST">
-            <div class="mb-3"><label>Admin Username</label><input type="text" name="username" class="form-control" required></div>
-            <div class="mb-3"><label>Admin Password</label><input type="password" name="password" class="form-control" required></div>
-            <button type="submit" class="btn btn-dark w-100">Admin Login</button>
-        </form>
-        <div class="text-center mt-3"><a href="/" class="text-decoration-none">← Back to Search</a></div>
-    </div>
-    """ + HTML_FOOTER
-
-@app.route("/admin_dashboard")
-def admin_dashboard():
-    if not session.get('admin_logged'):
-        return redirect("/admin_login")
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM pages")
-    count = cursor.fetchone()[0]
-    conn.close()
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 600px;">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3>⚙️ Admin Control Center</h3>
-            <a href="/admin_logout" class="btn btn-outline-danger btn-sm">Logout</a>
-        </div>
-        <div class="alert alert-success">Total Permanent Indexed Links in Engine: <b>{count}</b></div>
-        <div class="card p-4">
-            <h5 class="mb-3">🤖 Add Website to Permanent DB</h5>
-            <form action="/admin_add" method="POST">
-                <input type="url" name="seed_url" class="form-control mb-3" placeholder="https://example.com" required>
-                <button type="submit" class="btn btn-success w-100">Crawl & Save Permanently</button>
-            </form>
-        </div>
-        <div class="mt-4 text-center"><a href="/" class="btn btn-light border">Go to Search Engine</a></div>
-    </div>
-    """ + HTML_FOOTER
-
-@app.route("/admin_add", methods=['POST'])
-def admin_add():
-    if not session.get('admin_logged'):
-        return redirect("/admin_login")
-    
-    seed_url = request.form.get('seed_url')
-    thread = threading.Thread(target=auto_crawl_worker, args=(seed_url, 15))
-    thread.start()
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5 text-center" style="max-width: 500px;">
-        <div class="alert alert-info">
-            🚀 Bot background mein active ho gaya hai aur naye links permanent DB mein save kar raha hai!<br><br>
-            <a href="/admin_dashboard" class="btn btn-primary">Back to Dashboard</a>
-        </div>
-    </div>
-    """ + HTML_FOOTER
-
-@app.route("/admin_logout")
-def admin_logout():
-    session.pop('admin_logged', None)
-    return redirect("/")
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+            <div class="text-dark" style="font-size: 1
