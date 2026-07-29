@@ -56,7 +56,6 @@ def init_db():
 
 init_db()
 
-# 🧠 Autonomous Educational Web Scraper
 def autonomous_web_crawler(search_query):
     try:
         formatted_query = search_query.replace(' ', '+')
@@ -116,6 +115,7 @@ HTML_HEADER = """<!DOCTYPE html>
         .result-snippet { color: #4d5156; font-size: 14px; line-height: 1.58; }
         .top-nav { position: absolute; right: 20px; top: 20px; }
         .social-btn { width: 100%; border-radius: 20px; font-weight: 500; margin-bottom: 10px; padding: 10px; text-decoration: none; display: inline-block; }
+        .creator-badge { position: absolute; left: 20px; top: 20px; font-size: 14px; font-weight: 600; color: #555; }
     </style>
 </head>
 <body>
@@ -141,7 +141,6 @@ function startVoiceSearch() {
 </html>
 """
 
-# ----------------- HOME PAGE -----------------
 @app.route("/")
 def home():
     user_logged = session.get('user_logged')
@@ -149,7 +148,7 @@ def home():
 
     if user_logged:
         nav_links = f'''
-            <span class="me-3 text-secondary">👤 Hello, <b>{username}</b></span> 
+            <span class="me-3 text-secondary">👤 Welcome, <b>{username}</b></span> 
             <a href="/my_history" class="btn btn-outline-secondary btn-sm me-2">📜 My History</a>
             <a href="/logout_verify" class="btn btn-outline-danger btn-sm">Logout</a>
         '''
@@ -157,6 +156,7 @@ def home():
         nav_links = '<a href="/user_login" class="btn btn-outline-primary btn-sm me-2">User Login</a> <a href="/user_signup" class="btn btn-primary btn-sm">Sign Up</a>'
 
     return HTML_HEADER + f"""
+    <div class="creator-badge">🚀 Created by <b>Aman Giri</b></div>
     <div class="top-nav">{nav_links}</div>
     <div class="container text-center mt-5 pt-4">
         <div class="bharat-logo mb-2">
@@ -180,7 +180,6 @@ def home():
     </div>
     """ + HTML_FOOTER
 
-# ----------------- SEARCH ROUTE -----------------
 @app.route("/search")
 def search():
     query = request.args.get('q', '').strip()
@@ -232,7 +231,7 @@ def search():
         rows = cursor.fetchall()
         conn.close()
 
-    ai_summary = f"✨ <b>Bharat Educational Overview:</b> Verified insights and book-level academic facts for <b>{query}</b>."
+    ai_summary = f"✨ <b>Bharat Educational Overview:</b> Verified insights for <b>{query}</b>."
 
     header_nav = f"""
     <div class="border-bottom pt-3 px-3">
@@ -277,7 +276,6 @@ def search():
     body_results += "</div>"
     return HTML_HEADER + header_nav + body_results + HTML_FOOTER
 
-# ----------------- MY HISTORY PAGE -----------------
 @app.route("/my_history")
 def my_history():
     if not session.get('user_logged'):
@@ -314,7 +312,6 @@ def my_history():
     </div>
     """ + HTML_FOOTER
 
-# ----------------- LOGOUT WITH VERIFICATION -----------------
 @app.route("/logout_verify", methods=['GET', 'POST'])
 def logout_verify():
     if not session.get('user_logged'):
@@ -325,7 +322,6 @@ def logout_verify():
     error = ""
     
     if request.method == 'POST':
-        # Agar user Google ya Phone se aaya hai toh direct logout allow hoga, manual wale ko password dena padega
         if login_type != 'manual':
             session.pop('user_logged', None)
             session.pop('username', None)
@@ -376,14 +372,11 @@ def logout_verify():
     </div>
     """ + HTML_FOOTER
 
-# ----------------- REAL GMAIL LOGIN ROUTE -----------------
 @app.route("/social_login/google", methods=['GET', 'POST'])
 def google_login():
     error = ""
     if request.method == 'POST':
         user_email = request.form.get('email', '').strip()
-        
-        # Valid Gmail ID check
         if user_email and "@" in user_email:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
@@ -394,7 +387,7 @@ def google_login():
 
             session.permanent = True
             session['user_logged'] = True
-            session['username'] = user_email  # Asli Gmail ID session me save hogi
+            session['username'] = user_email
             session['login_type'] = 'google'
             return redirect("/")
         else:
@@ -416,7 +409,6 @@ def google_login():
     </div>
     """ + HTML_FOOTER
 
-# ----------------- REAL PHONE LOGIN ROUTE -----------------
 @app.route("/social_login/phone", methods=['GET', 'POST'])
 def phone_login():
     error = ""
@@ -450,4 +442,177 @@ def phone_login():
                 <input type="tel" name="phone" class="form-control mb-3" placeholder="9876543210" maxlength="10" required>
                 <button type="submit" class="btn btn-success w-100">Continue with Phone</button>
             </form>
-            <div class="mt-3"><a href="/user_login" class="text-decoration-
+            <div class="mt-3"><a href="/user_login" class="text-decoration-none small">← Back to Login</a></div>
+        </div>
+    </div>
+    """ + HTML_FOOTER
+
+@app.route("/user_signup", methods=['GET', 'POST'])
+def user_signup():
+    msg = ""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO users (username, password, login_type) VALUES (?, ?, ?)", (username, password, 'manual'))
+            conn.commit()
+            conn.close()
+            return redirect("/user_login")
+        except:
+            msg = "Yeh username pehle se registered hai!"
+
+    error_div = f'<div class="alert alert-danger">{msg}</div>' if msg else ''
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 400px;">
+        <h3 class="mb-3 text-center">📝 User Sign Up</h3>
+        {error_div}
+        <form method="POST">
+            <div class="mb-3"><label>Username / Email</label><input type="text" name="username" class="form-control" required></div>
+            <div class="mb-3"><label>Password</label><input type="password" name="password" class="form-control" required></div>
+            <button type="submit" class="btn btn-primary w-100">Register</button>
+        </form>
+        <div class="text-center mt-3"><a href="/user_login" class="text-decoration-none">Already have account? Login</a> | <a href="/" class="text-decoration-none">Home</a></div>
+    </div>
+    """ + HTML_FOOTER
+
+@app.route("/user_login", methods=['GET', 'POST'])
+def user_login():
+    error = ""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            session.permanent = True
+            session['user_logged'] = True
+            session['username'] = username
+            session['login_type'] = 'manual'
+            return redirect("/")
+        else:
+            error = "Galat username ya password!"
+
+    error_div = f'<div class="alert alert-danger">{error}</div>' if error else ''
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 400px;">
+        <h3 class="mb-3 text-center">👤 User Login</h3>
+        {error_div}
+        
+        <div class="mb-3">
+            <a href="/social_login/google" class="btn btn-outline-danger social-btn">
+                <i class="bi bi-google me-2"></i> Continue with Gmail
+            </a>
+            <a href="/social_login/phone" class="btn btn-outline-success social-btn">
+                <i class="bi bi-phone-fill me-2"></i> Continue with Phone Number
+            </a>
+        </div>
+        
+        <div class="text-center mb-3 text-muted">— OR Manual Login —</div>
+
+        <form method="POST">
+            <div class="mb-3"><label>Username</label><input type="text" name="username" class="form-control" required></div>
+            <div class="mb-3"><label>Password</label><input type="password" name="password" class="form-control" required></div>
+            <button type="submit" class="btn btn-success w-100">Login</button>
+        </form>
+        <div class="text-center mt-3"><a href="/user_signup" class="text-decoration-none">Create Account</a> | <a href="/" class="text-decoration-none">Home</a></div>
+    </div>
+    """ + HTML_FOOTER
+
+@app.route("/admin_login", methods=['GET', 'POST'])
+def admin_login():
+    error = ""
+    if request.method == 'POST':
+        if request.form.get('username') == "admin" and request.form.get('password') == "Bharat123@#$":
+            session['admin_logged'] = True
+            return redirect("/admin_dashboard")
+        else:
+            error = "Galat Admin Credentials!"
+
+    error_div = f'<div class="alert alert-danger">{error}</div>' if error else ''
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 400px;">
+        <h3 class="mb-3 text-center">🔒 Admin Portal</h3>
+        {error_div}
+        <form method="POST">
+            <div class="mb-3"><label>Admin Username</label><input type="text" name="username" class="form-control" required></div>
+            <div class="mb-3"><label>Admin Password</label><input type="password" name="password" class="form-control" required></div>
+            <button type="submit" class="btn btn-dark w-100">Admin Login</button>
+        </form>
+        <div class="text-center mt-3"><a href="/" class="text-decoration-none">← Back to Search</a></div>
+    </div>
+    """ + HTML_FOOTER
+
+@app.route("/admin_dashboard")
+def admin_dashboard():
+    if not session.get('admin_logged'):
+        return redirect("/admin_login")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM pages")
+    page_count = cursor.fetchone()[0]
+
+    cursor.execute("SELECT username, query, timestamp FROM search_history ORDER BY id DESC")
+    all_histories = cursor.fetchall()
+    conn.close()
+
+    history_table = ""
+    for h in all_histories:
+        history_table += f"""
+        <tr>
+            <td><b>{h[0]}</b></td>
+            <td>{h[1]}</td>
+            <td><small class="text-muted">{h[2]}</small></td>
+        </tr>
+        """
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 800px;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>⚙️ Service Provider / Admin Control Center</h3>
+            <a href="/admin_logout" class="btn btn-outline-danger btn-sm">Logout</a>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="alert alert-success">Total Indexed Pages: <b>{page_count}</b></div>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <h5 class="mb-3">📊 All Users Search History</h5>
+            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Username / Email</th>
+                            <th>Search Query</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {history_table if history_table else '<tr><td colspan="3" class="text-center text-muted">Koi history available nahi hai.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-4 text-center"><a href="/" class="btn btn-light border">Go to Search Engine</a></div>
+    </div>
+    """ + HTML_FOOTER
+
+@app.route("/admin_logout")
+def admin_logout():
+    session.pop('admin_logged', None)
+    return redirect("/")
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
