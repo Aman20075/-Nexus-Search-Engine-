@@ -2,15 +2,15 @@ from flask import Flask, request, redirect, url_for, session
 import sqlite3
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
+from datetime import datetime
 import threading
 import os
 
 app = Flask(__name__)
-app.secret_key = 'bharat_search_safe_secure_key_2026'
+app.secret_key = 'bharat_search_history_key_2026'
 DB_PATH = 'search_engine.db'
 
-# 🚫 Adult / Vulgar Content Blocklist (Aap aur bhi words jod sakte hain)
+# 🚫 Adult / Vulgar Content Blocklist
 BLOCKED_KEYWORDS = ['porn', 'xxx', 'sex', 'adult', 'nude', 'nsfw', 'hot video', 'bhabhi']
 
 def is_safe_query(query):
@@ -23,6 +23,8 @@ def is_safe_query(query):
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    
+    # 1. Pages Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,6 +33,8 @@ def init_db():
             content TEXT
         )
     ''')
+    
+    # 2. Users Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,6 +42,17 @@ def init_db():
             password TEXT
         )
     ''')
+    
+    # 3. Search History Table (User aur queries ko track karne ke liye)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS search_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            query TEXT,
+            timestamp TEXT
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
@@ -134,7 +149,11 @@ def home():
     username = session.get('username', '')
 
     if user_logged:
-        nav_links = f'<span class="me-3 text-secondary">👤 Hello, <b>{username}</b></span> <a href="/user_logout" class="btn btn-outline-danger btn-sm">Logout</a>'
+        nav_links = f'''
+            <span class="me-3 text-secondary">👤 Hello, <b>{username}</b></span> 
+            <a href="/my_history" class="btn btn-outline-secondary btn-sm me-2">📜 My History</a>
+            <a href="/user_logout" class="btn btn-outline-danger btn-sm">Logout</a>
+        '''
     else:
         nav_links = '<a href="/user_login" class="btn btn-outline-primary btn-sm me-2">User Login</a> <a href="/user_signup" class="btn btn-primary btn-sm">Sign Up</a>'
 
@@ -162,14 +181,14 @@ def home():
     </div>
     """ + HTML_FOOTER
 
-# ----------------- SEARCH & SAFETY FILTER ROUTE -----------------
+# ----------------- SEARCH & HISTORY RECORDING -----------------
 @app.route("/search")
 def search():
     query = request.args.get('q', '').strip()
     if not query:
         return redirect("/")
 
-    # 🛑 1. Check Safe Search Filter (Block Adult Queries)
+    # 🛑 1. Safe Search Filter Check
     if not is_safe_query(query):
         return HTML_HEADER + f"""
         <div class="results-wrapper pt-5 text-center">
@@ -182,7 +201,18 @@ def search():
         </div>
         """ + HTML_FOOTER
 
-    # 2. Database Search
+    # 📝 2. Record Search History if User is Logged In
+    if session.get('user_logged'):
+        current_user = session.get('username')
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO search_history (username, query, timestamp) VALUES (?, ?, ?)", 
+                       (current_user, query, current_time))
+        conn.commit()
+        conn.close()
+
+    # 3. Database Search
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -192,7 +222,7 @@ def search():
     rows = cursor.fetchall()
     conn.close()
 
-    # 3. Autonomous Discovery if not found
+    # 4. Autonomous Discovery if not found
     if not rows:
         t = threading.Thread(target=autonomous_web_crawler, args=(query,))
         t.start()
@@ -251,6 +281,43 @@ def search():
 
     body_results += "</div>"
     return HTML_HEADER + header_nav + body_results + HTML_FOOTER
+
+# ----------------- USER SEARCH HISTORY PAGE -----------------
+@app.route("/my_history")
+def my_history():
+    if not session.get('user_logged'):
+        return redirect("/user_login")
+    
+    username = session.get('username')
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT query, timestamp FROM search_history WHERE username = ? ORDER BY id DESC", (username,))
+    history_items = cursor.fetchall()
+    conn.close()
+
+    history_html = ""
+    if history_items:
+        for item in history_items:
+            history_html += f"""
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>🔍 <b>{item[0]}</b></span>
+                <span class="text-muted small">{item[1]}</span>
+            </li>
+            """
+    else:
+        history_html = '<li class="list-group-item text-muted text-center">Aapne abhi tak kuch search nahi kiya hai.</li>'
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 600px;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>📜 Aapki Search History</h3>
+            <a href="/" class="btn btn-outline-primary btn-sm">← Back to Search</a>
+        </div>
+        <ul class="list-group shadow-sm">
+            {history_html}
+        </ul>
+    </div>
+    """ + HTML_FOOTER
 
 # ----------------- USER AUTHENTICATION -----------------
 @app.route("/user_signup", methods=['GET', 'POST'])
@@ -323,7 +390,7 @@ def user_logout():
     session.pop('username', None)
     return redirect("/")
 
-# ----------------- ADMIN PANEL -----------------
+# ----------------- ADMIN PANEL & GLOBAL HISTORY MONITORING -----------------
 @app.route("/admin_login", methods=['GET', 'POST'])
 def admin_login():
     error = ""
@@ -356,23 +423,62 @@ def admin_dashboard():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM pages")
-    count = cursor.fetchone()[0]
+    page_count = cursor.fetchone()[0]
+
+    # Admin saare users ki search history dekh sakta hai
+    cursor.execute("SELECT username, query, timestamp FROM search_history ORDER BY id DESC")
+    all_histories = cursor.fetchall()
     conn.close()
 
+    history_table = ""
+    for h in all_histories:
+        history_table += f"""
+        <tr>
+            <td><b>{h[0]}</b></td>
+            <td>{h[1]}</td>
+            <td><small class="text-muted">{h[2]}</small></td>
+        </tr>
+        """
+
     return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 600px;">
+    <div class="container mt-5" style="max-width: 800px;">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3>⚙️ Safe Engine Control Center</h3>
+            <h3>⚙️ Service Provider / Admin Control Center</h3>
             <a href="/admin_logout" class="btn btn-outline-danger btn-sm">Logout</a>
         </div>
-        <div class="alert alert-success">Total Safe Indexed Pages: <b>{count}</b></div>
-        <div class="card p-4">
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="alert alert-success">Total Indexed Pages: <b>{page_count}</b></div>
+            </div>
+        </div>
+
+        <div class="card p-4 mb-4">
             <h5 class="mb-3">🤖 Add Educational Source</h5>
             <form action="/admin_add" method="POST">
                 <input type="url" name="seed_url" class="form-control mb-3" placeholder="https://example.com" required>
                 <button type="submit" class="btn btn-success w-100">Crawl & Index Permanently</button>
             </form>
         </div>
+
+        <div class="card p-4">
+            <h5 class="mb-3">📊 All Users Search History (Only for Admin)</h5>
+            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Search Query</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {history_table if history_table else '<tr><td colspan="3" class="text-center text-muted">Koi history available nahi hai.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="mt-4 text-center"><a href="/" class="btn btn-light border">Go to Search Engine</a></div>
     </div>
     """ + HTML_FOOTER
