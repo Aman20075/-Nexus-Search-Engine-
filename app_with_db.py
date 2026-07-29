@@ -7,12 +7,15 @@ import threading
 import os
 
 app = Flask(__name__)
-app.secret_key = 'bharat_search_super_secret_key_2026'
+app.secret_key = 'bharat_search_secure_multi_role_key_2026'
 DB_PATH = 'search_engine.db'
 
+# Database Setup (Pages + Users)
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    
+    # 1. Search Pages Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,11 +24,22 @@ def init_db():
             content TEXT
         )
     ''')
+    
+    # 2. Users Table (For Public Login/Signup)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
 init_db()
 
+# Background Crawler for Admin
 def auto_crawl_worker(start_url, max_pages=15):
     urls_to_visit = [start_url]
     visited_urls = set()
@@ -91,6 +105,7 @@ HTML_HEADER = """<!DOCTYPE html>
         .result-title:hover { text-decoration: underline; }
         .result-url { color: #202124; font-size: 14px; margin-bottom: 2px; }
         .result-snippet { color: #4d5156; font-size: 14px; line-height: 1.58; }
+        .top-nav { position: absolute; right: 20px; top: 20px; }
     </style>
 </head>
 <body>
@@ -116,9 +131,20 @@ function startVoiceSearch() {
 </html>
 """
 
+# ----------------- HOME PAGE (SEARCH ENGINE) -----------------
 @app.route("/")
 def home():
-    return HTML_HEADER + """
+    user_logged = session.get('user_logged')
+    username = session.get('username', '')
+
+    nav_links = ""
+    if user_logged:
+        nav_links = f'<span class="me-3 text-secondary">👤 Hello, <b>{username}</b></span> <a href="/user_logout" class="btn btn-outline-danger btn-sm">Logout</a>'
+    else:
+        nav_links = '<a href="/user_login" class="btn btn-outline-primary btn-sm me-2">User Login</a> <a href="/user_signup" class="btn btn-primary btn-sm">Sign Up</a>'
+
+    return HTML_HEADER + f"""
+    <div class="top-nav">{nav_links}</div>
     <div class="container text-center mt-5 pt-4">
         <div class="bharat-logo mb-2">
             <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
@@ -127,7 +153,7 @@ def home():
 
         <form action="/search" method="GET" id="searchForm" class="search-box-container mb-4">
             <i class="bi bi-search search-icon"></i>
-            <input type="text" name="q" id="searchInput" class="form-control search-input" placeholder="Ask anything or search web..." required autocomplete="off">
+            <input type="text" name="q" id="searchInput" class="form-control search-input" placeholder="Search the web or ask AI..." required autocomplete="off">
             <i class="bi bi-mic-fill mic-icon" onclick="startVoiceSearch()" title="Search by voice"></i>
             
             <div class="mt-4">
@@ -141,6 +167,7 @@ def home():
     </div>
     """ + HTML_FOOTER
 
+# ----------------- SEARCH RESULTS PAGE -----------------
 @app.route("/search")
 def search():
     query = request.args.get('q', '')
@@ -163,9 +190,9 @@ def search():
         if res['query']['search']:
             snippet_raw = res['query']['search'][0]['snippet']
             clean_snippet = BeautifulSoup(snippet_raw, "html.parser").get_text()
-            ai_summary = f"✨ <b>Bharat AI Overview:</b> {clean_snippet} Based on verified web knowledge bases, {query} is an important subject with widespread global and national relevance."
+            ai_summary = f"✨ <b>Bharat AI Overview:</b> {clean_snippet} Based on verified database records, {query} is a prominent topic searched on Bharat Engine."
     except:
-        ai_summary = f"✨ <b>Bharat AI Overview:</b> {query} ke baare mein search results neeche diye gaye hain."
+        ai_summary = f"✨ <b>Bharat AI Overview:</b> Results for {query} are listed below."
 
     header_nav = f"""
     <div class="border-bottom pt-3 px-4">
@@ -185,7 +212,7 @@ def search():
         <div class="ai-card">
             <div class="text-dark" style="font-size: 15px; line-height: 1.6;">{ai_summary}</div>
         </div>
-        <p class="text-muted small">Web database search results for: <b>{query}</b></p>
+        <p class="text-muted small">Database search results for: <b>{query}</b></p>
     """
 
     body_results = ""
@@ -203,37 +230,101 @@ def search():
     else:
         body_results += f"""
         <div class="alert alert-light border" style="max-width: 650px;">
-            Local database mein direct match nahi mila, lekin aap upar diye gaye <b>Bharat AI Overview</b> se apna jawab dekh sakte hain!
+            Aapke search query se milte-julte results database mein nahi mile, lekin upar diye gaye <b>Bharat AI Overview</b> ka use kar sakte hain.
         </div>
         """
 
     body_results += "</div>"
     return HTML_HEADER + header_nav + body_results + HTML_FOOTER
 
+# ----------------- USER SIGNUP / LOGIN / LOGOUT -----------------
+@app.route("/user_signup", methods=['GET', 'POST'])
+def user_signup():
+    msg = ""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+            conn.commit()
+            conn.close()
+            return redirect("/user_login")
+        except:
+            msg = "Yeh username pehle se registered hai!"
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 400px;">
+        <h3 class="mb-3 text-center">📝 User Sign Up</h3>
+        {f'<div class="alert alert-danger">{msg}</div>' if msg else ''}
+        <form method="POST">
+            <div class="mb-3"><label>Username</label><input type="text" name="username" class="form-control" required></div>
+            <div class="mb-3"><label>Password</label><input type="password" name="password" class="form-control" required></div>
+            <button type="submit" class="btn btn-primary w-100">Register</button>
+        </form>
+        <div class="text-center mt-3"><a href="/user_login" class="text-decoration-none">Already have account? Login</a> | <a href="/" class="text-decoration-none">Home</a></div>
+    </div>
+    """ + HTML_FOOTER
+
+@app.route("/user_login", methods=['GET', 'POST'])
+def user_login():
+    error = ""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            session['user_logged'] = True
+            session['username'] = username
+            return redirect("/")
+        else:
+            error = "Galat username ya password!"
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 400px;">
+        <h3 class="mb-3 text-center">👤 User Login</h3>
+        {f'<div class="alert alert-danger">{error}</div>' if error else ''}
+        <form method="POST">
+            <div class="mb-3"><label>Username</label><input type="text" name="username" class="form-control" required></div>
+            <div class="mb-3"><label>Password</label><input type="password" name="password" class="form-control" required></div>
+            <button type="submit" class="btn btn-success w-100">Login</button>
+        </form>
+        <div class="text-center mt-3"><a href="/user_signup" class="text-decoration-none">Create Account</a> | <a href="/" class="text-decoration-none">Home</a></div>
+    </div>
+    """ + HTML_FOOTER
+
+@app.route("/user_logout")
+def user_logout():
+    session.pop('user_logged', None)
+    session.pop('username', None)
+    return redirect("/")
+
+# ----------------- ADMIN PANEL (ONLY FOR YOU) -----------------
 @app.route("/admin_login", methods=['GET', 'POST'])
 def admin_login():
     error = ""
     if request.method == 'POST':
         if request.form.get('username') == "admin" and request.form.get('password') == "Bharat123@#$":
-            session['logged_in'] = True
+            session['admin_logged'] = True
             return redirect("/admin_dashboard")
         else:
-            error = "Galat Username ya Password!"
+            error = "Galat Admin Credentials!"
 
     return HTML_HEADER + f"""
     <div class="container mt-5" style="max-width: 400px;">
-        <h3 class="mb-3 text-center">🔒 Admin Login</h3>
+        <h3 class="mb-3 text-center">🔒 Admin Portal</h3>
         {f'<div class="alert alert-danger">{error}</div>' if error else ''}
         <form method="POST">
-            <div class="mb-3">
-                <label>Admin Username</label>
-                <input type="text" name="username" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label>Admin Password</label>
-                <input type="password" name="password" class="form-control" required>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Login</button>
+            <div class="mb-3"><label>Admin Username</label><input type="text" name="username" class="form-control" required></div>
+            <div class="mb-3"><label>Admin Password</label><input type="password" name="password" class="form-control" required></div>
+            <button type="submit" class="btn btn-dark w-100">Admin Login</button>
         </form>
         <div class="text-center mt-3"><a href="/" class="text-decoration-none">← Back to Search</a></div>
     </div>
@@ -241,7 +332,7 @@ def admin_login():
 
 @app.route("/admin_dashboard")
 def admin_dashboard():
-    if not session.get('logged_in'):
+    if not session.get('admin_logged'):
         return redirect("/admin_login")
 
     conn = sqlite3.connect(DB_PATH)
@@ -253,10 +344,10 @@ def admin_dashboard():
     return HTML_HEADER + f"""
     <div class="container mt-5" style="max-width: 600px;">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3>⚙️ Admin Control Panel</h3>
+            <h3>⚙️ Admin Control Center</h3>
             <a href="/admin_logout" class="btn btn-outline-danger btn-sm">Logout</a>
         </div>
-        <div class="alert alert-success">Total Permanent Indexed Links: <b>{count}</b></div>
+        <div class="alert alert-success">Total Permanent Indexed Links in Engine: <b>{count}</b></div>
         <div class="card p-4">
             <h5 class="mb-3">🤖 Add Website to Permanent DB</h5>
             <form action="/admin_add" method="POST">
@@ -270,7 +361,7 @@ def admin_dashboard():
 
 @app.route("/admin_add", methods=['POST'])
 def admin_add():
-    if not session.get('logged_in'):
+    if not session.get('admin_logged'):
         return redirect("/admin_login")
     
     seed_url = request.form.get('seed_url')
@@ -288,7 +379,7 @@ def admin_add():
 
 @app.route("/admin_logout")
 def admin_logout():
-    session.pop('logged_in', None)
+    session.pop('admin_logged', None)
     return redirect("/")
 
 if __name__ == "__main__":
