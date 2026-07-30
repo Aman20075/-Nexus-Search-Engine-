@@ -7,7 +7,15 @@ import threading
 import os
 from urllib.parse import urljoin, urlparse
 import time
-from google import genai
+
+# 🤖 Safe Gemini AI Client Setup
+try:
+    from google import genai
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
+    ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE" else None
+except ImportError:
+    ai_client = None
+    print("⚠️ Warning: google-genai module not found. AI features will be disabled.")
 
 app = Flask(__name__)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60  
@@ -17,10 +25,6 @@ DB_PATH = 'search_engine.db'
 # 👑 Owner Credentials
 OWNER_USERNAME = "Aman Giri"
 OWNER_PASSWORD = "@Aman2007"
-
-# 🤖 Gemini AI Client Setup
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
-ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE" else None
 
 # 🚫 Safe Search Blocklist
 BLOCKED_KEYWORDS = ['porn', 'xxx', 'sex', 'adult', 'nude', 'nsfw', 'hot video', 'bhabhi']
@@ -146,10 +150,6 @@ HTML_HEADER = """<!DOCTYPE html>
         .dots-btn:hover { background: #f1f3f4; }
         
         .chrome-menu { border-radius: 20px 0 0 20px; width: 280px !important; }
-        .chrome-action-bar { display: flex; justify-content: space-between; background: #f0f4f9; padding: 8px; border-radius: 24px; margin-bottom: 15px; }
-        .chrome-action-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #444746; text-decoration: none; font-size: 16px; }
-        .chrome-action-icon:hover { background: #e0e4e9; }
-        
         .chrome-menu-item { display: flex; align-items: center; gap: 16px; padding: 12px 16px; font-size: 15px; color: #1f1f1f; text-decoration: none; border-radius: 12px; font-weight: 400; }
         .chrome-menu-item:hover { background: #f0f4f9; }
         .chrome-menu-item i { font-size: 18px; color: #444746; }
@@ -161,11 +161,6 @@ HTML_HEADER = """<!DOCTYPE html>
         .google-input { height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 52px; border: 1px solid #dfe1e5; background: #ffffff; box-shadow: 0 1px 6px rgba(32,33,36,0.12); font-size: 16px; }
         .google-input:focus { outline: none; border-color: #4285f4; box-shadow: 0 2px 8px rgba(32,33,36,0.2); }
         .search-left-icon { position: absolute; left: 18px; top: 17px; color: #9aa0a6; font-size: 18px; }
-        .mic-right-icon { position: absolute; right: 18px; top: 15px; color: #ea4335; font-size: 22px; cursor: pointer; }
-
-        .chips-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 30px; }
-        .chip-card { background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 20px; padding: 10px 18px; font-size: 14px; font-weight: 500; color: #3c4043; text-decoration: none; display: flex; align-items: center; gap: 8px; }
-        .chip-card:hover { background: #f1f3f4; }
 
         .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; }
         .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
@@ -216,14 +211,6 @@ def home():
     else:
         if not user_logged:
             role_options += '<a href="/owner_login" class="chrome-menu-item"><i class="bi bi-shield-lock-fill"></i> Owner Login</a>'
-
-    if not user_logged:
-        if admin_logged or owner_logged:
-            role_options += '<a href="/add_url" class="chrome-menu-item text-success"><i class="bi bi-gear-fill"></i> Admin Panel</a>'
-            if admin_logged:
-                role_options += '<a href="/confirm_logout?type=admin" class="chrome-menu-item text-danger"><i class="bi bi-lock-fill"></i> Admin Logout</a>'
-        else:
-            role_options += '<a href="/admin_login" class="chrome-menu-item"><i class="bi bi-shield-lock"></i> Admin Login</a>'
 
     top_bar = f"""
     <div class="top-bar-chrome">
