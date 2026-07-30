@@ -53,44 +53,37 @@ def init_db():
 
 init_db()
 
-def autonomous_web_crawler(search_query):
+# 🕷️ Admin-Controlled Web Crawler Function
+def crawl_and_index_url(target_url):
     try:
-        formatted_query = search_query.replace(' ', '+')
-        target_url = f"https://en.wikipedia.org/wiki/Special:Search?search={formatted_query}"
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         response = requests.get(target_url, headers=headers, timeout=5)
         
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            for a_tag in soup.find_all('a', href=True):
-                link = a_tag['href']
-                if link.startswith('/wiki/') and ':' not in link:
-                    full_url = f"https://en.wikipedia.org{link}"
-                    page_res = requests.get(full_url, headers=headers, timeout=4)
-                    if page_res.status_code == 200:
-                        page_soup = BeautifulSoup(page_res.text, 'html.parser')
-                        title = page_soup.title.string.strip() if page_soup.title and page_soup.title.string else search_query
-                        paragraphs = [p.get_text().strip() for p in page_soup.find_all('p')]
-                        content = ' '.join(paragraphs)
-                        
-                        if len(content) > 100:
-                            conn = sqlite3.connect(DB_PATH)
-                            cursor = conn.cursor()
-                            cursor.execute('''
-                                INSERT OR IGNORE INTO pages (url, title, content)
-                                VALUES (?, ?, ?)
-                            ''', (full_url, title, content))
-                            conn.commit()
-                            conn.close()
-                    break
+            title = soup.title.string.strip() if soup.title and soup.title.string else target_url
+            paragraphs = [p.get_text().strip() for p in soup.find_all('p')]
+            content = ' '.join(paragraphs)
+            
+            if len(content) > 50:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT OR REPLACE INTO pages (url, title, content)
+                    VALUES (?, ?, ?)
+                ''', (target_url, title, content))
+                conn.commit()
+                conn.close()
+                return True
     except Exception as e:
-        pass
+        print(f"Crawling Error: {e}")
+    return False
 
 HTML_HEADER = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bharat AI Search Engine</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
@@ -149,7 +142,7 @@ def get_footer(active_tab='home'):
     account_active = 'active' if active_tab == 'account' else ''
 
     return f"""
-<div class="bottom-nav-bar">
+<div class="bottom-nav-bar" id="bottomNav">
     <a href="/" class="nav-link-item {home_active}"><i class="bi bi-house-door-fill"></i>Home</a>
     <a href="javascript:void(0)" onclick="focusSearchInput()" class="nav-link-item {search_active}"><i class="bi bi-search"></i>Search</a>
     <a href="/my_history" class="nav-link-item {history_active}"><i class="bi bi-clock-history"></i>History</a>
@@ -179,6 +172,29 @@ function startVoiceSearch() {{
     }} else {{
         alert("Voice search aapke browser me supported nahi hai.");
     }}
+}}
+
+// 📱 Keyboard Hide/Show Logic for Mobile Navigation
+var navBar = document.getElementById('bottomNav');
+if (window.visualViewport) {{
+    window.visualViewport.addEventListener('resize', function() {{
+        if (window.visualViewport.height < window.innerHeight - 100) {{
+            navBar.style.display = 'none';
+        }} else {{
+            navBar.style.display = 'flex';
+        }}
+    }});
+}} else {{
+    window.addEventListener('focusin', function(e) {{
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
+            navBar.style.display = 'none';
+        }}
+    }});
+    window.addEventListener('focusout', function(e) {{
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
+            navBar.style.display = 'flex';
+        }}
+    }});
 }}
 </script>
 </body>
@@ -219,12 +235,6 @@ def home():
 
             <a href="/" class="chrome-menu-item"><i class="bi bi-plus-square"></i> New tab</a>
             <a href="/my_history" class="chrome-menu-item"><i class="bi bi-clock-history"></i> History</a>
-            
-            <div class="chrome-divider"></div>
-            
-            <a href="#" class="chrome-menu-item"><i class="bi bi-download"></i> Downloads</a>
-            <a href="#" class="chrome-menu-item"><i class="bi bi-star"></i> Bookmarks</a>
-            <a href="#" class="chrome-menu-item"><i class="bi bi-window-stack"></i> Recent tabs</a>
             
             <div class="chrome-divider"></div>
 
@@ -292,20 +302,6 @@ def search():
     rows = cursor.fetchall()
     conn.close()
 
-    if not rows:
-        t = threading.Thread(target=autonomous_web_crawler, args=(query,))
-        t.start()
-        t.join(timeout=2.5)
-
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT url, title, content FROM pages 
-            WHERE title LIKE ? OR content LIKE ?
-        ''', (f'%{query}%', f'%{query}%'))
-        rows = cursor.fetchall()
-        conn.close()
-
     header_search = f"""
     <div class="bg-white border-bottom p-3 mb-3">
         <div class="d-flex align-items-center gap-2">
@@ -339,12 +335,87 @@ def search():
     else:
         body_results += f"""
         <div class="text-center text-muted p-4">
-            No instant local records found. Academic crawler is fetching details.
+            No records found. Contact Admin to crawl/index content for <b>"{query}"</b>.
         </div>
         """
 
     body_results += "</div>"
     return HTML_HEADER + header_search + body_results + get_footer('search')
+
+@app.route("/user_login", methods=['GET', 'POST'])
+def user_login():
+    # 👤 Show Account Profile if User is Already Logged In
+    if session.get('user_logged'):
+        username = session.get('username', 'User')
+        login_type = session.get('login_type', 'manual')
+        
+        return HTML_HEADER + f"""
+        <div class="container mt-5" style="max-width: 400px;">
+            <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
+                <div class="mb-3">
+                    <i class="bi bi-person-circle text-primary" style="font-size: 64px;"></i>
+                </div>
+                <h4>My Profile</h4>
+                <div class="alert alert-light border my-3">
+                    <div class="small text-muted mb-1">Logged in as</div>
+                    <div class="fw-bold text-dark fs-5">{username}</div>
+                    <span class="badge bg-secondary mt-1">{login_type.upper()} Account</span>
+                </div>
+                
+                <a href="/my_history" class="btn btn-outline-primary w-100 mb-2" style="border-radius: 20px;">
+                    <i class="bi bi-clock-history me-1"></i> Search History
+                </a>
+                <a href="/logout_verify" class="btn btn-outline-danger w-100" style="border-radius: 20px;">
+                    <i class="bi bi-box-arrow-right me-1"></i> Logout
+                </a>
+            </div>
+        </div>
+        """ + get_footer('account')
+
+    error = ""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            session.permanent = True
+            session['user_logged'] = True
+            session['username'] = username
+            session['login_type'] = 'manual'
+            return redirect("/")
+        else:
+            error = "Galat details!"
+
+    return HTML_HEADER + f"""
+    <div class="container mt-4" style="max-width: 380px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
+            <h4 class="mb-3">Welcome Back</h4>
+            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
+            
+            <a href="/social_login/google" class="btn btn-outline-danger w-100 mb-2" style="border-radius: 20px;">
+                <i class="bi bi-google me-2"></i> Gmail Login
+            </a>
+            <a href="/social_login/phone" class="btn btn-outline-success w-100 mb-3" style="border-radius: 20px;">
+                <i class="bi bi-phone me-2"></i> Mobile Login
+            </a>
+            
+            <div class="text-muted small mb-3">— OR —</div>
+
+            <form method="POST">
+                <input type="text" name="username" class="form-control mb-2" placeholder="Username" required style="border-radius: 12px;">
+                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required style="border-radius: 12px;">
+                <button type="submit" class="btn btn-primary w-100 mb-2" style="border-radius: 20px;">Login</button>
+            </form>
+            <a href="/user_signup" class="small text-decoration-none">New user? Register here</a>
+        </div>
+    </div>
+    """ + get_footer('account')
 
 @app.route("/my_history")
 def my_history():
@@ -384,99 +455,8 @@ def my_history():
 
 @app.route("/logout_verify", methods=['GET', 'POST'])
 def logout_verify():
-    if not session.get('user_logged'):
-        return redirect("/")
-    
-    username = session.get('username')
-    login_type = session.get('login_type')
-    error = ""
-    
-    if request.method == 'POST':
-        if login_type != 'manual':
-            session.clear()
-            return redirect("/")
-            
-        password = request.form.get('password')
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
-        user = cursor.fetchone()
-        conn.close()
-        
-        if user:
-            session.clear()
-            return redirect("/")
-        else:
-            error = "Galat password!"
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 380px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
-            <h5 class="text-danger mb-3">Logout Confirm Karein</h5>
-            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
-            <form method="POST">
-                {'<div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Enter Password" required style="border-radius:12px;"></div>' if login_type == 'manual' else ''}
-                <button type="submit" class="btn btn-danger w-100 mb-2" style="border-radius: 20px;">Logout</button>
-                <a href="/" class="btn btn-light w-100" style="border-radius: 20px;">Cancel</a>
-            </form>
-        </div>
-    </div>
-    """ + get_footer()
-
-@app.route("/user_login", methods=['GET', 'POST'])
-def user_login():
-    if session.get('user_logged'):
-        return redirect("/")
-    
-    error = ""
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
-        user = cursor.fetchone()
-        
-        if user:
-            session.permanent = True
-            session['user_logged'] = True
-            session['username'] = username
-            session['login_type'] = user[3] if len(user) > 3 else 'manual'
-            conn.close()
-            return redirect("/")
-        else:
-            # Auto Register User
-            cursor.execute("INSERT OR IGNORE INTO users (username, password, login_type) VALUES (?, ?, 'manual')", (username, password))
-            conn.commit()
-            conn.close()
-            
-            session.permanent = True
-            session['user_logged'] = True
-            session['username'] = username
-            session['login_type'] = 'manual'
-            return redirect("/")
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 380px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border">
-            <h4 class="text-center mb-3">Welcome to Bharat</h4>
-            <form method="POST" class="mb-3">
-                <div class="mb-3">
-                    <input type="text" name="username" class="form-control" placeholder="Username / Email" required style="border-radius:12px;">
-                </div>
-                <div class="mb-3">
-                    <input type="password" name="password" class="form-control" placeholder="Password" required style="border-radius:12px;">
-                </div>
-                <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Login / Sign Up</button>
-            </form>
-            <div class="chrome-divider my-3"></div>
-            <a href="/social_login/google" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2" style="border-radius: 20px;">
-                <i class="bi bi-google"></i> Continue with Google
-            </a>
-        </div>
-    </div>
-    """ + get_footer('account')
+    session.clear()
+    return redirect("/")
 
 @app.route("/social_login/google", methods=['GET', 'POST'])
 def google_login():
@@ -485,7 +465,8 @@ def google_login():
         if user_email and "@" in user_email:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            cursor.execute("INSERT OR IGNORE INTO users (username, password, login_type) VALUES (?, 'social_pass', 'google')", (user_email,))
+            cursor.execute("INSERT OR IGNORE INTO users (username, password, login_type) VALUES (?, ?, ?)", 
+                           (user_email, 'google_verified', 'google'))
             conn.commit()
             conn.close()
 
@@ -498,18 +479,196 @@ def google_login():
     return HTML_HEADER + f"""
     <div class="container mt-5" style="max-width: 380px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
-            <i class="bi bi-google text-danger fs-1 mb-2"></i>
-            <h5 class="mb-3">Google Sign-In Simulation</h5>
+            <h5 class="mb-3"><i class="bi bi-google text-danger me-2"></i>Google Sign-In</h5>
             <form method="POST">
-                <div class="mb-3">
-                    <input type="email" name="email" class="form-control" placeholder="Enter Gmail Address" required style="border-radius:12px;">
-                </div>
-                <button type="submit" class="btn btn-danger w-100 mb-2" style="border-radius: 20px;">Sign in with Google</button>
-                <a href="/user_login" class="btn btn-light w-100" style="border-radius: 20px;">Back</a>
+                <input type="email" name="email" class="form-control mb-3" placeholder="example@gmail.com" required style="border-radius: 12px;">
+                <button type="submit" class="btn btn-danger w-100" style="border-radius: 20px;">Continue</button>
             </form>
+            <div class="mt-3"><a href="/user_login" class="small text-decoration-none">Cancel</a></div>
         </div>
     </div>
     """ + get_footer('account')
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+@app.route("/social_login/phone", methods=['GET', 'POST'])
+def phone_login():
+    if request.method == 'POST':
+        phone_no = request.form.get('phone', '').strip()
+        if phone_no and len(phone_no) >= 10:
+            user_id = f"+91-{phone_no}"
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("INSERT OR IGNORE INTO users (username, password, login_type) VALUES (?, ?, ?)", 
+                           (user_id, 'phone_verified', 'phone'))
+            conn.commit()
+            conn.close()
+
+            session.permanent = True
+            session['user_logged'] = True
+            session['username'] = user_id
+            session['login_type'] = 'phone'
+            return redirect("/")
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 380px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
+            <h5 class="mb-3"><i class="bi bi-phone text-success me-2"></i>Phone Sign-In</h5>
+            <form method="POST">
+                <input type="tel" name="phone" class="form-control mb-3" placeholder="Mobile Number" maxlength="10" required style="border-radius: 12px;">
+                <button type="submit" class="btn btn-success w-100" style="border-radius: 20px;">Continue</button>
+            </form>
+            <div class="mt-3"><a href="/user_login" class="small text-decoration-none">Cancel</a></div>
+        </div>
+    </div>
+    """ + get_footer('account')
+
+@app.route("/user_signup", methods=['GET', 'POST'])
+def user_signup():
+    msg = ""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO users (username, password, login_type) VALUES (?, ?, ?)", (username, password, 'manual'))
+            conn.commit()
+            conn.close()
+            return redirect("/user_login")
+        except:
+            msg = "Username pehle se registered hai!"
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 380px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border">
+            <h4 class="mb-3 text-center">Create Account</h4>
+            {f'<div class="alert alert-danger small">{msg}</div>' if msg else ''}
+            <form method="POST">
+                <div class="mb-3"><input type="text" name="username" class="form-control" placeholder="Username / Email" required style="border-radius: 12px;"></div>
+                <div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Password" required style="border-radius: 12px;"></div>
+                <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Register</button>
+            </form>
+            <div class="mt-3 text-center"><a href="/user_login" class="small text-decoration-none">Already have account? Login</a></div>
+        </div>
+    </div>
+    """ + get_footer('account')
+
+@app.route("/admin_login", methods=['GET', 'POST'])
+def admin_login():
+    error = ""
+    if request.method == 'POST':
+        if request.form.get('username') == "admin" and request.form.get('password') == "Bharat123@#$":
+            session['admin_logged'] = True
+            return redirect("/admin_dashboard")
+        else:
+            error = "Galat credentials!"
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 380px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border">
+            <h4 class="mb-3 text-center">🔒 Admin Portal</h4>
+            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
+            <form method="POST">
+                <input type="text" name="username" class="form-control mb-2" placeholder="Admin ID" required style="border-radius: 12px;">
+                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required style="border-radius: 12px;">
+                <button type="submit" class="btn btn-dark w-100" style="border-radius: 20px;">Login</button>
+            </form>
+        </div>
+    </div>
+    """ + get_footer()
+
+# ⚙️ ADMIN DASHBOARD WITH CRAWLER & PAGE ADDING CONTROL
+@app.route("/admin_dashboard", methods=['GET', 'POST'])
+def admin_dashboard():
+    if not session.get('admin_logged'):
+        return redirect("/admin_login")
+
+    msg = ""
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        # 🕷️ Run Crawler manually by Admin
+        if action == 'crawl_url':
+            url_to_crawl = request.form.get('target_url')
+            if crawl_and_index_url(url_to_crawl):
+                msg = '<div class="alert alert-success">URL successfully crawled & indexed!</div>'
+            else:
+                msg = '<div class="alert alert-danger">Crawling failed or invalid URL.</div>'
+                
+        # 📝 Add Custom Page manually by Admin
+        elif action == 'add_page':
+            custom_url = request.form.get('custom_url')
+            custom_title = request.form.get('custom_title')
+            custom_content = request.form.get('custom_content')
+            
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("INSERT OR REPLACE INTO pages (url, title, content) VALUES (?, ?, ?)", 
+                           (custom_url, custom_title, custom_content))
+            conn.commit()
+            conn.close()
+            msg = '<div class="alert alert-success">Custom page added successfully!</div>'
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM pages")
+    page_count = cursor.fetchone()[0]
+
+    cursor.execute("SELECT username, query, timestamp FROM search_history ORDER BY id DESC")
+    all_histories = cursor.fetchall()
+    conn.close()
+
+    history_table = ""
+    for h in all_histories:
+        history_table += f"<tr><td>{h[0]}</td><td>{h[1]}</td><td><small>{h[2]}</small></td></tr>"
+
+    return HTML_HEADER + f"""
+    <div class="container mt-4 mb-5" style="max-width: 750px;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>⚙️ Admin Panel</h3>
+            <a href="/admin_logout" class="btn btn-outline-danger btn-sm" style="border-radius:16px;">Logout</a>
+        </div>
+        
+        {msg}
+
+        <div class="alert alert-info mb-4">Total Indexed Web Pages: <b>{page_count}</b></div>
+        
+        <div class="bg-white p-3 rounded-3 shadow-sm border mb-4">
+            <h6 class="fw-bold mb-2">🕷️ Web Crawler (Add URL to Index)</h6>
+            <form method="POST" class="d-flex gap-2">
+                <input type="hidden" name="action" value="crawl_url">
+                <input type="url" name="target_url" class="form-control" placeholder="https://en.wikipedia.org/wiki/Science" required style="border-radius: 12px;">
+                <button type="submit" class="btn btn-primary text-nowrap" style="border-radius: 12px;">Crawl URL</button>
+            </form>
+        </div>
+
+        <div class="bg-white p-3 rounded-3 shadow-sm border mb-4">
+            <h6 class="fw-bold mb-2">➕ Add Custom Page Content</h6>
+            <form method="POST">
+                <input type="hidden" name="action" value="add_page">
+                <input type="text" name="custom_url" class="form-control mb-2" placeholder="Page URL (e.g., https://bharat.com/about)" required style="border-radius: 12px;">
+                <input type="text" name="custom_title" class="form-control mb-2" placeholder="Page Title" required style="border-radius: 12px;">
+                <textarea name="custom_content" class="form-control mb-2" rows="3" placeholder="Page Content/Summary..." required style="border-radius: 12px;"></textarea>
+                <button type="submit" class="btn btn-success w-100" style="border-radius: 12px;">Save Page</button>
+            </form>
+        </div>
+
+        <div class="bg-white p-3 rounded-3 shadow-sm border">
+            <h6 class="fw-bold mb-3">📜 User Search Logs</h6>
+            <div class="table-responsive" style="max-height: 250px;">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>User</th><th>Query</th><th>Time</th></tr></thead>
+                    <tbody>{history_table if history_table else '<tr><td colspan="3">No history found.</td></tr>'}</tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    """ + get_footer()
+
+@app.route("/admin_logout")
+def admin_logout():
+    session.pop('admin_logged', None)
+    return redirect("/")
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
