@@ -59,7 +59,7 @@ def init_db():
 
 init_db()
 
-# 🕷️ Advanced Automatic Recursive Crawler Logic with Live Terminal Debugging
+# 🕷️ Advanced Automatic Recursive Crawler Logic
 def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
     visited = set()
     queue = [(start_url, 1)]
@@ -87,12 +87,15 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
                 soup = BeautifulSoup(response.text, 'html.parser')
                 
                 title = soup.title.string.strip() if soup.title and soup.title.string else current_url
-                paragraphs = [p.get_text().strip() for p in soup.find_all('p')]
+                
+                # सभी पैराग्राफ और हेडिंग्स से टेक्स्ट कलेक्ट करें ताकि डेटा खाली न रहे
+                all_text_elements = soup.find_all(['p', 'span', 'div', 'h1', 'h2', 'h3'])
+                paragraphs = [elem.get_text().strip() for elem in all_text_elements if len(elem.get_text().strip()) > 20]
                 content = ' '.join(paragraphs)
                 
                 print(f"📝 Extracted Content Length: {len(content)} characters")
 
-                if len(content) > 50:
+                if len(content) > 30:
                     conn = sqlite3.connect(DB_PATH)
                     cursor = conn.cursor()
                     cursor.execute('''
@@ -104,7 +107,7 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
                     pages_crawled += 1
                     print(f"✅ Successfully Saved to Database: {title}")
                 else:
-                    print("⚠️ Content is less than 50 characters, skipping save.")
+                    print("⚠️ Content is too short, skipping save.")
 
                 if depth < max_depth:
                     for a_tag in soup.find_all('a', href=True):
