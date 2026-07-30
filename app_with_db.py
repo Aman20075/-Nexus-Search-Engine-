@@ -55,8 +55,7 @@ def init_db():
         )
     ''')
     
-    # Default Admin account inside DB
-    cursor.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('admin', 'admin123', 'admin')")
+    # NOTE: Yahan purane default admin ko hata diya gaya hai taaki sirf Owner apni marzi se naye admin jod sake.
     conn.commit()
     conn.close()
 
@@ -236,18 +235,24 @@ def home():
         login_logout_option = '<a href="/user_login" class="chrome-menu-item"><i class="bi bi-box-arrow-in-right"></i>User Login</a>'
 
     role_options = ''
+    
+    # 🔒 नियम: केवल Owner को Owner Dashboard दिखेगा। साधारण यूजर या सामान्य एडमिन को नहीं।
     if owner_logged:
         role_options += '<a href="/owner_dashboard" class="chrome-menu-item text-warning"><i class="bi bi-crown-fill"></i> Owner Dashboard</a>'
         role_options += '<a href="/confirm_logout?type=owner" class="chrome-menu-item text-danger"><i class="bi bi-box-arrow-left"></i> Owner Logout</a>'
     else:
-        role_options += '<a href="/owner_login" class="chrome-menu-item"><i class="bi bi-shield-lock-fill"></i> Owner Login</a>'
+        # अगर कोई यूजर लॉग इन है, तो उसे Owner Login न दिखाएं (या गुप्त रख सकते हैं, यहाँ केवल साधारण मेनू है)
+        if not user_logged:
+            role_options += '<a href="/owner_login" class="chrome-menu-item"><i class="bi bi-shield-lock-fill"></i> Owner Login</a>'
 
-    if admin_logged or owner_logged:
-        role_options += '<a href="/add_url" class="chrome-menu-item text-success"><i class="bi bi-gear-fill"></i> Admin Crawl Panel</a>'
-        if admin_logged:
-            role_options += '<a href="/confirm_logout?type=admin" class="chrome-menu-item text-danger"><i class="bi bi-lock-fill"></i> Admin Logout</a>'
-    else:
-        role_options += '<a href="/admin_login" class="chrome-menu-item"><i class="bi bi-shield-lock"></i> Admin Login</a>'
+    # 🔒 नियम: सामान्य यूजर को Admin Crawl Panel या Admin Login बिल्कुल नहीं दिखेगा।
+    if not user_logged:
+        if admin_logged or owner_logged:
+            role_options += '<a href="/add_url" class="chrome-menu-item text-success"><i class="bi bi-gear-fill"></i> Admin Crawl Panel</a>'
+            if admin_logged:
+                role_options += '<a href="/confirm_logout?type=admin" class="chrome-menu-item text-danger"><i class="bi bi-lock-fill"></i> Admin Logout</a>'
+        else:
+            role_options += '<a href="/admin_login" class="chrome-menu-item"><i class="bi bi-shield-lock"></i> Admin Login</a>'
 
     top_bar_html = f"""
     <div class="top-bar-chrome">
@@ -463,7 +468,7 @@ def owner_login():
     </div>
     """ + get_footer('home')
 
-# 📊 OWNER DASHBOARD
+# 📊 OWNER DASHBOARD (यहाँ Owner नए एडमिन या यूजर जोड़ सकता है और लिंक भी जोड़ सकता है)
 @app.route("/owner_dashboard", methods=['GET', 'POST'])
 def owner_dashboard():
     if not session.get('owner_logged'):
@@ -471,20 +476,27 @@ def owner_dashboard():
 
     message = ""
     if request.method == 'POST':
-        new_user = request.form.get('username', '').strip()
-        new_pass = request.form.get('password', '').strip()
-        new_role = request.form.get('role', 'user')
+        # चेक करें कि यह फॉर्म यूजर जोड़ने का है या यूआरएल/लिंक जोड़ने का
+        if 'url' in request.form:
+            new_url = request.form.get('url', '').strip()
+            if new_url:
+                crawl_and_index_url(new_url)
+                message = "✅ Link successfully added and multi-page crawling started!"
+        else:
+            new_user = request.form.get('username', '').strip()
+            new_pass = request.form.get('password', '').strip()
+            new_role = request.form.get('role', 'user')
 
-        if new_user and new_pass:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            try:
-                cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (new_user, new_pass, new_role))
-                conn.commit()
-                message = f"✅ Added {new_role.upper()}: {new_user} with password!"
-            except sqlite3.IntegrityError:
-                message = "⚠️ Username already exists!"
-            conn.close()
+            if new_user and new_pass:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                try:
+                    cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (new_user, new_pass, new_role))
+                    conn.commit()
+                    message = f"✅ Added new {new_role.upper()}: {new_user} successfully!"
+                except sqlite3.IntegrityError:
+                    message = "⚠️ Username already exists!"
+                conn.close()
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -501,16 +513,24 @@ def owner_dashboard():
             <td><b>{u[1]}</b></td>
             <td><code>{u[2]}</code></td>
             <td><span class='badge {badge_color}'>{u[3].upper()}</span></td>
-            <td><a href="/delete_account/{u[0]}" class="btn btn-danger btn-sm py-0" onclick="return confirm('Delete this admin/user permanently?')">Delete</a></td>
+            <td><a href="/delete_account/{u[0]}" class="btn btn-danger btn-sm py-0" onclick="return confirm('Delete this account permanently?')">Delete</a></td>
         </tr>
         """
 
     return HTML_HEADER + f"""
-    <div class="container mt-4" style="max-width: 750px;">
+    <div class="container mt-4 mb-5" style="max-width: 750px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
             <h4 class="mb-3 text-center">👑 Owner Control Center ({OWNER_USERNAME})</h4>
             {f'<div class="alert alert-info">{message}</div>' if message else ''}
             
+            <form method="POST" class="border p-3 rounded-3 mb-4 bg-light">
+                <h6>🔗 Add Direct Link (Crawl Panel)</h6>
+                <div class="input-group">
+                    <input type="url" name="url" class="form-control" placeholder="https://example.com" required>
+                    <button type="submit" class="btn btn-primary">Add Link</button>
+                </div>
+            </form>
+
             <form method="POST" class="row g-2 border p-3 rounded-3 mb-4">
                 <h6>➕ Add New Admin or User</h6>
                 <div class="col-md-4">
@@ -537,7 +557,7 @@ def owner_dashboard():
                         <tr><th>ID</th><th>Username</th><th>Password</th><th>Role</th><th>Action</th></tr>
                     </thead>
                     <tbody>
-                        {users_rows}
+                        {users_rows if users_rows else '<tr><td colspan="5" class="text-center text-muted">No accounts added yet.</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -549,7 +569,7 @@ def owner_dashboard():
     </div>
     """ + get_footer('home')
 
-# 🗑️ Owner Delete Admin/User Account Route (साथ में लाइव सेशन भी खत्म होगा)
+# 🗑️ Owner Delete Account Route (डिलीट होने पर सेशन अपने आप बंद हो जाएगा)
 @app.route("/delete_account/<int:user_id>")
 def delete_account(user_id):
     if not session.get('owner_logged'):
@@ -558,18 +578,14 @@ def delete_account(user_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Get user details before deleting
     cursor.execute("SELECT username, role FROM users WHERE id = ?", (user_id,))
     target_user = cursor.fetchone()
 
     if target_user:
         target_username, target_role = target_user[0], target_user[1]
-
-        # Delete user from Database
         cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()
 
-        # If deleted user was active in session, log them out instantly
         if target_role == 'admin' and session.get('admin_username') == target_username:
             session.pop('admin_logged', None)
             session.pop('admin_username', None)
