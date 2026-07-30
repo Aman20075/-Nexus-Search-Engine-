@@ -7,7 +7,6 @@ import threading
 import os
 
 app = Flask(__name__)
-# Session permanent banane ke liye (User jab tak khud logout na kare)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60  
 app.secret_key = 'bharat_search_permanent_session_key_2026'
 DB_PATH = 'search_engine.db'
@@ -113,9 +112,10 @@ HTML_HEADER = """<!DOCTYPE html>
         .result-title:hover { text-decoration: underline; }
         .result-url { color: #202124; font-size: 13px; margin-bottom: 2px; }
         .result-snippet { color: #4d5156; font-size: 14px; line-height: 1.58; }
-        .top-nav { position: absolute; right: 20px; top: 20px; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #fafafa; border-bottom: 1px solid #eee; flex-wrap: wrap; gap: 10px; }
+        .creator-badge { font-size: 13px; font-weight: 600; color: #444; }
+        .user-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .social-btn { width: 100%; border-radius: 20px; font-weight: 500; margin-bottom: 10px; padding: 10px; text-decoration: none; display: inline-block; }
-        .creator-badge { position: absolute; left: 20px; top: 20px; font-size: 14px; font-weight: 600; color: #555; }
     </style>
 </head>
 <body>
@@ -148,17 +148,22 @@ def home():
 
     if user_logged:
         nav_links = f'''
-            <span class="me-3 text-secondary">👤 Welcome, <b>{username}</b></span> 
-            <a href="/my_history" class="btn btn-outline-secondary btn-sm me-2">📜 My History</a>
-            <a href="/logout_verify" class="btn btn-outline-danger btn-sm">Logout</a>
+            <span class="text-secondary small">👤 <b>{username}</b></span> 
+            <a href="/my_history" class="btn btn-outline-secondary btn-sm ms-2">📜 History</a>
+            <a href="/logout_verify" class="btn btn-outline-danger btn-sm ms-1">Logout</a>
         '''
     else:
-        nav_links = '<a href="/user_login" class="btn btn-outline-primary btn-sm me-2">User Login</a> <a href="/user_signup" class="btn btn-primary btn-sm">Sign Up</a>'
+        nav_links = '<a href="/user_login" class="btn btn-outline-primary btn-sm me-1">Login</a> <a href="/user_signup" class="btn btn-primary btn-sm">Sign Up</a>'
 
-    return HTML_HEADER + f"""
-    <div class="creator-badge">🚀 Created by <b>Aman Giri</b></div>
-    <div class="top-nav">{nav_links}</div>
-    <div class="container text-center mt-5 pt-4">
+    top_header = f"""
+    <div class="top-bar">
+        <div class="creator-badge">🚀 Created by <b>Aman Giri</b></div>
+        <div class="user-nav">{nav_links}</div>
+    </div>
+    """
+
+    return HTML_HEADER + top_header + f"""
+    <div class="container text-center mt-4 pt-2">
         <div class="bharat-logo mb-2">
             <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
         </div>
