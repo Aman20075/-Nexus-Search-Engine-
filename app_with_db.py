@@ -97,31 +97,37 @@ HTML_HEADER = """<!DOCTYPE html>
     <style>
         body { background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding-bottom: 70px; }
         
-        .google-top-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: #ffffff; }
+        .top-bar-chrome { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #ffffff; }
         .creator-badge { font-size: 13px; font-weight: 600; color: #5f6368; }
         
-        /* 3-Dots Menu Styling */
-        .dots-btn { background: none; border: none; font-size: 24px; color: #5f6368; cursor: pointer; padding: 0 8px; }
-        .dots-btn:focus { outline: none; }
-        .dropdown-menu-custom { border-radius: 16px; border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 8px 0; }
-        .dropdown-item-custom { padding: 10px 20px; font-size: 14px; color: #3c4043; display: flex; align-items: center; gap: 12px; text-decoration: none; }
-        .dropdown-item-custom:hover { background: #f8f9fa; }
+        /* 3-Dots Button Style */
+        .dots-btn { background: none; border: none; font-size: 22px; color: #444746; cursor: pointer; padding: 4px 8px; border-radius: 50%; }
+        .dots-btn:hover { background: #f1f3f4; }
+        
+        /* Chrome Like Drawer / Offcanvas Menu Style */
+        .chrome-menu { border-radius: 20px 0 0 20px; width: 280px !important; }
+        .chrome-action-bar { display: flex; justify-content: space-between; background: #f0f4f9; padding: 8px; border-radius: 24px; margin-bottom: 15px; }
+        .chrome-action-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #444746; text-decoration: none; font-size: 16px; }
+        .chrome-action-icon:hover { background: #e0e4e9; }
+        
+        .chrome-menu-item { display: flex; align-items: center; gap: 16px; padding: 12px 16px; font-size: 15px; color: #1f1f1f; text-decoration: none; border-radius: 12px; font-weight: 400; }
+        .chrome-menu-item:hover { background: #f0f4f9; }
+        .chrome-menu-item i { font-size: 18px; color: #444746; }
+        .chrome-divider { height: 1px; background: #e0e4e9; margin: 8px 0; }
         
         .bharat-logo { font-size: 52px; font-weight: 700; letter-spacing: -1.5px; margin-top: 20px; }
         
-        /* Search Box Jaisa Google App me h */
         .google-search-container { max-width: 580px; width: 92%; margin: 24px auto 16px auto; position: relative; }
         .google-input { height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 52px; border: 1px solid #dfe1e5; background: #ffffff; box-shadow: 0 1px 6px rgba(32,33,36,0.12); font-size: 16px; }
         .google-input:focus { outline: none; border-color: #4285f4; box-shadow: 0 2px 8px rgba(32,33,36,0.2); }
         .search-left-icon { position: absolute; left: 18px; top: 17px; color: #9aa0a6; font-size: 18px; }
         .mic-right-icon { position: absolute; right: 18px; top: 15px; color: #ea4335; font-size: 22px; cursor: pointer; }
 
-        /* Google Style Feature Chips */
         .chips-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 30px; }
         .chip-card { background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 20px; padding: 10px 18px; font-size: 14px; font-weight: 500; color: #3c4043; text-decoration: none; display: flex; align-items: center; gap: 8px; }
         .chip-card:hover { background: #f1f3f4; }
 
-        /* Bottom Navigation Bar like Google App */
+        /* Bottom Nav Bar */
         .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000; }
         .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; }
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
@@ -137,10 +143,11 @@ HTML_HEADER = """<!DOCTYPE html>
 <body>
 """
 
-HTML_FOOTER = """
+def get_footer():
+    return """
 <div class="bottom-nav-bar">
     <a href="/" class="nav-link-item active"><i class="bi bi-house-door-fill"></i>Home</a>
-    <a href="/my_history" class="nav-link-item"><i class="bi bi-clock-history"></i>Search History</a>
+    <a href="/my_history" class="nav-link-item"><i class="bi bi-clock-history"></i>History</a>
     <a href="/user_login" class="nav-link-item"><i class="bi bi-person-circle"></i>Account</a>
 </div>
 
@@ -170,29 +177,47 @@ def home():
     username = session.get('username', '')
 
     if user_logged:
-        menu_items = f"""
-            <div class="px-3 py-2 border-bottom text-muted small">👤 <b>{username}</b></div>
-            <a class="dropdown-item-custom" href="/my_history"><i class="bi bi-clock-history text-primary"></i> Search History</a>
-            <a class="dropdown-item-custom" href="/admin_login"><i class="bi bi-shield-lock text-secondary"></i> Admin Portal</a>
-            <a class="dropdown-item-custom text-danger" href="/logout_verify"><i class="bi bi-box-arrow-right"></i> Logout</a>
-        """
+        user_info_section = f'<div class="px-3 py-2 mb-2 text-primary bg-light rounded-3 small">👤 <b>{username}</b></div>'
+        login_logout_option = '<a href="/logout_verify" class="chrome-menu-item text-danger"><i class="bi bi-box-arrow-right text-danger"></i>Logout</a>'
     else:
-        menu_items = """
-            <a class="dropdown-item-custom" href="/user_login"><i class="bi bi-box-arrow-in-right text-primary"></i> Login</a>
-            <a class="dropdown-item-custom" href="/user_signup"><i class="bi bi-person-plus text-success"></i> Sign Up</a>
-            <a class="dropdown-item-custom" href="/admin_login"><i class="bi bi-shield-lock text-secondary"></i> Admin Portal</a>
-        """
+        user_info_section = ''
+        login_logout_option = '<a href="/user_login" class="chrome-menu-item"><i class="bi bi-box-arrow-in-right"></i>Login / Sign Up</a>'
 
+    # Chrome 3-Dots Side Panel Menu
     top_bar_html = f"""
-    <div class="google-top-bar">
+    <div class="top-bar-chrome">
         <div class="creator-badge">🚀 Created by <b>Aman Giri</b></div>
-        <div class="dropdown">
-            <button class="dots-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-three-dots-vertical"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
-                {menu_items}
-            </ul>
+        <button class="dots-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#chromeMenu" aria-controls="chromeMenu">
+            <i class="bi bi-three-dots-vertical"></i>
+        </button>
+    </div>
+
+    <div class="offcanvas offcanvas-end chrome-menu p-2" tabindex="-1" id="chromeMenu">
+        <div class="offcanvas-body p-2">
+            <div class="chrome-action-bar">
+                <a href="/" class="chrome-action-icon" title="Home"><i class="bi bi-house"></i></a>
+                <a href="/my_history" class="chrome-action-icon" title="Bookmarks"><i class="bi bi-star"></i></a>
+                <a href="/" class="chrome-action-icon" title="Download"><i class="bi bi-download"></i></a>
+                <a href="/" class="chrome-action-icon" title="Info"><i class="bi bi-info-circle"></i></a>
+                <a href="javascript:location.reload()" class="chrome-action-icon" title="Reload"><i class="bi bi-arrow-clockwise"></i></a>
+            </div>
+
+            {user_info_section}
+
+            <a href="/" class="chrome-menu-item"><i class="bi bi-plus-square"></i> New tab</a>
+            <a href="/my_history" class="chrome-menu-item"><i class="bi bi-clock-history"></i> History</a>
+            
+            <div class="chrome-divider"></div>
+            
+            <a href="#" class="chrome-menu-item"><i class="bi bi-download"></i> Downloads</a>
+            <a href="#" class="chrome-menu-item"><i class="bi bi-star"></i> Bookmarks</a>
+            <a href="#" class="chrome-menu-item"><i class="bi bi-window-stack"></i> Recent tabs</a>
+            
+            <div class="chrome-divider"></div>
+
+            {login_logout_option}
+            <a href="/admin_login" class="chrome-menu-item"><i class="bi bi-gear"></i> Admin Settings</a>
+            <a href="#" class="chrome-menu-item"><i class="bi bi-question-circle"></i> Help & feedback</a>
         </div>
     </div>
     """
@@ -211,12 +236,12 @@ def home():
         </form>
 
         <div class="chips-row">
-            <a href="#" class="chip-card"><i class="bi bi-stars text-primary"></i> AI Search Mode</a>
+            <a href="#" class="chip-card"><i class="bi bi-stars text-primary"></i> AI Mode</a>
             <a href="#" class="chip-card"><i class="bi bi-book text-success"></i> Education</a>
             <a href="#" class="chip-card"><i class="bi bi-lightning text-warning"></i> Trending</a>
         </div>
     </div>
-    """ + HTML_FOOTER
+    """ + get_footer()
 
 @app.route("/search")
 def search():
@@ -233,7 +258,7 @@ def search():
                 <a href="/" class="btn btn-primary btn-sm mt-3" style="border-radius: 20px;">Back to Home</a>
             </div>
         </div>
-        """ + HTML_FOOTER
+        """ + get_footer()
 
     if session.get('user_logged'):
         current_user = session.get('username')
@@ -301,12 +326,12 @@ def search():
     else:
         body_results += f"""
         <div class="text-center text-muted p-4">
-            No instant local records found. Academic crawler is fetching more details.
+            No instant local records found. Academic crawler is fetching details.
         </div>
         """
 
     body_results += "</div>"
-    return HTML_HEADER + header_search + body_results + HTML_FOOTER
+    return HTML_HEADER + header_search + body_results + get_footer()
 
 @app.route("/my_history")
 def my_history():
@@ -342,7 +367,7 @@ def my_history():
             {history_html}
         </ul>
     </div>
-    """ + HTML_FOOTER
+    """ + get_footer()
 
 @app.route("/logout_verify", methods=['GET', 'POST'])
 def logout_verify():
@@ -383,7 +408,7 @@ def logout_verify():
             </form>
         </div>
     </div>
-    """ + HTML_FOOTER
+    """ + get_footer()
 
 @app.route("/social_login/google", methods=['GET', 'POST'])
 def google_login():
@@ -414,7 +439,7 @@ def google_login():
             <div class="mt-3"><a href="/" class="small text-decoration-none">Cancel</a></div>
         </div>
     </div>
-    """ + HTML_FOOTER
+    """ + get_footer()
 
 @app.route("/social_login/phone", methods=['GET', 'POST'])
 def phone_login():
@@ -446,7 +471,7 @@ def phone_login():
             <div class="mt-3"><a href="/" class="small text-decoration-none">Cancel</a></div>
         </div>
     </div>
-    """ + HTML_FOOTER
+    """ + get_footer()
 
 @app.route("/user_signup", methods=['GET', 'POST'])
 def user_signup():
@@ -477,7 +502,7 @@ def user_signup():
             <div class="mt-3 text-center"><a href="/user_login" class="small text-decoration-none">Already have account? Login</a></div>
         </div>
     </div>
-    """ + HTML_FOOTER
+    """ + get_footer()
 
 @app.route("/user_login", methods=['GET', 'POST'])
 def user_login():
@@ -524,7 +549,7 @@ def user_login():
             <a href="/user_signup" class="small text-decoration-none">New user? Register here</a>
         </div>
     </div>
-    """ + HTML_FOOTER
+    """ + get_footer()
 
 @app.route("/admin_login", methods=['GET', 'POST'])
 def admin_login():
@@ -548,7 +573,7 @@ def admin_login():
             </form>
         </div>
     </div>
-    """ + HTML_FOOTER
+    """ + get_footer()
 
 @app.route("/admin_dashboard")
 def admin_dashboard():
@@ -585,7 +610,7 @@ def admin_dashboard():
             </div>
         </div>
     </div>
-    """ + HTML_FOOTER
+    """ + get_footer()
 
 @app.route("/admin_logout")
 def admin_logout():
