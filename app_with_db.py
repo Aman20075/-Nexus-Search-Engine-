@@ -275,7 +275,6 @@ def search():
         </div>
         """ + get_footer('search')
 
-    # Save Search History if User Logged In
     if session.get('user_logged'):
         current_user = session.get('username')
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -285,14 +284,12 @@ def search():
         conn.commit()
         conn.close()
 
-    # FTS5 Database Search
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT url, title, content FROM pages_fts WHERE pages_fts MATCH ? LIMIT 5', (query,))
     rows = cursor.fetchall()
     conn.close()
 
-    # Gemini AI Overview
     ai_response_html = ""
     if ai_client:
         try:
@@ -351,7 +348,6 @@ def search():
     body_results += "</div>"
     return HTML_HEADER + header_search + body_results + get_footer('search')
 
-# 📜 USER SEARCH HISTORY ROUTE
 @app.route("/my_history")
 def my_history():
     if not session.get('user_logged'):
@@ -367,7 +363,7 @@ def my_history():
     history_rows = ""
     for h in history_list:
         history_rows += f"""
-        <li class="list-group-item d-flex justify-content: space-between align-items-center">
+        <li class="list-group-item d-flex justify-content-between align-items-center">
             <span>🔍 <b>{h[0]}</b></span>
             <span class="text-muted small">{h[1]}</span>
         </li>
@@ -387,7 +383,6 @@ def my_history():
     </div>
     """ + get_footer('history')
 
-# 🔒 CONFIRM LOGOUT ROUTE
 @app.route("/confirm_logout", methods=['GET', 'POST'])
 def confirm_logout():
     account_type = request.args.get('type', 'user')
@@ -410,7 +405,7 @@ def confirm_logout():
                 return redirect("/")
         error = "Incorrect Password!"
 
-    return HTML_Header_Logout := HTML_HEADER + f"""
+    return HTML_HEADER + f"""
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center text-danger">🔒 Security Check</h4>
@@ -422,7 +417,6 @@ def confirm_logout():
     </div>
     """ + get_footer('home')
 
-# 👑 OWNER LOGIN & DASHBOARD
 @app.route("/owner_login", methods=['GET', 'POST'])
 def owner_login():
     error = ""
