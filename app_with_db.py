@@ -3,10 +3,7 @@ import sqlite3
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-import threading
 import os
-from urllib.parse import urljoin, urlparse
-import time
 
 # 🤖 Safe Gemini AI Client Setup
 try:
@@ -40,12 +37,13 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # 🚀 FTS5 Table for Instant Search
     cursor.execute('''
-        CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(
-            url,
-            title,
-            content
+        CREATE TABLE IF NOT EXISTS local_search_index (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            url TEXT,
+            snippet TEXT,
+            category TEXT
         )
     ''')
     
@@ -69,67 +67,6 @@ def init_db():
     conn.close()
 
 init_db()
-
-# 🕷️ Advanced Automatic Recursive Crawler Logic
-def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
-    visited = set()
-    queue = [(start_url, 1)]
-    
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
-
-    pages_crawled = 0
-
-    while queue and pages_crawled < max_pages:
-        current_url, depth = queue.pop(0)
-
-        if current_url in visited or depth > max_depth:
-            continue
-
-        visited.add(current_url)
-
-        try:
-            print(f"🕷️ Crawling URL: {current_url}")
-            response = requests.get(current_url, headers=headers, timeout=5)
-
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                
-                title = soup.title.string.strip() if soup.title and soup.title.string else current_url
-                all_text_elements = soup.find_all(['p', 'span', 'div', 'h1', 'h2', 'h3'])
-                paragraphs = [elem.get_text().strip() for elem in all_text_elements if len(elem.get_text().strip()) > 20]
-                content = ' '.join(paragraphs)
-                
-                if len(content) > 30:
-                    conn = sqlite3.connect(DB_PATH)
-                    cursor = conn.cursor()
-                    cursor.execute('INSERT INTO pages_fts (url, title, content) VALUES (?, ?, ?)', (current_url, title, content))
-                    conn.commit()
-                    conn.close()
-                    pages_crawled += 1
-                    print(f"✅ Indexed in FTS5: {title}")
-
-                if depth < max_depth:
-                    for a_tag in soup.find_all('a', href=True):
-                        href = a_tag['href'].strip()
-                        full_url = urljoin(current_url, href)
-                        parsed_url = urlparse(full_url)
-
-                        if parsed_url.scheme in ['http', 'https'] and full_url not in visited:
-                            if not any(blocked in full_url for blocked in ['facebook.com', 'instagram.com', 'twitter.com', 'youtube.com']):
-                                queue.append((full_url, depth + 1))
-
-            time.sleep(1)
-
-        except Exception as e:
-            print(f"❌ Error crawling {current_url}: {e}")
-
-def crawl_and_index_url(target_url):
-    thread = threading.Thread(target=perform_multi_page_crawl, args=(target_url, 5, 2))
-    thread.daemon = True
-    thread.start()
-    return True
 
 HTML_HEADER = """<!DOCTYPE html>
 <html lang="en">
@@ -161,6 +98,11 @@ HTML_HEADER = """<!DOCTYPE html>
         .google-input { height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 52px; border: 1px solid #dfe1e5; background: #ffffff; box-shadow: 0 1px 6px rgba(32,33,36,0.12); font-size: 16px; }
         .google-input:focus { outline: none; border-color: #4285f4; box-shadow: 0 2px 8px rgba(32,33,36,0.2); }
         .search-left-icon { position: absolute; left: 18px; top: 17px; color: #9aa0a6; font-size: 18px; }
+        .mic-btn { position: absolute; right: 18px; top: 15px; background: none; border: none; color: #4285f4; font-size: 20px; cursor: pointer; }
+
+        .search-filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid #e0e0e0; margin-bottom: 16px; }
+        .filter-chip { padding: 6px 16px; border-radius: 20px; background: #f1f3f4; color: #3c4043; text-decoration: none; font-size: 14px; white-space: nowrap; font-weight: 500; }
+        .filter-chip.active { background: #e8f0fe; color: #1967d2; border: 1px solid #d2e3fc; }
 
         .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; }
         .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
@@ -182,13 +124,21 @@ def get_footer(active_tab='home'):
     return f"""
 <div class="bottom-nav-bar" id="bottomNav">
     <a href="/" class="nav-link-item {'active' if active_tab == 'home' else ''}"><i class="bi bi-house-door-fill"></i>Home</a>
-    <a href="javascript:void(0)" onclick="focusSearchInput()" class="nav-link-item {'active' if active_tab == 'search' else ''}"><i class="bi bi-search"></i>Search</a>
+    <a href="/games" class="nav-link-item {'active' if active_tab == 'games' else ''}"><i class="bi bi-controller"></i>Games</a>
     <a href="/my_history" class="nav-link-item {'active' if active_tab == 'history' else ''}"><i class="bi bi-clock-history"></i>History</a>
     <a href="/user_login" class="nav-link-item {'active' if active_tab == 'account' else ''}"><i class="bi bi-person-circle"></i>Account</a>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function focusSearchInput() {{ document.getElementById('searchInput')?.focus() || (window.location.href = '/'); }}
+function startVoiceSearch() {{
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'hi-IN';
+    recognition.onresult = function(event) {{
+        document.getElementById('searchInput').value = event.results[0][0].transcript;
+        document.getElementById('searchForm').submit();
+    }};
+    recognition.start();
+}}
 </script>
 </body>
 </html>
@@ -197,7 +147,6 @@ function focusSearchInput() {{ document.getElementById('searchInput')?.focus() |
 @app.route("/")
 def home():
     user_logged = session.get('user_logged')
-    admin_logged = session.get('admin_logged')
     owner_logged = session.get('owner_logged')
     username = session.get('username', '')
 
@@ -223,6 +172,7 @@ def home():
         <div class="offcanvas-body p-2">
             {user_info}
             <a href="/" class="chrome-menu-item"><i class="bi bi-plus-square"></i> New tab</a>
+            <a href="/games" class="chrome-menu-item"><i class="bi bi-controller"></i> Play Snake Game</a>
             <a href="/my_history" class="chrome-menu-item"><i class="bi bi-clock-history"></i> History</a>
             <div class="chrome-divider"></div>
             {login_logout}
@@ -236,11 +186,12 @@ def home():
         <div class="bharat-logo mb-1">
             <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
         </div>
-        <p class="text-muted small mb-3">India's Safe AI Search Engine 🇮🇳</p>
+        <p class="text-muted small mb-3">India's Instant Category & Voice Search Engine 🇮🇳</p>
 
         <form action="/search" method="GET" id="searchForm" class="google-search-container">
             <i class="bi bi-search search-left-icon"></i>
-            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Search anything or ask AI..." required autocomplete="off">
+            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Search Web, Apps, Games, Books..." required autocomplete="off">
+            <button type="button" onclick="startVoiceSearch()" class="mic-btn" title="Search by Voice"><i class="bi bi-mic-fill"></i></button>
         </form>
     </div>
     """ + get_footer('home')
@@ -248,6 +199,8 @@ def home():
 @app.route("/search")
 def search():
     query = request.args.get('q', '').strip()
+    category = request.args.get('cat', 'all').strip().lower()
+    
     if not query:
         return redirect("/")
 
@@ -273,29 +226,41 @@ def search():
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT url, title, content FROM pages_fts WHERE pages_fts MATCH ? LIMIT 5', (query,))
+    if category == 'all':
+        cursor.execute("SELECT title, url, snippet, category FROM local_search_index WHERE title LIKE ? OR snippet LIKE ?", (f'%{query}%', f'%{query}%'))
+    else:
+        cursor.execute("SELECT title, url, snippet, category FROM local_search_index WHERE category = ? AND (title LIKE ? OR snippet LIKE ?)", (category, f'%{query}%', f'%{query}%'))
     rows = cursor.fetchall()
     conn.close()
 
     ai_response_html = ""
-    if ai_client:
+    if ai_client and category in ['all', 'web']:
         try:
-            ai_prompt = f"Provide a crisp, clear, and informative answer for the user query: '{query}' in a search engine AI overview style."
+            ai_prompt = f"Provide a crisp, clear overview for: '{query}'"
             response = ai_client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=ai_prompt,
             )
-            ai_text = response.text if response and response.text else "Bharat AI could not generate insights."
-            ai_response_html = f"""
-            <div class="ai-card shadow-sm">
-                <h6 class="text-primary fw-bold mb-2"><i class="bi bi-stars"></i> Bharat AI Overview</h6>
-                <p class="mb-0 text-dark small" style="line-height: 1.6;">{ai_text}</p>
-            </div>
-            """
-        except Exception as e:
-            ai_response_html = f"""
-            <div class="alert alert-warning small">⚠️ AI Service busy: {e}</div>
-            """
+            ai_text = response.text if response and response.text else ""
+            if ai_text:
+                ai_response_html = f"""
+                <div class="ai-card shadow-sm">
+                    <h6 class="text-primary fw-bold mb-2"><i class="bi bi-stars"></i> Bharat AI Overview</h6>
+                    <p class="mb-0 text-dark small" style="line-height: 1.6;">{ai_text}</p>
+                </div>
+                """
+        except Exception:
+            pass
+
+    chips = f"""
+    <div class="search-filters">
+        <a href="/search?q={query}&cat=all" class="filter-chip {'active' if category == 'all' else ''}"><i class="bi bi-search"></i> All</a>
+        <a href="/search?q={query}&cat=web" class="filter-chip {'active' if category == 'web' else ''}"><i class="bi bi-globe"></i> Web</a>
+        <a href="/search?q={query}&cat=apps" class="filter-chip {'active' if category == 'apps' else ''}"><i class="bi bi-phone"></i> Apps</a>
+        <a href="/search?q={query}&cat=games" class="filter-chip {'active' if category == 'games' else ''}"><i class="bi bi-controller"></i> Games</a>
+        <a href="/search?q={query}&cat=books" class="filter-chip {'active' if category == 'books' else ''}"><i class="bi bi-book"></i> Books</a>
+    </div>
+    """
 
     header_search = f"""
     <div class="bg-white border-bottom p-3 mb-3">
@@ -304,36 +269,122 @@ def search():
                 <span style="color:#FF9933">B</span><span style="color:#000080">h</span><span style="color:#138808">at</span>
             </a>
             <form action="/search" method="GET" class="google-search-container my-0 flex-grow-1" style="max-width: 100%;">
+                <input type="hidden" name="cat" value="{category}">
                 <i class="bi bi-search search-left-icon" style="top:12px;"></i>
                 <input type="text" name="q" id="searchInput" value="{query}" class="form-control google-input" style="height: 42px; font-size: 14px;">
+                <button type="button" onclick="startVoiceSearch()" class="mic-btn" style="top:8px;" title="Search by Voice"><i class="bi bi-mic-fill"></i></button>
             </form>
         </div>
     </div>
     <div class="results-wrapper">
+        {chips}
         {ai_response_html}
     """
 
     body_results = ""
     if rows:
         for row in rows:
-            url, title, content = row[0], row[1], row[2]
-            snippet = content[:160] + "..." if len(content) > 160 else content
+            title, url, snippet, cat = row[0], row[1], row[2], row[3].upper()
             body_results += f"""
             <div class="result-card">
-                <div class="result-url">{url}</div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="result-url">{url}</div>
+                    <span class="badge bg-secondary" style="font-size: 10px;">{cat}</span>
+                </div>
                 <a href="{url}" target="_blank" class="result-title">{title}</a>
                 <div class="result-snippet mt-1">{snippet}</div>
             </div>
             """
-    elif not ai_client:
+    else:
         body_results += f"""
-        <div class="text-center text-muted p-4">
-            No records found for "{query}".
+        <div class="text-center text-muted p-5 bg-light rounded-4 border">
+            <h5>No instant records found for "{query}" in [{category.upper()}].</h5>
+            <p class="small text-muted">Owner Dashboard me jaakar is topic ka content add karein!</p>
         </div>
         """
 
     body_results += "</div>"
     return HTML_HEADER + header_search + body_results + get_footer('search')
+
+# 🐍 Built-in Snake Game Route
+@app.route("/games")
+def games():
+    return HTML_HEADER + """
+    <div class="container text-center mt-4">
+        <h3 class="mb-3">🎮 Bharat Arcade: Snake Game Pro</h3>
+        <div class="bg-white p-3 rounded-4 shadow-sm d-inline-block border">
+            <canvas id="snakeCanvas" width="300" height="300" style="background:#111; border-radius:10px;"></canvas>
+            <div class="mt-2 text-muted small">Use Arrow keys on keyboard to play</div>
+        </div>
+        <div class="mt-3">
+            <a href="/" class="btn btn-outline-primary btn-sm" style="border-radius: 20px;">Back to Home</a>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById("snakeCanvas");
+        const ctx = canvas.getContext("2d");
+        let box = 20;
+        let snake = [{x: 9 * box, y: 10 * box}];
+        let food = {x: Math.floor(Math.random() * 15) * box, y: Math.floor(Math.random() * 15) * box};
+        let score = 0;
+        let d = "RIGHT";
+
+        document.addEventListener("keydown", direction);
+        function direction(event) {
+            if(event.keyCode == 37 && d != "RIGHT") d = "LEFT";
+            else if(event.keyCode == 38 && d != "DOWN") d = "UP";
+            else if(event.keyCode == 39 && d != "LEFT") d = "RIGHT";
+            else if(event.keyCode == 40 && d != "UP") d = "DOWN";
+        }
+
+        function draw() {
+            ctx.fillStyle = "#111";
+            ctx.fillRect(0, 0, 300, 300);
+
+            for(let i = 0; i < snake.length; i++) {
+                ctx.fillStyle = (i == 0) ? "#138808" : "#FF9933";
+                ctx.fillRect(snake[i].x, snake[i].y, box, box);
+            }
+
+            ctx.fillStyle = "red";
+            ctx.fillRect(food.x, food.y, box, box);
+
+            let snakeX = snake[0].x;
+            let snakeY = snake[0].y;
+
+            if(d == "LEFT") snakeX -= box;
+            if(d == "UP") snakeY -= box;
+            if(d == "RIGHT") snakeX += box;
+            if(d == "DOWN") snakeY += box;
+
+            if(snakeX == food.x && snakeY == food.y) {
+                score++;
+                food = {x: Math.floor(Math.random() * 15) * box, y: Math.floor(Math.random() * 15) * box};
+            } else {
+                snake.pop();
+            }
+
+            let newHead = {x: snakeX, y: snakeY};
+
+            if(snakeX < 0 || snakeX >= 300 || snakeY < 0 || snakeY >= 300 || collision(newHead, snake)) {
+                clearInterval(game);
+                alert("Game Over! Score: " + score);
+                location.reload();
+            }
+
+            snake.unshift(newHead);
+        }
+
+        function collision(head, array) {
+            for(let i = 0; i < array.length; i++) {
+                if(head.x == array[i].x && head.y == array[i].y) return true;
+            }
+            return false;
+        }
+
+        let game = setInterval(draw, 100);
+    </script>
+    """ + get_footer('games')
 
 @app.route("/my_history")
 def my_history():
@@ -430,14 +481,24 @@ def owner_login():
 def owner_dashboard():
     if not session.get('owner_logged'):
         return redirect("/owner_login")
+    
     message = ""
     if request.method == 'POST':
-        if 'url' in request.form:
-            new_url = request.form.get('url', '').strip()
-            if new_url:
-                crawl_and_index_url(new_url)
-                message = "✅ Link added and FTS5 indexing started!"
-        else:
+        form_type = request.form.get('form_type')
+        if form_type == 'add_index':
+            title = request.form.get('title', '').strip()
+            url = request.form.get('url', '').strip()
+            snippet = request.form.get('snippet', '').strip()
+            category = request.form.get('category', 'web').strip()
+            
+            if title and url:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO local_search_index (title, url, snippet, category) VALUES (?, ?, ?, ?)", (title, url, snippet, category))
+                conn.commit()
+                conn.close()
+                message = f"✅ Added to [{category.upper()}] successfully!"
+        elif form_type == 'add_user':
             new_user = request.form.get('username', '').strip()
             new_pass = request.form.get('password', '').strip()
             new_role = request.form.get('role', 'user')
@@ -447,40 +508,45 @@ def owner_dashboard():
                 try:
                     cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (new_user, new_pass, new_role))
                     conn.commit()
-                    message = f"✅ Added {new_role}: {new_user}"
+                    message = f"✅ Added user: {new_user}"
                 except sqlite3.IntegrityError:
                     message = "⚠️ Username already exists!"
                 conn.close()
 
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, username, password, role FROM users")
-    users_list = cursor.fetchall()
-    conn.close()
-
-    users_rows = ""
-    for u in users_list:
-        users_rows += f"<tr><td>{u[0]}</td><td><b>{u[1]}</b></td><td><code>{u[2]}</code></td><td>{u[3].upper()}</td></tr>"
-
     return HTML_HEADER + f"""
-    <div class="container mt-4 mb-5" style="max-width: 700px;">
+    <div class="container mt-4 mb-5" style="max-width: 750px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center">👑 Owner Control Center</h4>
             {f'<div class="alert alert-info">{message}</div>' if message else ''}
+            
             <form method="POST" class="border p-3 rounded-3 mb-4 bg-light">
-                <h6>🔗 Add URL to Index</h6>
-                <div class="input-group">
-                    <input type="url" name="url" class="form-control" placeholder="https://..." required>
-                    <button type="submit" class="btn btn-primary">Crawl & Index</button>
+                <input type="hidden" name="form_type" value="add_index">
+                <h6 class="text-primary mb-3">⚡ Add Instant Result (Web, Apps, Games, Books)</h6>
+                <div class="row g-2">
+                    <div class="col-md-6"><input type="text" name="title" class="form-control mb-2" placeholder="Title (e.g. Free Fire)" required></div>
+                    <div class="col-md-6"><input type="url" name="url" class="form-control mb-2" placeholder="URL (https://...)" required></div>
+                    <div class="col-md-8"><input type="text" name="snippet" class="form-control mb-2" placeholder="Short description..." required></div>
+                    <div class="col-md-4">
+                        <select name="category" class="form-select mb-2">
+                            <option value="web">Web</option>
+                            <option value="apps">Apps</option>
+                            <option value="games">Games</option>
+                            <option value="books">Books</option>
+                        </select>
+                    </div>
                 </div>
+                <button type="submit" class="btn btn-primary w-100 mt-2">Add to Instant Database</button>
             </form>
+
             <form method="POST" class="row g-2 border p-3 rounded-3 mb-4">
-                <h6>➕ Add New User</h6>
+                <input type="hidden" name="form_type" value="add_user">
+                <h6 class="text-success mb-2">➕ Add New User</h6>
                 <div class="col-md-4"><input type="text" name="username" class="form-control" placeholder="Username" required></div>
                 <div class="col-md-4"><input type="text" name="password" class="form-control" placeholder="Password" required></div>
                 <div class="col-md-2"><select name="role" class="form-select"><option value="user">User</option><option value="admin">Admin</option></select></div>
                 <div class="col-md-2"><button type="submit" class="btn btn-success w-100">Add</button></div>
             </form>
+
             <div class="text-center">
                 <a href="/" class="btn btn-outline-secondary btn-sm" style="border-radius: 20px;">Back to Home</a>
             </div>
