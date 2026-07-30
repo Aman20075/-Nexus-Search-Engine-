@@ -11,7 +11,7 @@ app.permanent_session_lifetime = 365 * 24 * 60 * 60
 app.secret_key = 'bharat_search_permanent_session_key_2026'
 DB_PATH = 'search_engine.db'
 
-# 🚫 Adult / Vulgar Content Blocklist
+# 🚫 Content Blocklist for Safe Search
 BLOCKED_KEYWORDS = ['porn', 'xxx', 'sex', 'adult', 'nude', 'nsfw', 'hot video', 'bhabhi']
 
 def is_safe_query(query):
@@ -98,46 +98,47 @@ HTML_HEADER = """<!DOCTYPE html>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        body { background: #ffffff; font-family: arial, sans-serif; overflow-x: hidden; margin: 0; }
+        body { background: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding-bottom: 70px; }
+        .top-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #ffffff; }
+        .creator-tag { font-size: 13px; font-weight: 600; color: #5f6368; }
+        .user-profile-badge { background: #e8f0fe; color: #1a73e8; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 500; }
         
-        /* Top Navigation Header (Google Style) */
-        .google-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; font-size: 14px; }
-        .creator-info { font-weight: 600; color: #5f6368; }
-        .top-right-nav { display: flex; align-items: center; gap: 12px; }
-        .user-email-badge { background: #f1f3f4; padding: 6px 12px; border-radius: 16px; font-size: 13px; color: #3c4043; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-        /* Google Main Logo & Search Box */
-        .main-container { margin-top: 80px; text-align: center; }
-        .bharat-logo { font-size: 80px; font-weight: 600; letter-spacing: -2px; user-select: none; }
+        .bharat-brand { font-size: 48px; font-weight: 700; letter-spacing: -1.5px; margin-top: 15px; }
         
-        .search-wrapper { max-width: 584px; margin: 20px auto 0 auto; padding: 0 12px; }
-        .search-box { position: relative; display: flex; align-items: center; border: 1px solid #dfe1e5; border-radius: 24px; padding: 0 14px; height: 46px; box-shadow: none; transition: box-shadow 0.2s; }
-        .search-box:hover, .search-box:focus-within { box-shadow: 0 1px 6px rgba(32,33,36,0.28); border-color: rgba(223,225,229,0); }
-        .search-box input { border: none; outline: none; width: 100%; font-size: 16px; padding: 0 10px; background: transparent; }
+        .google-search-card { max-width: 580px; width: 90%; margin: 20px auto; position: relative; }
+        .google-input { height: 52px; border-radius: 26px; padding-left: 50px; padding-right: 50px; border: 1px solid #dfe1e5; background: #ffffff; box-shadow: 0 1px 6px rgba(32,33,36,0.1); font-size: 16px; }
+        .google-input:focus { outline: none; border-color: #4285f4; box-shadow: 0 2px 8px rgba(32,33,36,0.2); }
+        .search-icon-left { position: absolute; left: 18px; top: 16px; color: #9aa0a6; font-size: 18px; }
+        .mic-icon-right { position: absolute; right: 18px; top: 14px; color: #ea4335; font-size: 22px; cursor: pointer; }
         
-        .search-icon-left { color: #9aa0a6; font-size: 18px; }
-        .mic-icon-right { color: #4285f4; font-size: 20px; cursor: pointer; }
+        .quick-chips { display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+        .chip-btn { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 20px; padding: 8px 16px; font-size: 14px; color: #3c4043; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .chip-btn:hover { background: #f1f3f4; }
 
-        .btn-group-google { margin-top: 28px; }
-        .btn-google { background-color: #f8f9fa; border: 1px solid #f8f9fa; border-radius: 4px; color: #3c4043; font-size: 14px; padding: 10px 16px; margin: 4px 6px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn-google:hover { border: 1px solid #dadce0; color: #202124; }
+        /* Bottom Navigation Bar like Google App */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 1000; }
+        .nav-item-link { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .nav-item-link i { font-size: 20px; margin-bottom: 2px; }
+        .nav-item-link.active { color: #1a73e8; font-weight: 600; }
 
-        /* Search Results Page Layout */
-        .results-wrapper { max-width: 650px; margin-left: 160px; padding: 20px 0; }
-        @media (max-width: 768px) { .results-wrapper { margin-left: 0; padding: 15px; } }
-        .ai-card { background: #f8f9fa; border-left: 4px solid #1a73e8; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
-        .result-card { margin-bottom: 28px; word-break: break-word; }
-        .result-url { color: #202124; font-size: 12px; margin-bottom: 4px; line-height: 1.3; }
-        .result-title { color: #1a0dab; text-decoration: none; font-size: 20px; font-weight: 400; line-height: 1.3; display: block; }
-        .result-title:hover { text-decoration: underline; }
-        .result-snippet { color: #4d5156; font-size: 14px; line-height: 1.58; margin-top: 4px; }
-        .social-btn { width: 100%; border-radius: 20px; font-weight: 500; margin-bottom: 10px; padding: 10px; text-decoration: none; display: inline-block; }
+        .results-wrapper { max-width: 680px; margin: 0 auto; padding: 0 15px; }
+        .result-card { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .result-title { color: #1a0dab; font-size: 17px; text-decoration: none; font-weight: 500; }
+        .result-url { color: #202124; font-size: 12px; }
+        .result-snippet { color: #4d5156; font-size: 13.5px; margin-top: 5px; }
     </style>
 </head>
 <body>
 """
 
 HTML_FOOTER = """
+<div class="bottom-nav">
+    <a href="/" class="nav-item-link active"><i class="bi bi-house-door-fill"></i>Home</a>
+    <a href="/my_history" class="nav-item-link"><i class="bi bi-clock-history"></i>History</a>
+    <a href="/user_login" class="nav-item-link"><i class="bi bi-person-circle"></i>Account</a>
+    <a href="/admin_login" class="nav-item-link"><i class="bi bi-shield-lock"></i>Admin</a>
+</div>
+
 <script>
 function startVoiceSearch() {
     if ('webkitSpeechRecognition' in window) {
@@ -163,39 +164,35 @@ def home():
     username = session.get('username', '')
 
     if user_logged:
-        nav_links = f'''
-            <span class="user-email-badge" title="{username}">👤 {username}</span> 
-            <a href="/my_history" class="btn btn-outline-secondary btn-sm ms-1">History</a>
-            <a href="/logout_verify" class="btn btn-outline-danger btn-sm ms-1">Logout</a>
+        user_info_html = f'''
+            <span class="user-profile-badge"><i class="bi bi-person-fill me-1"></i>{username}</span>
+            <a href="/logout_verify" class="btn btn-outline-danger btn-sm ms-2" style="border-radius: 12px; font-size: 11px;">Logout</a>
         '''
     else:
-        nav_links = '<a href="/user_login" class="btn btn-primary btn-sm px-3" style="border-radius:4px;">Sign in</a>'
+        user_info_html = '<a href="/user_login" class="btn btn-primary btn-sm px-3" style="border-radius: 16px;">Sign in</a>'
 
     return HTML_HEADER + f"""
-    <div class="google-header">
-        <div class="creator-info">🚀 Created by <b>Aman Giri</b></div>
-        <div class="top-right-nav">{nav_links}</div>
+    <div class="top-header">
+        <div class="creator-tag">🚀 Built by <b>Aman Giri</b></div>
+        <div>{user_info_html}</div>
     </div>
 
-    <div class="main-container">
-        <div class="bharat-logo">
-            <span style="color:#4285F4">B</span><span style="color:#EA4335">h</span><span style="color:#FBBC05">a</span><span style="color:#4285F4">r</span><span style="color:#34A853">a</span><span style="color:#EA4335">t</span>
+    <div class="container text-center">
+        <div class="bharat-brand">
+            <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
         </div>
-        <p class="text-muted small mt-1 mb-4">India's Safe & Educational AI Search Engine 🇮🇳</p>
+        <p class="text-muted small mb-3">India's Safe AI Search Portal 🇮🇳</p>
 
-        <div class="search-wrapper">
-            <form action="/search" method="GET" id="searchForm">
-                <div class="search-box">
-                    <i class="bi bi-search search-icon-left"></i>
-                    <input type="text" name="q" id="searchInput" placeholder="" required autocomplete="off">
-                    <i class="bi bi-mic-fill mic-icon-right" onclick="startVoiceSearch()" title="Search by voice"></i>
-                </div>
-                
-                <div class="btn-group-google">
-                    <button type="submit" class="btn-google">Bharat Search</button>
-                    <a href="/admin_login" class="btn-google text-decoration-none">Admin Portal</a>
-                </div>
-            </form>
+        <form action="/search" method="GET" id="searchForm" class="google-search-card">
+            <i class="bi bi-search search-icon-left"></i>
+            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Search anything..." required autocomplete="off">
+            <i class="bi bi-mic-fill mic-icon-right" onclick="startVoiceSearch()" title="Voice Search"></i>
+        </form>
+
+        <div class="quick-chips">
+            <a href="#" class="chip-btn"><i class="bi bi-stars text-primary"></i> AI Search</a>
+            <a href="#" class="chip-btn"><i class="bi bi-book text-success"></i> Education</a>
+            <a href="#" class="chip-btn"><i class="bi bi-newspaper text-danger"></i> History</a>
         </div>
     </div>
     """ + HTML_FOOTER
@@ -208,12 +205,11 @@ def search():
 
     if not is_safe_query(query):
         return HTML_HEADER + f"""
-        <div class="container pt-5 text-center">
-            <div class="alert alert-danger p-4 shadow-sm" style="max-width: 600px; margin: 0 auto;">
-                <h4 class="alert-heading">🚫 Safe Search Blocked</h4>
-                <p>Aapne jo query search ki hai wo <b>Bharat Safe Search Policy</b> ke khilaf hai.</p>
-                <hr>
-                <a href="/" class="btn btn-primary btn-sm">← Back to Search</a>
+        <div class="results-wrapper pt-5 text-center">
+            <div class="alert alert-danger p-4 shadow-sm">
+                <h5 class="alert-heading">🚫 Safe Search Active</h5>
+                <p class="mb-0 small">Aapki search query <b>Bharat Safety Rules</b> ke tahat block kar di gayi hai.</p>
+                <a href="/" class="btn btn-primary btn-sm mt-3">Back to Home</a>
             </div>
         </div>
         """ + HTML_FOOTER
@@ -251,35 +247,29 @@ def search():
         rows = cursor.fetchall()
         conn.close()
 
-    ai_summary = f"✨ <b>Bharat Educational Overview:</b> Verified insights for <b>{query}</b>."
-
-    header_nav = f"""
-    <div class="border-bottom py-2 px-3">
-        <div class="d-flex align-items-center flex-wrap gap-3">
-            <a href="/" class="bharat-logo text-decoration-none me-3" style="font-size: 28px;">
-                <span style="color:#4285F4">B</span><span style="color:#EA4335">h</span><span style="color:#FBBC05">a</span><span style="color:#4285F4">r</span><span style="color:#34A853">a</span><span style="color:#EA4335">t</span>
+    header_search = f"""
+    <div class="bg-white border-bottom p-3 mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <a href="/" class="bharat-brand text-decoration-none my-0" style="font-size: 24px;">
+                <span style="color:#FF9933">B</span><span style="color:#000080">h</span><span style="color:#138808">at</span>
             </a>
-            <form action="/search" method="GET" id="searchForm" class="flex-grow-1" style="max-width: 600px;">
-                <div class="search-box" style="height: 40px;">
-                    <input type="text" name="q" id="searchInput" value="{query}" required>
-                    <i class="bi bi-mic-fill mic-icon-right" onclick="startVoiceSearch()"></i>
-                </div>
+            <form action="/search" method="GET" class="google-search-card my-0 flex-grow-1">
+                <i class="bi bi-search search-icon-left" style="top:12px;"></i>
+                <input type="text" name="q" value="{query}" class="form-control google-input" style="height: 42px; font-size: 14px;">
             </form>
         </div>
     </div>
-    
     <div class="results-wrapper">
-        <div class="ai-card">
-            <div class="text-dark" style="font-size: 14px; line-height: 1.6;">{ai_summary}</div>
+        <div class="alert alert-light border p-3 mb-3" style="border-radius: 12px;">
+            ✨ <b>AI Insights:</b> Verified information index for <b>{query}</b>.
         </div>
-        <p class="text-muted small mb-4">About {len(rows)} educational results for: <b>{query}</b></p>
     """
 
     body_results = ""
     if rows:
         for row in rows:
             url, title, content = row[0], row[1], row[2]
-            snippet = content[:180] + "..." if len(content) > 180 else content
+            snippet = content[:160] + "..." if len(content) > 160 else content
             body_results += f"""
             <div class="result-card">
                 <div class="result-url">{url}</div>
@@ -289,13 +279,13 @@ def search():
             """
     else:
         body_results += f"""
-        <div class="alert alert-light border" style="max-width: 650px;">
-            Academic index is learning. New records for <b>{query}</b> are being compiled.
+        <div class="text-center text-muted p-4">
+            No instant local records. Academic crawler is fetching more details.
         </div>
         """
 
     body_results += "</div>"
-    return HTML_HEADER + header_nav + body_results + HTML_FOOTER
+    return HTML_HEADER + header_search + body_results + HTML_FOOTER
 
 @app.route("/my_history")
 def my_history():
@@ -313,21 +303,18 @@ def my_history():
     if history_items:
         for item in history_items:
             history_html += f"""
-            <li class="list-group-item d-flex justify-content-between align-items-center">
+            <li class="list-group-item d-flex justify-content-between align-items-center py-3">
                 <span>🔍 <b>{item[0]}</b></span>
                 <span class="text-muted small">{item[1]}</span>
             </li>
             """
     else:
-        history_html = '<li class="list-group-item text-muted text-center">Aapne abhi tak kuch search nahi kiya hai.</li>'
+        history_html = '<li class="list-group-item text-muted text-center py-4">Koi search history nahi hai.</li>'
 
     return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 600px;">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3>📜 Aapki Search History</h3>
-            <a href="/" class="btn btn-outline-primary btn-sm">← Back to Search</a>
-        </div>
-        <ul class="list-group shadow-sm">
+    <div class="container mt-4" style="max-width: 600px;">
+        <h4 class="mb-3">📜 Search History</h4>
+        <ul class="list-group shadow-sm border-0" style="border-radius: 12px; overflow: hidden;">
             {history_html}
         </ul>
     </div>
@@ -344,9 +331,7 @@ def logout_verify():
     
     if request.method == 'POST':
         if login_type != 'manual':
-            session.pop('user_logged', None)
-            session.pop('username', None)
-            session.pop('login_type', None)
+            session.clear()
             return redirect("/")
             
         password = request.form.get('password')
@@ -357,37 +342,20 @@ def logout_verify():
         conn.close()
         
         if user:
-            session.pop('user_logged', None)
-            session.pop('username', None)
-            session.pop('login_type', None)
+            session.clear()
             return redirect("/")
         else:
-            error = "Galat password! Sahi password darj karein."
-
-    error_div = f'<div class="alert alert-danger">{error}</div>' if error else ''
-    
-    if login_type != 'manual':
-        form_content = """
-            <p class="text-muted text-center mb-3">Kya aap logout karna chahte hain?</p>
-            <button type="submit" class="btn btn-danger w-100 mb-2">Confirm Logout</button>
-        """
-    else:
-        form_content = f"""
-            <div class="mb-3">
-                <label>Password for <b>{username}</b></label>
-                <input type="password" name="password" class="form-control" required>
-            </div>
-            <button type="submit" class="btn btn-danger w-100 mb-2">Confirm Logout</button>
-        """
+            error = "Galat password!"
 
     return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 400px;">
-        <div class="card p-4 shadow-sm border-danger">
-            <h4 class="text-danger mb-3 text-center">⚠️ Logout Confirm Karein</h4>
-            {error_div}
+    <div class="container mt-5" style="max-width: 380px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
+            <h5 class="text-danger mb-3">Logout Confirm Karein</h5>
+            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
             <form method="POST">
-                {form_content}
-                <a href="/" class="btn btn-light border w-100">Cancel</a>
+                {'<div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Enter Password" required></div>' if login_type == 'manual' else ''}
+                <button type="submit" class="btn btn-danger w-100 mb-2" style="border-radius: 20px;">Logout</button>
+                <a href="/" class="btn btn-light w-100" style="border-radius: 20px;">Cancel</a>
             </form>
         </div>
     </div>
@@ -395,7 +363,6 @@ def logout_verify():
 
 @app.route("/social_login/google", methods=['GET', 'POST'])
 def google_login():
-    error = ""
     if request.method == 'POST':
         user_email = request.form.get('email', '').strip()
         if user_email and "@" in user_email:
@@ -411,28 +378,21 @@ def google_login():
             session['username'] = user_email
             session['login_type'] = 'google'
             return redirect("/")
-        else:
-            error = "Kripya valid Gmail address enter karein!"
 
-    error_div = f'<div class="alert alert-danger">{error}</div>' if error else ''
     return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 400px;">
-        <div class="card p-4 shadow-sm text-center">
-            <h4 class="mb-3"><i class="bi bi-google text-danger"></i> Google Sign-In</h4>
-            <p class="text-muted small">Apni Gmail ID se login karein:</p>
-            {error_div}
+    <div class="container mt-5" style="max-width: 380px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
+            <h5 class="mb-3"><i class="bi bi-google text-danger me-2"></i>Google Sign-In</h5>
             <form method="POST">
-                <input type="email" name="email" class="form-control mb-3" placeholder="example@gmail.com" required>
-                <button type="submit" class="btn btn-danger w-100">Continue with Gmail</button>
+                <input type="email" name="email" class="form-control mb-3" placeholder="Gmail Address" required style="border-radius: 12px;">
+                <button type="submit" class="btn btn-danger w-100" style="border-radius: 20px;">Continue</button>
             </form>
-            <div class="mt-3"><a href="/user_login" class="text-decoration-none small">← Back to Login</a></div>
         </div>
     </div>
     """ + HTML_FOOTER
 
 @app.route("/social_login/phone", methods=['GET', 'POST'])
 def phone_login():
-    error = ""
     if request.method == 'POST':
         phone_no = request.form.get('phone', '').strip()
         if phone_no and len(phone_no) >= 10:
@@ -449,21 +409,15 @@ def phone_login():
             session['username'] = user_id
             session['login_type'] = 'phone'
             return redirect("/")
-        else:
-            error = "Kripya sahi 10 digit ka Mobile Number enter karein!"
 
-    error_div = f'<div class="alert alert-danger">{error}</div>' if error else ''
     return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 400px;">
-        <div class="card p-4 shadow-sm text-center">
-            <h4 class="mb-3"><i class="bi bi-phone-fill text-success"></i> Phone Sign-In</h4>
-            <p class="text-muted small">Apna mobile number darj karein:</p>
-            {error_div}
+    <div class="container mt-5" style="max-width: 380px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
+            <h5 class="mb-3"><i class="bi bi-phone text-success me-2"></i>Phone Sign-In</h5>
             <form method="POST">
-                <input type="tel" name="phone" class="form-control mb-3" placeholder="9876543210" maxlength="10" required>
-                <button type="submit" class="btn btn-success w-100">Continue with Phone</button>
+                <input type="tel" name="phone" class="form-control mb-3" placeholder="Mobile Number" maxlength="10" required style="border-radius: 12px;">
+                <button type="submit" class="btn btn-success w-100" style="border-radius: 20px;">Continue</button>
             </form>
-            <div class="mt-3"><a href="/user_login" class="text-decoration-none small">← Back to Login</a></div>
         </div>
     </div>
     """ + HTML_FOOTER
@@ -482,19 +436,19 @@ def user_signup():
             conn.close()
             return redirect("/user_login")
         except:
-            msg = "Yeh username pehle se registered hai!"
+            msg = "Username already exists!"
 
-    error_div = f'<div class="alert alert-danger">{msg}</div>' if msg else ''
     return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 400px;">
-        <h3 class="mb-3 text-center">📝 User Sign Up</h3>
-        {error_div}
-        <form method="POST">
-            <div class="mb-3"><label>Username / Email</label><input type="text" name="username" class="form-control" required></div>
-            <div class="mb-3"><label>Password</label><input type="password" name="password" class="form-control" required></div>
-            <button type="submit" class="btn btn-primary w-100">Register</button>
-        </form>
-        <div class="text-center mt-3"><a href="/user_login" class="text-decoration-none">Already have account? Login</a> | <a href="/" class="text-decoration-none">Home</a></div>
+    <div class="container mt-5" style="max-width: 380px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border">
+            <h4 class="mb-3 text-center">Create Account</h4>
+            {f'<div class="alert alert-danger small">{msg}</div>' if msg else ''}
+            <form method="POST">
+                <div class="mb-3"><input type="text" name="username" class="form-control" placeholder="Username / Email" required></div>
+                <div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Password" required></div>
+                <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Sign Up</button>
+            </form>
+        </div>
     </div>
     """ + HTML_FOOTER
 
@@ -518,31 +472,30 @@ def user_login():
             session['login_type'] = 'manual'
             return redirect("/")
         else:
-            error = "Galat username ya password!"
+            error = "Galat details!"
 
-    error_div = f'<div class="alert alert-danger">{error}</div>' if error else ''
     return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 400px;">
-        <h3 class="mb-3 text-center">👤 User Login</h3>
-        {error_div}
-        
-        <div class="mb-3">
-            <a href="/social_login/google" class="btn btn-outline-danger social-btn">
-                <i class="bi bi-google me-2"></i> Continue with Gmail
+    <div class="container mt-4" style="max-width: 380px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
+            <h4 class="mb-3">Welcome Back</h4>
+            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
+            
+            <a href="/social_login/google" class="btn btn-outline-danger w-100 mb-2" style="border-radius: 20px;">
+                <i class="bi bi-google me-2"></i> Gmail Login
             </a>
-            <a href="/social_login/phone" class="btn btn-outline-success social-btn">
-                <i class="bi bi-phone-fill me-2"></i> Continue with Phone Number
+            <a href="/social_login/phone" class="btn btn-outline-success w-100 mb-3" style="border-radius: 20px;">
+                <i class="bi bi-phone me-2"></i> Mobile Login
             </a>
-        </div>
-        
-        <div class="text-center mb-3 text-muted">— OR Manual Login —</div>
+            
+            <div class="text-muted small mb-3">— OR —</div>
 
-        <form method="POST">
-            <div class="mb-3"><label>Username</label><input type="text" name="username" class="form-control" required></div>
-            <div class="mb-3"><label>Password</label><input type="password" name="password" class="form-control" required></div>
-            <button type="submit" class="btn btn-success w-100">Login</button>
-        </form>
-        <div class="text-center mt-3"><a href="/user_signup" class="text-decoration-none">Create Account</a> | <a href="/" class="text-decoration-none">Home</a></div>
+            <form method="POST">
+                <input type="text" name="username" class="form-control mb-2" placeholder="Username" required>
+                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
+                <button type="submit" class="btn btn-primary w-100 mb-2" style="border-radius: 20px;">Login</button>
+            </form>
+            <a href="/user_signup" class="small text-decoration-none">New user? Register here</a>
+        </div>
     </div>
     """ + HTML_FOOTER
 
@@ -554,19 +507,19 @@ def admin_login():
             session['admin_logged'] = True
             return redirect("/admin_dashboard")
         else:
-            error = "Galat Admin Credentials!"
+            error = "Galat credentials!"
 
-    error_div = f'<div class="alert alert-danger">{error}</div>' if error else ''
     return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 400px;">
-        <h3 class="mb-3 text-center">🔒 Admin Portal</h3>
-        {error_div}
-        <form method="POST">
-            <div class="mb-3"><label>Admin Username</label><input type="text" name="username" class="form-control" required></div>
-            <div class="mb-3"><label>Admin Password</label><input type="password" name="password" class="form-control" required></div>
-            <button type="submit" class="btn btn-dark w-100">Admin Login</button>
-        </form>
-        <div class="text-center mt-3"><a href="/" class="text-decoration-none">← Back to Search</a></div>
+    <div class="container mt-5" style="max-width: 380px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border">
+            <h4 class="mb-3 text-center">🔒 Admin Portal</h4>
+            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
+            <form method="POST">
+                <input type="text" name="username" class="form-control mb-2" placeholder="Admin ID" required>
+                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
+                <button type="submit" class="btn btn-dark w-100" style="border-radius: 20px;">Login</button>
+            </form>
+        </div>
     </div>
     """ + HTML_FOOTER
 
@@ -586,46 +539,24 @@ def admin_dashboard():
 
     history_table = ""
     for h in all_histories:
-        history_table += f"""
-        <tr>
-            <td><b>{h[0]}</b></td>
-            <td>{h[1]}</td>
-            <td><small class="text-muted">{h[2]}</small></td>
-        </tr>
-        """
+        history_table += f"<tr><td>{h[0]}</td><td>{h[1]}</td><td><small>{h[2]}</small></td></tr>"
 
     return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 800px;">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3>⚙️ Service Provider / Admin Control Center</h3>
+    <div class="container mt-4" style="max-width: 700px;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>⚙️ Admin Panel</h3>
             <a href="/admin_logout" class="btn btn-outline-danger btn-sm">Logout</a>
         </div>
-        
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="alert alert-success">Total Indexed Pages: <b>{page_count}</b></div>
-            </div>
-        </div>
-
-        <div class="card p-4">
-            <h5 class="mb-3">📊 All Users Search History</h5>
-            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Username / Email</th>
-                            <th>Search Query</th>
-                            <th>Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {history_table if history_table else '<tr><td colspan="3" class="text-center text-muted">Koi history available nahi hai.</td></tr>'}
-                    </tbody>
+        <div class="alert alert-info">Indexed Web Pages: <b>{page_count}</b></div>
+        <div class="bg-white p-3 rounded-3 shadow-sm">
+            <h6 class="mb-3">Search History Logs</h6>
+            <div class="table-responsive" style="max-height: 300px;">
+                <table class="table table-sm">
+                    <thead><tr><th>User</th><th>Query</th><th>Time</th></tr></thead>
+                    <tbody>{history_table if history_table else '<tr><td colspan="3">No history found.</td></tr>'}</tbody>
                 </table>
             </div>
         </div>
-
-        <div class="mt-4 text-center"><a href="/" class="btn btn-light border">Go to Search Engine</a></div>
     </div>
     """ + HTML_FOOTER
 
