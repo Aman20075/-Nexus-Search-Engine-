@@ -513,3 +513,71 @@ def google_login():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+def get_footer(active_tab='home'):
+    home_active = 'active' if active_tab == 'home' else ''
+    search_active = 'active' if active_tab == 'search' else ''
+    history_active = 'active' if active_tab == 'history' else ''
+    account_active = 'active' if active_tab == 'account' else ''
+
+    return f"""
+<div class="bottom-nav-bar" id="bottomNav">
+    <a href="/" class="nav-link-item {home_active}"><i class="bi bi-house-door-fill"></i>Home</a>
+    <a href="javascript:void(0)" onclick="focusSearchInput()" class="nav-link-item {search_active}"><i class="bi bi-search"></i>Search</a>
+    <a href="/my_history" class="nav-link-item {history_active}"><i class="bi bi-clock-history"></i>History</a>
+    <a href="/user_login" class="nav-link-item {account_active}"><i class="bi bi-person-circle"></i>Account</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function focusSearchInput() {{
+    var input = document.getElementById('searchInput');
+    if (input) {{
+        input.focus();
+    }} else {{
+        window.location.href = '/';
+    }}
+}}
+
+function startVoiceSearch() {{
+    if ('webkitSpeechRecognition' in window) {{
+        var recognition = new webkitSpeechRecognition();
+        recognition.lang = 'en-IN';
+        recognition.start();
+        recognition.onresult = function(event) {{
+            document.getElementById('searchInput').value = event.results[0][0].transcript;
+            document.getElementById('searchForm').submit();
+        }};
+    }} else {{
+        alert("Voice search aapke browser me supported nahi hai.");
+    }}
+}}
+
+// 📱 Keyboard Event Handler: Hide nav bar when keyboard is open
+var navBar = document.getElementById('bottomNav');
+
+if (window.visualViewport) {{
+    window.visualViewport.addEventListener('resize', function() {{
+        // Screen height reduce hoti hai jab keyboard khulta hai
+        if (window.visualViewport.height < window.innerHeight - 100) {{
+            navBar.style.display = 'none';
+        }} else {{
+            navBar.style.display = 'flex';
+        }}
+    }});
+}} else {{
+    // Fallback for older browsers
+    window.addEventListener('focusin', function(e) {{
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
+            navBar.style.display = 'none';
+        }}
+    }});
+    window.addEventListener('focusout', function(e) {{
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
+            navBar.style.display = 'flex';
+        }}
+    }});
+}}
+</script>
+</body>
+</html>
+"""
