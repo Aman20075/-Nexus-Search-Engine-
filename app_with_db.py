@@ -90,7 +90,7 @@ HTML_HEADER = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">
     <title>Bharat AI Search Engine</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
@@ -126,7 +126,7 @@ HTML_HEADER = """<!DOCTYPE html>
         .chip-card { background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 20px; padding: 10px 18px; font-size: 14px; font-weight: 500; color: #3c4043; text-decoration: none; display: flex; align-items: center; gap: 8px; }
         .chip-card:hover { background: #f1f3f4; }
 
-        /* Fixed Bottom Nav Bar (Will not push up with mobile keyboard) */
+        /* Fixed Bottom Nav Bar */
         .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; transform: translateZ(0); }
         .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
@@ -423,6 +423,61 @@ def logout_verify():
     </div>
     """ + get_footer()
 
+@app.route("/user_login", methods=['GET', 'POST'])
+def user_login():
+    if session.get('user_logged'):
+        return redirect("/")
+    
+    error = ""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        user = cursor.fetchone()
+        
+        if user:
+            session.permanent = True
+            session['user_logged'] = True
+            session['username'] = username
+            session['login_type'] = user[3] if len(user) > 3 else 'manual'
+            conn.close()
+            return redirect("/")
+        else:
+            # Auto Register User
+            cursor.execute("INSERT OR IGNORE INTO users (username, password, login_type) VALUES (?, ?, 'manual')", (username, password))
+            conn.commit()
+            conn.close()
+            
+            session.permanent = True
+            session['user_logged'] = True
+            session['username'] = username
+            session['login_type'] = 'manual'
+            return redirect("/")
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 380px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border">
+            <h4 class="text-center mb-3">Welcome to Bharat</h4>
+            <form method="POST" class="mb-3">
+                <div class="mb-3">
+                    <input type="text" name="username" class="form-control" placeholder="Username / Email" required style="border-radius:12px;">
+                </div>
+                <div class="mb-3">
+                    <input type="password" name="password" class="form-control" placeholder="Password" required style="border-radius:12px;">
+                </div>
+                <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Login / Sign Up</button>
+            </form>
+            <div class="chrome-divider my-3"></div>
+            <a href="/social_login/google" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2" style="border-radius: 20px;">
+                <i class="bi bi-google"></i> Continue with Google
+            </a>
+        </div>
+    </div>
+    """ + get_footer('account')
+
 @app.route("/social_login/google", methods=['GET', 'POST'])
 def google_login():
     if request.method == 'POST':
@@ -430,8 +485,7 @@ def google_login():
         if user_email and "@" in user_email:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            cursor.execute("INSERT OR IGNORE INTO users (username, password, login_type) VALUES (?, ?, ?)", 
-                           (user_email, 'google_verified', 'google'))
+            cursor.execute("INSERT OR IGNORE INTO users (username, password, login_type) VALUES (?, 'social_pass', 'google')", (user_email,))
             conn.commit()
             conn.close()
 
@@ -444,192 +498,18 @@ def google_login():
     return HTML_HEADER + f"""
     <div class="container mt-5" style="max-width: 380px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
-            <h5 class="mb-3"><i class="bi bi-google text-danger me-2"></i>Google Sign-In</h5>
+            <i class="bi bi-google text-danger fs-1 mb-2"></i>
+            <h5 class="mb-3">Google Sign-In Simulation</h5>
             <form method="POST">
-                <input type="email" name="email" class="form-control mb-3" placeholder="example@gmail.com" required style="border-radius: 12px;">
-                <button type="submit" class="btn btn-danger w-100" style="border-radius: 20px;">Continue</button>
+                <div class="mb-3">
+                    <input type="email" name="email" class="form-control" placeholder="Enter Gmail Address" required style="border-radius:12px;">
+                </div>
+                <button type="submit" class="btn btn-danger w-100 mb-2" style="border-radius: 20px;">Sign in with Google</button>
+                <a href="/user_login" class="btn btn-light w-100" style="border-radius: 20px;">Back</a>
             </form>
-            <div class="mt-3"><a href="/" class="small text-decoration-none">Cancel</a></div>
         </div>
     </div>
     """ + get_footer('account')
 
-@app.route("/social_login/phone", methods=['GET', 'POST'])
-def phone_login():
-    if request.method == 'POST':
-        phone_no = request.form.get('phone', '').strip()
-        if phone_no and len(phone_no) >= 10:
-            user_id = f"+91-{phone_no}"
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("INSERT OR IGNORE INTO users (username, password, login_type) VALUES (?, ?, ?)", 
-                           (user_id, 'phone_verified', 'phone'))
-            conn.commit()
-            conn.close()
-
-            session.permanent = True
-            session['user_logged'] = True
-            session['username'] = user_id
-            session['login_type'] = 'phone'
-            return redirect("/")
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 380px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
-            <h5 class="mb-3"><i class="bi bi-phone text-success me-2"></i>Phone Sign-In</h5>
-            <form method="POST">
-                <input type="tel" name="phone" class="form-control mb-3" placeholder="Mobile Number" maxlength="10" required style="border-radius: 12px;">
-                <button type="submit" class="btn btn-success w-100" style="border-radius: 20px;">Continue</button>
-            </form>
-            <div class="mt-3"><a href="/" class="small text-decoration-none">Cancel</a></div>
-        </div>
-    </div>
-    """ + get_footer('account')
-
-@app.route("/user_signup", methods=['GET', 'POST'])
-def user_signup():
-    msg = ""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO users (username, password, login_type) VALUES (?, ?, ?)", (username, password, 'manual'))
-            conn.commit()
-            conn.close()
-            return redirect("/user_login")
-        except:
-            msg = "Username pehle se registered hai!"
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 380px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border">
-            <h4 class="mb-3 text-center">Create Account</h4>
-            {f'<div class="alert alert-danger small">{msg}</div>' if msg else ''}
-            <form method="POST">
-                <div class="mb-3"><input type="text" name="username" class="form-control" placeholder="Username / Email" required style="border-radius: 12px;"></div>
-                <div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Password" required style="border-radius: 12px;"></div>
-                <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Register</button>
-            </form>
-            <div class="mt-3 text-center"><a href="/user_login" class="small text-decoration-none">Already have account? Login</a></div>
-        </div>
-    </div>
-    """ + get_footer('account')
-
-@app.route("/user_login", methods=['GET', 'POST'])
-def user_login():
-    error = ""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
-        user = cursor.fetchone()
-        conn.close()
-
-        if user:
-            session.permanent = True
-            session['user_logged'] = True
-            session['username'] = username
-            session['login_type'] = 'manual'
-            return redirect("/")
-        else:
-            error = "Galat details!"
-
-    return HTML_HEADER + f"""
-    <div class="container mt-4" style="max-width: 380px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
-            <h4 class="mb-3">Welcome Back</h4>
-            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
-            
-            <a href="/social_login/google" class="btn btn-outline-danger w-100 mb-2" style="border-radius: 20px;">
-                <i class="bi bi-google me-2"></i> Gmail Login
-            </a>
-            <a href="/social_login/phone" class="btn btn-outline-success w-100 mb-3" style="border-radius: 20px;">
-                <i class="bi bi-phone me-2"></i> Mobile Login
-            </a>
-            
-            <div class="text-muted small mb-3">— OR —</div>
-
-            <form method="POST">
-                <input type="text" name="username" class="form-control mb-2" placeholder="Username" required style="border-radius: 12px;">
-                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required style="border-radius: 12px;">
-                <button type="submit" class="btn btn-primary w-100 mb-2" style="border-radius: 20px;">Login</button>
-            </form>
-            <a href="/user_signup" class="small text-decoration-none">New user? Register here</a>
-        </div>
-    </div>
-    """ + get_footer('account')
-
-@app.route("/admin_login", methods=['GET', 'POST'])
-def admin_login():
-    error = ""
-    if request.method == 'POST':
-        if request.form.get('username') == "admin" and request.form.get('password') == "Bharat123@#$":
-            session['admin_logged'] = True
-            return redirect("/admin_dashboard")
-        else:
-            error = "Galat credentials!"
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 380px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border">
-            <h4 class="mb-3 text-center">🔒 Admin Portal</h4>
-            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
-            <form method="POST">
-                <input type="text" name="username" class="form-control mb-2" placeholder="Admin ID" required style="border-radius: 12px;">
-                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required style="border-radius: 12px;">
-                <button type="submit" class="btn btn-dark w-100" style="border-radius: 20px;">Login</button>
-            </form>
-        </div>
-    </div>
-    """ + get_footer()
-
-@app.route("/admin_dashboard")
-def admin_dashboard():
-    if not session.get('admin_logged'):
-        return redirect("/admin_login")
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM pages")
-    page_count = cursor.fetchone()[0]
-
-    cursor.execute("SELECT username, query, timestamp FROM search_history ORDER BY id DESC")
-    all_histories = cursor.fetchall()
-    conn.close()
-
-    history_table = ""
-    for h in all_histories:
-        history_table += f"<tr><td>{h[0]}</td><td>{h[1]}</td><td><small>{h[2]}</small></td></tr>"
-
-    return HTML_HEADER + f"""
-    <div class="container mt-4" style="max-width: 700px;">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3>⚙️ Admin Panel</h3>
-            <a href="/admin_logout" class="btn btn-outline-danger btn-sm">Logout</a>
-        </div>
-        <div class="alert alert-info">Indexed Web Pages: <b>{page_count}</b></div>
-        <div class="bg-white p-3 rounded-3 shadow-sm">
-            <h6 class="mb-3">Search History Logs</h6>
-            <div class="table-responsive" style="max-height: 300px;">
-                <table class="table table-sm">
-                    <thead><tr><th>User</th><th>Query</th><th>Time</th></tr></thead>
-                    <tbody>{history_table if history_table else '<tr><td colspan="3">No history found.</td></tr>'}</tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    """ + get_footer()
-
-@app.route("/admin_logout")
-def admin_logout():
-    session.pop('admin_logged', None)
-    return redirect("/")
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
