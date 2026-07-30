@@ -9,14 +9,13 @@ from urllib.parse import urljoin, urlparse
 import time
 
 app = Flask(__name__)
-# Session ko permanently save rakhne ke liye settings (365 Din tak logout nahi hoga)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60  
 app.secret_key = 'bharat_search_permanent_session_key_2026'
 DB_PATH = 'search_engine.db'
 
-# Admin Credentials (Aap ise apne hisab se badal sakte hain)
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "adminpassword123"
+# 👑 Owner Credentials
+OWNER_USERNAME = "Aman Giri"
+OWNER_PASSWORD = "@Aman2007"
 
 # 🚫 Safe Search Blocklist
 BLOCKED_KEYWORDS = ['porn', 'xxx', 'sex', 'adult', 'nude', 'nsfw', 'hot video', 'bhabhi']
@@ -44,7 +43,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
             password TEXT,
-            login_type TEXT DEFAULT 'manual'
+            role TEXT DEFAULT 'user'
         )
     ''')
     cursor.execute('''
@@ -55,6 +54,9 @@ def init_db():
             timestamp TEXT
         )
     ''')
+    
+    # Default Admin account inside DB
+    cursor.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('admin', 'admin123', 'admin')")
     conn.commit()
     conn.close()
 
@@ -63,7 +65,7 @@ init_db()
 # 🕷️ Advanced Automatic Recursive Crawler Logic
 def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
     visited = set()
-    queue = [(start_url, 1)]  # (URL, depth)
+    queue = [(start_url, 1)]
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -80,7 +82,6 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
         visited.add(current_url)
 
         try:
-            print(f"[Crawling - Depth {depth}]: {current_url}")
             response = requests.get(current_url, headers=headers, timeout=5)
 
             if response.status_code == 200:
@@ -90,7 +91,6 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
                 paragraphs = [p.get_text().strip() for p in soup.find_all('p')]
                 content = ' '.join(paragraphs)
 
-                # Save main content to DB
                 if len(content) > 50:
                     conn = sqlite3.connect(DB_PATH)
                     cursor = conn.cursor()
@@ -102,7 +102,6 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
                     conn.close()
                     pages_crawled += 1
 
-                # Sub-links auto crawl logic
                 if depth < max_depth:
                     for a_tag in soup.find_all('a', href=True):
                         href = a_tag['href'].strip()
@@ -118,7 +117,6 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
         except Exception as e:
             print(f"Error crawling {current_url}: {e}")
 
-# 🔥 Background Thread Function
 def crawl_and_index_url(target_url):
     thread = threading.Thread(target=perform_multi_page_crawl, args=(target_url, 5, 2))
     thread.daemon = True
@@ -227,20 +225,29 @@ function startVoiceSearch() {{
 def home():
     user_logged = session.get('user_logged')
     admin_logged = session.get('admin_logged')
+    owner_logged = session.get('owner_logged')
     username = session.get('username', '')
 
     if user_logged:
         user_info_section = f'<div class="px-3 py-2 mb-2 text-primary bg-light rounded-3 small">👤 <b>{username}</b></div>'
-        login_logout_option = '<a href="/logout" class="chrome-menu-item text-danger"><i class="bi bi-box-arrow-right text-danger"></i>Logout</a>'
+        login_logout_option = '<a href="/confirm_logout?type=user" class="chrome-menu-item text-danger"><i class="bi bi-box-arrow-right text-danger"></i>Logout</a>'
     else:
         user_info_section = ''
-        login_logout_option = '<a href="/user_login" class="chrome-menu-item"><i class="bi bi-box-arrow-in-right"></i>Login / Sign Up</a>'
+        login_logout_option = '<a href="/user_login" class="chrome-menu-item"><i class="bi bi-box-arrow-in-right"></i>User Login</a>'
 
-    admin_option = ''
-    if admin_logged:
-        admin_option = '<a href="/add_url" class="chrome-menu-item text-success"><i class="bi bi-gear-fill"></i> Admin Panel (Add Link)</a><a href="/admin_logout" class="chrome-menu-item text-danger"><i class="bi bi-lock-fill"></i> Admin Logout</a>'
+    role_options = ''
+    if owner_logged:
+        role_options += '<a href="/owner_dashboard" class="chrome-menu-item text-warning"><i class="bi bi-crown-fill"></i> Owner Dashboard</a>'
+        role_options += '<a href="/confirm_logout?type=owner" class="chrome-menu-item text-danger"><i class="bi bi-box-arrow-left"></i> Owner Logout</a>'
     else:
-        admin_option = '<a href="/admin_login" class="chrome-menu-item"><i class="bi bi-shield-lock"></i> Admin Login</a>'
+        role_options += '<a href="/owner_login" class="chrome-menu-item"><i class="bi bi-shield-lock-fill"></i> Owner Login</a>'
+
+    if admin_logged or owner_logged:
+        role_options += '<a href="/add_url" class="chrome-menu-item text-success"><i class="bi bi-gear-fill"></i> Admin Crawl Panel</a>'
+        if admin_logged:
+            role_options += '<a href="/confirm_logout?type=admin" class="chrome-menu-item text-danger"><i class="bi bi-lock-fill"></i> Admin Logout</a>'
+    else:
+        role_options += '<a href="/admin_login" class="chrome-menu-item"><i class="bi bi-shield-lock"></i> Admin Login</a>'
 
     top_bar_html = f"""
     <div class="top-bar-chrome">
@@ -268,7 +275,7 @@ def home():
             <div class="chrome-divider"></div>
 
             {login_logout_option}
-            {admin_option}
+            {role_options}
         </div>
     </div>
     """
@@ -370,7 +377,192 @@ def search():
     body_results += "</div>"
     return HTML_HEADER + header_search + body_results + get_footer('search')
 
-# 🔑 Admin Login Route
+# 🔒 PASSWORD CONFIRMATION BEFORE LOGOUT ROUTE
+@app.route("/confirm_logout", methods=['GET', 'POST'])
+def confirm_logout():
+    account_type = request.args.get('type', 'user')
+    error = ""
+
+    if request.method == 'POST':
+        entered_password = request.form.get('password')
+
+        if account_type == 'owner' and session.get('owner_logged'):
+            if entered_password == OWNER_PASSWORD:
+                session.pop('owner_logged', None)
+                return redirect("/")
+            else:
+                error = "Incorrect Owner Password!"
+
+        elif account_type == 'admin' and session.get('admin_logged'):
+            admin_username = session.get('admin_username', 'admin')
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE username = ? AND password = ? AND role = 'admin'", (admin_username, entered_password))
+            admin = cursor.fetchone()
+            conn.close()
+
+            if admin:
+                session.pop('admin_logged', None)
+                session.pop('admin_username', None)
+                return redirect("/")
+            else:
+                error = "Incorrect Admin Password!"
+
+        elif account_type == 'user' and session.get('user_logged'):
+            current_user = session.get('username')
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (current_user, entered_password))
+            user = cursor.fetchone()
+            conn.close()
+
+            if user:
+                session.pop('user_logged', None)
+                session.pop('username', None)
+                return redirect("/")
+            else:
+                error = "Incorrect Password!"
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 400px;">
+        <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
+            <h4 class="mb-3 text-center text-danger">🔒 Security Check</h4>
+            <p class="text-muted small text-center mb-3">Logout karne ke liye apna Password darj karein.</p>
+            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
+            <input type="password" name="password" class="form-control mb-3" placeholder="Enter Password to Logout" required>
+            <button type="submit" class="btn btn-danger w-100 mb-2" style="border-radius: 20px;">Confirm Logout</button>
+            <a href="/" class="btn btn-light w-100" style="border-radius: 20px;">Cancel</a>
+        </form>
+    </div>
+    """ + get_footer('home')
+
+# 👑 OWNER LOGIN ROUTE
+@app.route("/owner_login", methods=['GET', 'POST'])
+def owner_login():
+    error = ""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if username == OWNER_USERNAME and password == OWNER_PASSWORD:
+            session.permanent = True
+            session['owner_logged'] = True
+            return redirect("/owner_dashboard")
+        else:
+            error = "Invalid Owner Credentials!"
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 400px;">
+        <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
+            <h4 class="mb-3 text-center text-warning">👑 Owner Login</h4>
+            {f'<div class="alert alert-danger">{error}</div>' if error else ''}
+            <input type="text" name="username" class="form-control mb-3" placeholder="Owner Username" required>
+            <input type="password" name="password" class="form-control mb-3" placeholder="Owner Password" required>
+            <button type="submit" class="btn btn-warning w-100 fw-bold" style="border-radius: 20px;">Login as Owner</button>
+        </form>
+    </div>
+    """ + get_footer('home')
+
+# 📊 OWNER DASHBOARD
+@app.route("/owner_dashboard", methods=['GET', 'POST'])
+def owner_dashboard():
+    if not session.get('owner_logged'):
+        return redirect("/owner_login")
+
+    message = ""
+    if request.method == 'POST':
+        new_user = request.form.get('username', '').strip()
+        new_pass = request.form.get('password', '').strip()
+        new_role = request.form.get('role', 'user')
+
+        if new_user and new_pass:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            try:
+                cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (new_user, new_pass, new_role))
+                conn.commit()
+                message = f"✅ Added {new_role.upper()}: {new_user} with password!"
+            except sqlite3.IntegrityError:
+                message = "⚠️ Username already exists!"
+            conn.close()
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, password, role FROM users")
+    users_list = cursor.fetchall()
+    conn.close()
+
+    users_rows = ""
+    for u in users_list:
+        badge_color = 'bg-danger' if u[3] == 'admin' else 'bg-primary'
+        users_rows += f"""
+        <tr>
+            <td>{u[0]}</td>
+            <td><b>{u[1]}</b></td>
+            <td><code>{u[2]}</code></td>
+            <td><span class='badge {badge_color}'>{u[3].upper()}</span></td>
+            <td><a href="/delete_account/{u[0]}" class="btn btn-danger btn-sm py-0" onclick="return confirm('Delete this account?')">Delete</a></td>
+        </tr>
+        """
+
+    return HTML_HEADER + f"""
+    <div class="container mt-4" style="max-width: 750px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
+            <h4 class="mb-3 text-center">👑 Owner Control Center ({OWNER_USERNAME})</h4>
+            {f'<div class="alert alert-info">{message}</div>' if message else ''}
+            
+            <form method="POST" class="row g-2 border p-3 rounded-3 mb-4">
+                <h6>➕ Add New Admin or User</h6>
+                <div class="col-md-4">
+                    <input type="text" name="username" class="form-control" placeholder="Username" required>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" name="password" class="form-control" placeholder="Set Password" required>
+                </div>
+                <div class="col-md-2">
+                    <select name="role" class="form-select">
+                        <option value="admin">Admin</option>
+                        <option value="user">User</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-success w-100">Add</button>
+                </div>
+            </form>
+
+            <h5 class="text-secondary">👥 Accounts List</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped mt-2 align-middle">
+                    <thead class="table-dark">
+                        <tr><th>ID</th><th>Username</th><th>Password</th><th>Role</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        {users_rows}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-3 text-center">
+                <a href="/confirm_logout?type=owner" class="btn btn-outline-danger btn-sm" style="border-radius: 20px;">Owner Logout</a>
+            </div>
+        </div>
+    </div>
+    """ + get_footer('home')
+
+# 🗑️ Owner Delete Account Route
+@app.route("/delete_account/<int:user_id>")
+def delete_account(user_id):
+    if not session.get('owner_logged'):
+        return redirect("/owner_login")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return redirect("/owner_dashboard")
+
+# 🔑 ADMIN LOGIN ROUTE
 @app.route("/admin_login", methods=['GET', 'POST'])
 def admin_login():
     error = ""
@@ -378,9 +570,16 @@ def admin_login():
         username = request.form.get('username')
         password = request.form.get('password')
 
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session.permanent = True  # Admin session permanent ho jayega
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ? AND role = 'admin'", (username, password))
+        admin = cursor.fetchone()
+        conn.close()
+
+        if admin:
+            session.permanent = True
             session['admin_logged'] = True
+            session['admin_username'] = username
             return redirect("/add_url")
         else:
             error = "Invalid Admin Credentials!"
@@ -397,11 +596,10 @@ def admin_login():
     </div>
     """ + get_footer('home')
 
-# 🛡️ Protected Route: Only Logged-in Admin can access this!
+# 🛡️ Protected Route: Admin Crawl Panel
 @app.route("/add_url", methods=['GET', 'POST'])
 def add_url():
-    # Admin Permission Check
-    if not session.get('admin_logged'):
+    if not session.get('admin_logged') and not session.get('owner_logged'):
         return redirect("/admin_login")
 
     message = ""
@@ -423,23 +621,14 @@ def add_url():
                 </div>
                 <button type="submit" class="btn btn-success w-100" style="border-radius: 20px;">Start Auto-Crawl</button>
             </form>
-            <div class="mt-3 text-center">
-                <a href="/admin_logout" class="text-danger small">Logout Admin Session</a>
-            </div>
         </div>
     </div>
     """ + get_footer('home')
-
-@app.route("/admin_logout")
-def admin_logout():
-    session.pop('admin_logged', None)
-    return redirect("/")
 
 @app.route("/user_login", methods=['GET', 'POST'])
 def user_login():
     if session.get('user_logged'):
         username = session.get('username', 'User')
-        login_type = session.get('login_type', 'manual')
         
         return HTML_HEADER + f"""
         <div class="container mt-5" style="max-width: 400px;">
@@ -451,20 +640,20 @@ def user_login():
                 <div class="alert alert-light border my-3">
                     <div class="small text-muted mb-1">Logged in as</div>
                     <div class="fw-bold text-dark fs-5">{username}</div>
-                    <span class="badge bg-secondary mt-1">{login_type.upper()} Account</span>
                 </div>
-                <a href="/logout" class="btn btn-outline-danger w-100" style="border-radius: 20px;">Logout</a>
+                <a href="/confirm_logout?type=user" class="btn btn-outline-danger w-100" style="border-radius: 20px;">Logout</a>
             </div>
         </div>
         """ + get_footer('account')
 
+    error = ""
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ? AND role = 'user'", (username, password))
         user = cursor.fetchone()
         conn.close()
 
@@ -472,27 +661,21 @@ def user_login():
             session.permanent = True
             session['user_logged'] = True
             session['username'] = username
-            session['login_type'] = 'manual'
             return redirect("/")
         else:
-            return HTML_HEADER + "<div class='container mt-5 text-center'><h3>Invalid Credentials!</h3><a href='/user_login'>Try Again</a></div>" + get_footer('account')
+            error = "Invalid Credentials! Contact Owner to get an account."
 
-    return HTML_HEADER + """
+    return HTML_HEADER + f"""
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center">User Login</h4>
+            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
             <input type="text" name="username" class="form-control mb-3" placeholder="Username" required>
             <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
             <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Login</button>
         </form>
     </div>
     """ + get_footer('account')
-
-@app.route("/logout")
-def logout():
-    session.pop('user_logged', None)
-    session.pop('username', None)
-    return redirect("/")
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
