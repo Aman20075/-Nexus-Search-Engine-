@@ -501,7 +501,7 @@ def owner_dashboard():
             <td><b>{u[1]}</b></td>
             <td><code>{u[2]}</code></td>
             <td><span class='badge {badge_color}'>{u[3].upper()}</span></td>
-            <td><a href="/delete_account/{u[0]}" class="btn btn-danger btn-sm py-0" onclick="return confirm('Delete this account?')">Delete</a></td>
+            <td><a href="/delete_account/{u[0]}" class="btn btn-danger btn-sm py-0" onclick="return confirm('Delete this admin/user permanently?')">Delete</a></td>
         </tr>
         """
 
@@ -530,7 +530,7 @@ def owner_dashboard():
                 </div>
             </form>
 
-            <h5 class="text-secondary">👥 Accounts List</h5>
+            <h5 class="text-secondary">👥 Managed Accounts List</h5>
             <div class="table-responsive">
                 <table class="table table-bordered table-striped mt-2 align-middle">
                     <thead class="table-dark">
@@ -549,7 +549,7 @@ def owner_dashboard():
     </div>
     """ + get_footer('home')
 
-# 🗑️ Owner Delete Account Route
+# 🗑️ Owner Delete Admin/User Account Route
 @app.route("/delete_account/<int:user_id>")
 def delete_account(user_id):
     if not session.get('owner_logged'):
@@ -557,8 +557,27 @@ def delete_account(user_id):
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
+    
+    # Get user details before deleting
+    cursor.execute("SELECT username, role FROM users WHERE id = ?", (user_id,))
+    target_user = cursor.fetchone()
+
+    if target_user:
+        target_username, target_role = target_user[0], target_user[1]
+
+        # Delete user from Database
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+
+        # If deleted user was active in session, log them out
+        if target_role == 'admin' and session.get('admin_username') == target_username:
+            session.pop('admin_logged', None)
+            session.pop('admin_username', None)
+            
+        elif target_role == 'user' and session.get('username') == target_username:
+            session.pop('user_logged', None)
+            session.pop('username', None)
+
     conn.close()
     return redirect("/owner_dashboard")
 
@@ -641,41 +660,4 @@ def user_login():
                     <div class="small text-muted mb-1">Logged in as</div>
                     <div class="fw-bold text-dark fs-5">{username}</div>
                 </div>
-                <a href="/confirm_logout?type=user" class="btn btn-outline-danger w-100" style="border-radius: 20px;">Logout</a>
-            </div>
-        </div>
-        """ + get_footer('account')
-
-    error = ""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ? AND role = 'user'", (username, password))
-        user = cursor.fetchone()
-        conn.close()
-
-        if user:
-            session.permanent = True
-            session['user_logged'] = True
-            session['username'] = username
-            return redirect("/")
-        else:
-            error = "Invalid Credentials! Contact Owner to get an account."
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 400px;">
-        <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
-            <h4 class="mb-3 text-center">User Login</h4>
-            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
-            <input type="text" name="username" class="form-control mb-3" placeholder="Username" required>
-            <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
-            <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Login</button>
-        </form>
-    </div>
-    """ + get_footer('account')
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+                <a href="/confirm_logout?type=user" class="btn btn-
