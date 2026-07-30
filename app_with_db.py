@@ -9,9 +9,14 @@ from urllib.parse import urljoin, urlparse
 import time
 
 app = Flask(__name__)
+# Session ko permanently save rakhne ke liye settings (365 Din tak logout nahi hoga)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60  
 app.secret_key = 'bharat_search_permanent_session_key_2026'
 DB_PATH = 'search_engine.db'
+
+# Admin Credentials (Aap ise apne hisab se badal sakte hain)
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "adminpassword123"
 
 # 🚫 Safe Search Blocklist
 BLOCKED_KEYWORDS = ['porn', 'xxx', 'sex', 'adult', 'nude', 'nsfw', 'hot video', 'bhabhi']
@@ -97,7 +102,7 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
                     conn.close()
                     pages_crawled += 1
 
-                # 🔄 Sub-links dhoondhna aur Queue me daalna (Auto Crawl)
+                # Sub-links auto crawl logic
                 if depth < max_depth:
                     for a_tag in soup.find_all('a', href=True):
                         href = a_tag['href'].strip()
@@ -105,16 +110,15 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
                         parsed_url = urlparse(full_url)
 
                         if parsed_url.scheme in ['http', 'https'] and full_url not in visited:
-                            # Avoid crawling social networks or media platforms to prevent block
                             if not any(blocked in full_url for blocked in ['facebook.com', 'instagram.com', 'twitter.com', 'youtube.com']):
                                 queue.append((full_url, depth + 1))
 
-            time.sleep(1) # Gap to avoid getting blocked
+            time.sleep(1)
 
         except Exception as e:
             print(f"Error crawling {current_url}: {e}")
 
-# 🔥 Background Thread Function to trigger crawling
+# 🔥 Background Thread Function
 def crawl_and_index_url(target_url):
     thread = threading.Thread(target=perform_multi_page_crawl, args=(target_url, 5, 2))
     thread.daemon = True
@@ -161,7 +165,6 @@ HTML_HEADER = """<!DOCTYPE html>
         .chip-card { background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 20px; padding: 10px 18px; font-size: 14px; font-weight: 500; color: #3c4043; text-decoration: none; display: flex; align-items: center; gap: 8px; }
         .chip-card:hover { background: #f1f3f4; }
 
-        /* Fixed Bottom Nav Bar */
         .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; }
         .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
@@ -223,6 +226,7 @@ function startVoiceSearch() {{
 @app.route("/")
 def home():
     user_logged = session.get('user_logged')
+    admin_logged = session.get('admin_logged')
     username = session.get('username', '')
 
     if user_logged:
@@ -231,6 +235,12 @@ def home():
     else:
         user_info_section = ''
         login_logout_option = '<a href="/user_login" class="chrome-menu-item"><i class="bi bi-box-arrow-in-right"></i>Login / Sign Up</a>'
+
+    admin_option = ''
+    if admin_logged:
+        admin_option = '<a href="/add_url" class="chrome-menu-item text-success"><i class="bi bi-gear-fill"></i> Admin Panel (Add Link)</a><a href="/admin_logout" class="chrome-menu-item text-danger"><i class="bi bi-lock-fill"></i> Admin Logout</a>'
+    else:
+        admin_option = '<a href="/admin_login" class="chrome-menu-item"><i class="bi bi-shield-lock"></i> Admin Login</a>'
 
     top_bar_html = f"""
     <div class="top-bar-chrome">
@@ -258,7 +268,7 @@ def home():
             <div class="chrome-divider"></div>
 
             {login_logout_option}
-            <a href="/add_url" class="chrome-menu-item"><i class="bi bi-plus-circle"></i> Add URL to Crawl</a>
+            {admin_option}
         </div>
     </div>
     """
@@ -360,9 +370,40 @@ def search():
     body_results += "</div>"
     return HTML_HEADER + header_search + body_results + get_footer('search')
 
-# ➕ Route to Add Link for Auto-Crawling
+# 🔑 Admin Login Route
+@app.route("/admin_login", methods=['GET', 'POST'])
+def admin_login():
+    error = ""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session.permanent = True  # Admin session permanent ho jayega
+            session['admin_logged'] = True
+            return redirect("/add_url")
+        else:
+            error = "Invalid Admin Credentials!"
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 400px;">
+        <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
+            <h4 class="mb-3 text-center">🔐 Admin Login</h4>
+            {f'<div class="alert alert-danger">{error}</div>' if error else ''}
+            <input type="text" name="username" class="form-control mb-3" placeholder="Admin Username" required>
+            <input type="password" name="password" class="form-control mb-3" placeholder="Admin Password" required>
+            <button type="submit" class="btn btn-dark w-100" style="border-radius: 20px;">Login as Admin</button>
+        </form>
+    </div>
+    """ + get_footer('home')
+
+# 🛡️ Protected Route: Only Logged-in Admin can access this!
 @app.route("/add_url", methods=['GET', 'POST'])
 def add_url():
+    # Admin Permission Check
+    if not session.get('admin_logged'):
+        return redirect("/admin_login")
+
     message = ""
     if request.method == 'POST':
         url_to_crawl = request.form.get('url', '').strip()
@@ -373,18 +414,26 @@ def add_url():
     return HTML_HEADER + f"""
     <div class="container mt-5" style="max-width: 500px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border">
-            <h4 class="mb-3 text-center">Add Website to Crawl</h4>
+            <h4 class="mb-3 text-center">⚙️ Admin Crawl Panel</h4>
             {f'<div class="alert alert-success">{message}</div>' if message else ''}
             <form method="POST">
                 <div class="mb-3">
-                    <label class="form-label">Target URL</label>
+                    <label class="form-label">Target URL to Auto-Crawl</label>
                     <input type="url" name="url" class="form-control" placeholder="https://example.com" required>
                 </div>
-                <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Start Auto-Crawl</button>
+                <button type="submit" class="btn btn-success w-100" style="border-radius: 20px;">Start Auto-Crawl</button>
             </form>
+            <div class="mt-3 text-center">
+                <a href="/admin_logout" class="text-danger small">Logout Admin Session</a>
+            </div>
         </div>
     </div>
     """ + get_footer('home')
+
+@app.route("/admin_logout")
+def admin_logout():
+    session.pop('admin_logged', None)
+    return redirect("/")
 
 @app.route("/user_login", methods=['GET', 'POST'])
 def user_login():
@@ -441,7 +490,8 @@ def user_login():
 
 @app.route("/logout")
 def logout():
-    session.clear()
+    session.pop('user_logged', None)
+    session.pop('username', None)
     return redirect("/")
 
 if __name__ == '__main__':
