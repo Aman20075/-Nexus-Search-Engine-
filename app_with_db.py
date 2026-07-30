@@ -11,7 +11,7 @@ app.permanent_session_lifetime = 365 * 24 * 60 * 60
 app.secret_key = 'bharat_search_permanent_session_key_2026'
 DB_PATH = 'search_engine.db'
 
-# 🚫 Content Blocklist for Safe Search
+# 🚫 Safe Search Blocklist
 BLOCKED_KEYWORDS = ['porn', 'xxx', 'sex', 'adult', 'nude', 'nsfw', 'hot video', 'bhabhi']
 
 def is_safe_query(query):
@@ -24,7 +24,6 @@ def is_safe_query(query):
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,7 +48,6 @@ def init_db():
             timestamp TEXT
         )
     ''')
-    
     conn.commit()
     conn.close()
 
@@ -59,7 +57,6 @@ def autonomous_web_crawler(search_query):
     try:
         formatted_query = search_query.replace(' ', '+')
         target_url = f"https://en.wikipedia.org/wiki/Special:Search?search={formatted_query}"
-        
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         response = requests.get(target_url, headers=headers, timeout=5)
         
@@ -98,47 +95,56 @@ HTML_HEADER = """<!DOCTYPE html>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        body { background: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding-bottom: 70px; }
-        .top-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #ffffff; }
-        .creator-tag { font-size: 13px; font-weight: 600; color: #5f6368; }
-        .user-profile-badge { background: #e8f0fe; color: #1a73e8; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 500; }
+        body { background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding-bottom: 70px; }
         
-        .bharat-brand { font-size: 48px; font-weight: 700; letter-spacing: -1.5px; margin-top: 15px; }
+        .google-top-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: #ffffff; }
+        .creator-badge { font-size: 13px; font-weight: 600; color: #5f6368; }
         
-        .google-search-card { max-width: 580px; width: 90%; margin: 20px auto; position: relative; }
-        .google-input { height: 52px; border-radius: 26px; padding-left: 50px; padding-right: 50px; border: 1px solid #dfe1e5; background: #ffffff; box-shadow: 0 1px 6px rgba(32,33,36,0.1); font-size: 16px; }
+        /* 3-Dots Menu Styling */
+        .dots-btn { background: none; border: none; font-size: 24px; color: #5f6368; cursor: pointer; padding: 0 8px; }
+        .dots-btn:focus { outline: none; }
+        .dropdown-menu-custom { border-radius: 16px; border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 8px 0; }
+        .dropdown-item-custom { padding: 10px 20px; font-size: 14px; color: #3c4043; display: flex; align-items: center; gap: 12px; text-decoration: none; }
+        .dropdown-item-custom:hover { background: #f8f9fa; }
+        
+        .bharat-logo { font-size: 52px; font-weight: 700; letter-spacing: -1.5px; margin-top: 20px; }
+        
+        /* Search Box Jaisa Google App me h */
+        .google-search-container { max-width: 580px; width: 92%; margin: 24px auto 16px auto; position: relative; }
+        .google-input { height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 52px; border: 1px solid #dfe1e5; background: #ffffff; box-shadow: 0 1px 6px rgba(32,33,36,0.12); font-size: 16px; }
         .google-input:focus { outline: none; border-color: #4285f4; box-shadow: 0 2px 8px rgba(32,33,36,0.2); }
-        .search-icon-left { position: absolute; left: 18px; top: 16px; color: #9aa0a6; font-size: 18px; }
-        .mic-icon-right { position: absolute; right: 18px; top: 14px; color: #ea4335; font-size: 22px; cursor: pointer; }
-        
-        .quick-chips { display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
-        .chip-btn { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 20px; padding: 8px 16px; font-size: 14px; color: #3c4043; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .chip-btn:hover { background: #f1f3f4; }
+        .search-left-icon { position: absolute; left: 18px; top: 17px; color: #9aa0a6; font-size: 18px; }
+        .mic-right-icon { position: absolute; right: 18px; top: 15px; color: #ea4335; font-size: 22px; cursor: pointer; }
+
+        /* Google Style Feature Chips */
+        .chips-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 30px; }
+        .chip-card { background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 20px; padding: 10px 18px; font-size: 14px; font-weight: 500; color: #3c4043; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+        .chip-card:hover { background: #f1f3f4; }
 
         /* Bottom Navigation Bar like Google App */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 1000; }
-        .nav-item-link { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; }
-        .nav-item-link i { font-size: 20px; margin-bottom: 2px; }
-        .nav-item-link.active { color: #1a73e8; font-weight: 600; }
+        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000; }
+        .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
+        .nav-link-item.active { color: #1a73e8; font-weight: 600; }
 
-        .results-wrapper { max-width: 680px; margin: 0 auto; padding: 0 15px; }
-        .result-card { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .result-title { color: #1a0dab; font-size: 17px; text-decoration: none; font-weight: 500; }
-        .result-url { color: #202124; font-size: 12px; }
-        .result-snippet { color: #4d5156; font-size: 13.5px; margin-top: 5px; }
+        .results-wrapper { max-width: 680px; margin: 0 auto; padding: 0 16px; }
+        .result-card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #f1f3f4; }
+        .result-title { color: #1a0dab; font-size: 18px; text-decoration: none; font-weight: 400; }
+        .result-url { color: #202124; font-size: 12px; margin-bottom: 4px; }
+        .result-snippet { color: #4d5156; font-size: 14px; line-height: 1.5; }
     </style>
 </head>
 <body>
 """
 
 HTML_FOOTER = """
-<div class="bottom-nav">
-    <a href="/" class="nav-item-link active"><i class="bi bi-house-door-fill"></i>Home</a>
-    <a href="/my_history" class="nav-item-link"><i class="bi bi-clock-history"></i>History</a>
-    <a href="/user_login" class="nav-item-link"><i class="bi bi-person-circle"></i>Account</a>
-    <a href="/admin_login" class="nav-item-link"><i class="bi bi-shield-lock"></i>Admin</a>
+<div class="bottom-nav-bar">
+    <a href="/" class="nav-link-item active"><i class="bi bi-house-door-fill"></i>Home</a>
+    <a href="/my_history" class="nav-link-item"><i class="bi bi-clock-history"></i>Search History</a>
+    <a href="/user_login" class="nav-link-item"><i class="bi bi-person-circle"></i>Account</a>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 function startVoiceSearch() {
     if ('webkitSpeechRecognition' in window) {
@@ -164,35 +170,50 @@ def home():
     username = session.get('username', '')
 
     if user_logged:
-        user_info_html = f'''
-            <span class="user-profile-badge"><i class="bi bi-person-fill me-1"></i>{username}</span>
-            <a href="/logout_verify" class="btn btn-outline-danger btn-sm ms-2" style="border-radius: 12px; font-size: 11px;">Logout</a>
-        '''
+        menu_items = f"""
+            <div class="px-3 py-2 border-bottom text-muted small">👤 <b>{username}</b></div>
+            <a class="dropdown-item-custom" href="/my_history"><i class="bi bi-clock-history text-primary"></i> Search History</a>
+            <a class="dropdown-item-custom" href="/admin_login"><i class="bi bi-shield-lock text-secondary"></i> Admin Portal</a>
+            <a class="dropdown-item-custom text-danger" href="/logout_verify"><i class="bi bi-box-arrow-right"></i> Logout</a>
+        """
     else:
-        user_info_html = '<a href="/user_login" class="btn btn-primary btn-sm px-3" style="border-radius: 16px;">Sign in</a>'
+        menu_items = """
+            <a class="dropdown-item-custom" href="/user_login"><i class="bi bi-box-arrow-in-right text-primary"></i> Login</a>
+            <a class="dropdown-item-custom" href="/user_signup"><i class="bi bi-person-plus text-success"></i> Sign Up</a>
+            <a class="dropdown-item-custom" href="/admin_login"><i class="bi bi-shield-lock text-secondary"></i> Admin Portal</a>
+        """
 
-    return HTML_HEADER + f"""
-    <div class="top-header">
-        <div class="creator-tag">🚀 Built by <b>Aman Giri</b></div>
-        <div>{user_info_html}</div>
+    top_bar_html = f"""
+    <div class="google-top-bar">
+        <div class="creator-badge">🚀 Created by <b>Aman Giri</b></div>
+        <div class="dropdown">
+            <button class="dots-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
+                {menu_items}
+            </ul>
+        </div>
     </div>
+    """
 
+    return HTML_HEADER + top_bar_html + f"""
     <div class="container text-center">
-        <div class="bharat-brand">
+        <div class="bharat-logo mb-1">
             <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
         </div>
-        <p class="text-muted small mb-3">India's Safe AI Search Portal 🇮🇳</p>
+        <p class="text-muted small mb-3">India's Safe AI Search Engine 🇮🇳</p>
 
-        <form action="/search" method="GET" id="searchForm" class="google-search-card">
-            <i class="bi bi-search search-icon-left"></i>
-            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Search anything..." required autocomplete="off">
-            <i class="bi bi-mic-fill mic-icon-right" onclick="startVoiceSearch()" title="Voice Search"></i>
+        <form action="/search" method="GET" id="searchForm" class="google-search-container">
+            <i class="bi bi-search search-left-icon"></i>
+            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Search books, science, history or concepts..." required autocomplete="off">
+            <i class="bi bi-mic-fill mic-right-icon" onclick="startVoiceSearch()" title="Voice Search"></i>
         </form>
 
-        <div class="quick-chips">
-            <a href="#" class="chip-btn"><i class="bi bi-stars text-primary"></i> AI Search</a>
-            <a href="#" class="chip-btn"><i class="bi bi-book text-success"></i> Education</a>
-            <a href="#" class="chip-btn"><i class="bi bi-newspaper text-danger"></i> History</a>
+        <div class="chips-row">
+            <a href="#" class="chip-card"><i class="bi bi-stars text-primary"></i> AI Search Mode</a>
+            <a href="#" class="chip-card"><i class="bi bi-book text-success"></i> Education</a>
+            <a href="#" class="chip-card"><i class="bi bi-lightning text-warning"></i> Trending</a>
         </div>
     </div>
     """ + HTML_FOOTER
@@ -206,10 +227,10 @@ def search():
     if not is_safe_query(query):
         return HTML_HEADER + f"""
         <div class="results-wrapper pt-5 text-center">
-            <div class="alert alert-danger p-4 shadow-sm">
+            <div class="alert alert-danger p-4 shadow-sm" style="border-radius: 16px;">
                 <h5 class="alert-heading">🚫 Safe Search Active</h5>
-                <p class="mb-0 small">Aapki search query <b>Bharat Safety Rules</b> ke tahat block kar di gayi hai.</p>
-                <a href="/" class="btn btn-primary btn-sm mt-3">Back to Home</a>
+                <p class="mb-0 small">Aapki search query <b>Bharat Safety Policy</b> ke khilaf hai.</p>
+                <a href="/" class="btn btn-primary btn-sm mt-3" style="border-radius: 20px;">Back to Home</a>
             </div>
         </div>
         """ + HTML_FOOTER
@@ -249,19 +270,19 @@ def search():
 
     header_search = f"""
     <div class="bg-white border-bottom p-3 mb-3">
-        <div class="d-flex align-items-center gap-3">
-            <a href="/" class="bharat-brand text-decoration-none my-0" style="font-size: 24px;">
+        <div class="d-flex align-items-center gap-2">
+            <a href="/" class="bharat-logo text-decoration-none my-0 me-2" style="font-size: 26px;">
                 <span style="color:#FF9933">B</span><span style="color:#000080">h</span><span style="color:#138808">at</span>
             </a>
-            <form action="/search" method="GET" class="google-search-card my-0 flex-grow-1">
-                <i class="bi bi-search search-icon-left" style="top:12px;"></i>
+            <form action="/search" method="GET" class="google-search-container my-0 flex-grow-1" style="max-width: 100%;">
+                <i class="bi bi-search search-left-icon" style="top:12px;"></i>
                 <input type="text" name="q" value="{query}" class="form-control google-input" style="height: 42px; font-size: 14px;">
             </form>
         </div>
     </div>
     <div class="results-wrapper">
         <div class="alert alert-light border p-3 mb-3" style="border-radius: 12px;">
-            ✨ <b>AI Insights:</b> Verified information index for <b>{query}</b>.
+            ✨ <b>Bharat AI Overview:</b> Verified insights for <b>{query}</b>.
         </div>
     """
 
@@ -274,13 +295,13 @@ def search():
             <div class="result-card">
                 <div class="result-url">{url}</div>
                 <a href="{url}" target="_blank" class="result-title">{title}</a>
-                <div class="result-snippet">{snippet}</div>
+                <div class="result-snippet mt-1">{snippet}</div>
             </div>
             """
     else:
         body_results += f"""
         <div class="text-center text-muted p-4">
-            No instant local records. Academic crawler is fetching more details.
+            No instant local records found. Academic crawler is fetching more details.
         </div>
         """
 
@@ -309,11 +330,14 @@ def my_history():
             </li>
             """
     else:
-        history_html = '<li class="list-group-item text-muted text-center py-4">Koi search history nahi hai.</li>'
+        history_html = '<li class="list-group-item text-muted text-center py-4">Aapne abhi tak kuch search nahi kiya hai.</li>'
 
     return HTML_HEADER + f"""
     <div class="container mt-4" style="max-width: 600px;">
-        <h4 class="mb-3">📜 Search History</h4>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="m-0">📜 Search History</h4>
+            <a href="/" class="btn btn-outline-primary btn-sm" style="border-radius: 16px;">← Back</a>
+        </div>
         <ul class="list-group shadow-sm border-0" style="border-radius: 12px; overflow: hidden;">
             {history_html}
         </ul>
@@ -353,7 +377,7 @@ def logout_verify():
             <h5 class="text-danger mb-3">Logout Confirm Karein</h5>
             {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
             <form method="POST">
-                {'<div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Enter Password" required></div>' if login_type == 'manual' else ''}
+                {'<div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Enter Password" required style="border-radius:12px;"></div>' if login_type == 'manual' else ''}
                 <button type="submit" class="btn btn-danger w-100 mb-2" style="border-radius: 20px;">Logout</button>
                 <a href="/" class="btn btn-light w-100" style="border-radius: 20px;">Cancel</a>
             </form>
@@ -384,9 +408,10 @@ def google_login():
         <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
             <h5 class="mb-3"><i class="bi bi-google text-danger me-2"></i>Google Sign-In</h5>
             <form method="POST">
-                <input type="email" name="email" class="form-control mb-3" placeholder="Gmail Address" required style="border-radius: 12px;">
+                <input type="email" name="email" class="form-control mb-3" placeholder="example@gmail.com" required style="border-radius: 12px;">
                 <button type="submit" class="btn btn-danger w-100" style="border-radius: 20px;">Continue</button>
             </form>
+            <div class="mt-3"><a href="/" class="small text-decoration-none">Cancel</a></div>
         </div>
     </div>
     """ + HTML_FOOTER
@@ -418,6 +443,7 @@ def phone_login():
                 <input type="tel" name="phone" class="form-control mb-3" placeholder="Mobile Number" maxlength="10" required style="border-radius: 12px;">
                 <button type="submit" class="btn btn-success w-100" style="border-radius: 20px;">Continue</button>
             </form>
+            <div class="mt-3"><a href="/" class="small text-decoration-none">Cancel</a></div>
         </div>
     </div>
     """ + HTML_FOOTER
@@ -436,7 +462,7 @@ def user_signup():
             conn.close()
             return redirect("/user_login")
         except:
-            msg = "Username already exists!"
+            msg = "Username pehle se registered hai!"
 
     return HTML_HEADER + f"""
     <div class="container mt-5" style="max-width: 380px;">
@@ -444,10 +470,11 @@ def user_signup():
             <h4 class="mb-3 text-center">Create Account</h4>
             {f'<div class="alert alert-danger small">{msg}</div>' if msg else ''}
             <form method="POST">
-                <div class="mb-3"><input type="text" name="username" class="form-control" placeholder="Username / Email" required></div>
-                <div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Password" required></div>
-                <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Sign Up</button>
+                <div class="mb-3"><input type="text" name="username" class="form-control" placeholder="Username / Email" required style="border-radius: 12px;"></div>
+                <div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Password" required style="border-radius: 12px;"></div>
+                <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Register</button>
             </form>
+            <div class="mt-3 text-center"><a href="/user_login" class="small text-decoration-none">Already have account? Login</a></div>
         </div>
     </div>
     """ + HTML_FOOTER
@@ -490,8 +517,8 @@ def user_login():
             <div class="text-muted small mb-3">— OR —</div>
 
             <form method="POST">
-                <input type="text" name="username" class="form-control mb-2" placeholder="Username" required>
-                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
+                <input type="text" name="username" class="form-control mb-2" placeholder="Username" required style="border-radius: 12px;">
+                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required style="border-radius: 12px;">
                 <button type="submit" class="btn btn-primary w-100 mb-2" style="border-radius: 20px;">Login</button>
             </form>
             <a href="/user_signup" class="small text-decoration-none">New user? Register here</a>
@@ -515,8 +542,8 @@ def admin_login():
             <h4 class="mb-3 text-center">🔒 Admin Portal</h4>
             {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
             <form method="POST">
-                <input type="text" name="username" class="form-control mb-2" placeholder="Admin ID" required>
-                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
+                <input type="text" name="username" class="form-control mb-2" placeholder="Admin ID" required style="border-radius: 12px;">
+                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required style="border-radius: 12px;">
                 <button type="submit" class="btn btn-dark w-100" style="border-radius: 20px;">Login</button>
             </form>
         </div>
