@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import threading
 import os
+from urllib.parse import urljoin, urlparse
+import time
 
 app = Flask(__name__)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60  
@@ -53,66 +55,71 @@ def init_db():
 
 init_db()
 
-# 🕷️ Advanced Recursive Web Crawler (Admin Controlled)
+# 🕷️ Advanced Automatic Recursive Crawler Logic
+def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
+    visited = set()
+    queue = [(start_url, 1)]  # (URL, depth)
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+
+    pages_crawled = 0
+
+    while queue and pages_crawled < max_pages:
+        current_url, depth = queue.pop(0)
+
+        if current_url in visited or depth > max_depth:
+            continue
+
+        visited.add(current_url)
+
+        try:
+            print(f"[Crawling - Depth {depth}]: {current_url}")
+            response = requests.get(current_url, headers=headers, timeout=5)
+
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                title = soup.title.string.strip() if soup.title and soup.title.string else current_url
+                paragraphs = [p.get_text().strip() for p in soup.find_all('p')]
+                content = ' '.join(paragraphs)
+
+                # Save main content to DB
+                if len(content) > 50:
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO pages (url, title, content)
+                        VALUES (?, ?, ?)
+                    ''', (current_url, title, content))
+                    conn.commit()
+                    conn.close()
+                    pages_crawled += 1
+
+                # 🔄 Sub-links dhoondhna aur Queue me daalna (Auto Crawl)
+                if depth < max_depth:
+                    for a_tag in soup.find_all('a', href=True):
+                        href = a_tag['href'].strip()
+                        full_url = urljoin(current_url, href)
+                        parsed_url = urlparse(full_url)
+
+                        if parsed_url.scheme in ['http', 'https'] and full_url not in visited:
+                            # Avoid crawling social networks or media platforms to prevent block
+                            if not any(blocked in full_url for blocked in ['facebook.com', 'instagram.com', 'twitter.com', 'youtube.com']):
+                                queue.append((full_url, depth + 1))
+
+            time.sleep(1) # Gap to avoid getting blocked
+
+        except Exception as e:
+            print(f"Error crawling {current_url}: {e}")
+
+# 🔥 Background Thread Function to trigger crawling
 def crawl_and_index_url(target_url):
-    try:
-        # Browser-like headers to avoid website blocking
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-        response = requests.get(target_url, headers=headers, timeout=6)
-        
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            title = soup.title.string.strip() if soup.title and soup.title.string else target_url
-            paragraphs = [p.get_text().strip() for p in soup.find_all('p')]
-            content = ' '.join(paragraphs)
-            
-            if len(content) > 100:
-                conn = sqlite3.connect(DB_PATH)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT OR REPLACE INTO pages (url, title, content)
-                    VALUES (?, ?, ?)
-                ''', (target_url, title, content))
-                
-                # 🔄 Automatic Sub-Links Crawling (1 लिंक से 5 और पेजों को ऑटोमैटिक लाना)
-                sub_links = []
-                for a_tag in soup.find_all('a', href=True):
-                    link = a_tag['href']
-                    if link.startswith('/wiki/') and ':' not in link:
-                        full_url = f"https://en.wikipedia.org{link}"
-                        if full_url not in sub_links and full_url != target_url:
-                            sub_links.append(full_url)
-                    elif link.startswith('http') and target_url in link:
-                        if link not in sub_links and link != target_url:
-                            sub_links.append(link)
-                            
-                    if len(sub_links) >= 5:
-                        break
-                
-                # Sub-links को क्रॉल करना
-                for sub_url in sub_links:
-                    try:
-                        sub_res = requests.get(sub_url, headers=headers, timeout=4)
-                        if sub_res.status_code == 200:
-                            sub_soup = BeautifulSoup(sub_res.text, 'html.parser')
-                            sub_title = sub_soup.title.string.strip() if sub_soup.title else sub_url
-                            sub_content = ' '.join([p.get_text().strip() for p in sub_soup.find_all('p')])
-                            if len(sub_content) > 100:
-                                cursor.execute('''
-                                    INSERT OR REPLACE INTO pages (url, title, content)
-                                    VALUES (?, ?, ?)
-                                ''', (sub_url, sub_title, sub_content))
-                    except Exception as sub_e:
-                        print(f"Sub-link crawl error: {sub_e}")
-                
-                conn.commit()
-                conn.close()
-                return True
-    except Exception as e:
-        print(f"Crawling Error: {e}")
-    return False
+    thread = threading.Thread(target=perform_multi_page_crawl, args=(target_url, 5, 2))
+    thread.daemon = True
+    thread.start()
+    return True
 
 HTML_HEADER = """<!DOCTYPE html>
 <html lang="en">
@@ -155,7 +162,7 @@ HTML_HEADER = """<!DOCTYPE html>
         .chip-card:hover { background: #f1f3f4; }
 
         /* Fixed Bottom Nav Bar */
-        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; transform: translateZ(0); }
+        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; }
         .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
         .nav-link-item.active { color: #1a73e8; font-weight: 600; }
@@ -208,29 +215,6 @@ function startVoiceSearch() {{
         alert("Voice search aapke browser me supported nahi hai.");
     }}
 }}
-
-// 📱 Keyboard Hide/Show Logic for Mobile Navigation
-var navBar = document.getElementById('bottomNav');
-if (window.visualViewport) {{
-    window.visualViewport.addEventListener('resize', function() {{
-        if (window.visualViewport.height < window.innerHeight - 100) {{
-            navBar.style.display = 'none';
-        }} else {{
-            navBar.style.display = 'flex';
-        }}
-    }});
-}} else {{
-    window.addEventListener('focusin', function(e) {{
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
-            navBar.style.display = 'none';
-        }}
-    }});
-    window.addEventListener('focusout', function(e) {{
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
-            navBar.style.display = 'flex';
-        }}
-    }});
-}}
 </script>
 </body>
 </html>
@@ -243,7 +227,7 @@ def home():
 
     if user_logged:
         user_info_section = f'<div class="px-3 py-2 mb-2 text-primary bg-light rounded-3 small">👤 <b>{username}</b></div>'
-        login_logout_option = '<a href="/logout_verify" class="chrome-menu-item text-danger"><i class="bi bi-box-arrow-right text-danger"></i>Logout</a>'
+        login_logout_option = '<a href="/logout" class="chrome-menu-item text-danger"><i class="bi bi-box-arrow-right text-danger"></i>Logout</a>'
     else:
         user_info_section = ''
         login_logout_option = '<a href="/user_login" class="chrome-menu-item"><i class="bi bi-box-arrow-in-right"></i>Login / Sign Up</a>'
@@ -251,7 +235,7 @@ def home():
     top_bar_html = f"""
     <div class="top-bar-chrome">
         <div class="creator-badge">🚀 Created by <b>Aman Giri</b></div>
-        <button class="dots-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#chromeMenu" aria-controls="chromeMenu">
+        <button class="dots-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#chromeMenu">
             <i class="bi bi-three-dots-vertical"></i>
         </button>
     </div>
@@ -259,11 +243,11 @@ def home():
     <div class="offcanvas offcanvas-end chrome-menu p-2" tabindex="-1" id="chromeMenu">
         <div class="offcanvas-body p-2">
             <div class="chrome-action-bar">
-                <a href="/" class="chrome-action-icon" title="Home"><i class="bi bi-house"></i></a>
-                <a href="/my_history" class="chrome-action-icon" title="Bookmarks"><i class="bi bi-star"></i></a>
-                <a href="/" class="chrome-action-icon" title="Download"><i class="bi bi-download"></i></a>
-                <a href="/" class="chrome-action-icon" title="Info"><i class="bi bi-info-circle"></i></a>
-                <a href="javascript:location.reload()" class="chrome-action-icon" title="Reload"><i class="bi bi-arrow-clockwise"></i></a>
+                <a href="/" class="chrome-action-icon"><i class="bi bi-house"></i></a>
+                <a href="/my_history" class="chrome-action-icon"><i class="bi bi-star"></i></a>
+                <a href="/" class="chrome-action-icon"><i class="bi bi-download"></i></a>
+                <a href="/" class="chrome-action-icon"><i class="bi bi-info-circle"></i></a>
+                <a href="javascript:location.reload()" class="chrome-action-icon"><i class="bi bi-arrow-clockwise"></i></a>
             </div>
 
             {user_info_section}
@@ -274,8 +258,7 @@ def home():
             <div class="chrome-divider"></div>
 
             {login_logout_option}
-            <a href="/admin_login" class="chrome-menu-item"><i class="bi bi-gear"></i> Admin Settings</a>
-            <a href="#" class="chrome-menu-item"><i class="bi bi-question-circle"></i> Help & feedback</a>
+            <a href="/add_url" class="chrome-menu-item"><i class="bi bi-plus-circle"></i> Add URL to Crawl</a>
         </div>
     </div>
     """
@@ -289,8 +272,8 @@ def home():
 
         <form action="/search" method="GET" id="searchForm" class="google-search-container">
             <i class="bi bi-search search-left-icon"></i>
-            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Search books, science, history or concepts..." required autocomplete="off">
-            <i class="bi bi-mic-fill mic-right-icon" onclick="startVoiceSearch()" title="Voice Search"></i>
+            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Search books, science, history..." required autocomplete="off">
+            <i class="bi bi-mic-fill mic-right-icon" onclick="startVoiceSearch()"></i>
         </form>
 
         <div class="chips-row">
@@ -370,16 +353,41 @@ def search():
     else:
         body_results += f"""
         <div class="text-center text-muted p-4">
-            No records found. Contact Admin to crawl/index content for <b>"{query}"</b>.
+            No records found for "{query}".
         </div>
         """
 
     body_results += "</div>"
     return HTML_HEADER + header_search + body_results + get_footer('search')
 
+# ➕ Route to Add Link for Auto-Crawling
+@app.route("/add_url", methods=['GET', 'POST'])
+def add_url():
+    message = ""
+    if request.method == 'POST':
+        url_to_crawl = request.form.get('url', '').strip()
+        if url_to_crawl:
+            crawl_and_index_url(url_to_crawl)
+            message = "✅ Automatic Multi-Page Crawling Started in Background!"
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 500px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border">
+            <h4 class="mb-3 text-center">Add Website to Crawl</h4>
+            {f'<div class="alert alert-success">{message}</div>' if message else ''}
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Target URL</label>
+                    <input type="url" name="url" class="form-control" placeholder="https://example.com" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Start Auto-Crawl</button>
+            </form>
+        </div>
+    </div>
+    """ + get_footer('home')
+
 @app.route("/user_login", methods=['GET', 'POST'])
 def user_login():
-    # 👤 User Profile Panel if Already Logged In
     if session.get('user_logged'):
         username = session.get('username', 'User')
         login_type = session.get('login_type', 'manual')
@@ -396,18 +404,11 @@ def user_login():
                     <div class="fw-bold text-dark fs-5">{username}</div>
                     <span class="badge bg-secondary mt-1">{login_type.upper()} Account</span>
                 </div>
-                
-                <a href="/my_history" class="btn btn-outline-primary w-100 mb-2" style="border-radius: 20px;">
-                    <i class="bi bi-clock-history me-1"></i> Search History
-                </a>
-                <a href="/logout_verify" class="btn btn-outline-danger w-100" style="border-radius: 20px;">
-                    <i class="bi bi-box-arrow-right me-1"></i> Logout
-                </a>
+                <a href="/logout" class="btn btn-outline-danger w-100" style="border-radius: 20px;">Logout</a>
             </div>
         </div>
         """ + get_footer('account')
 
-    error = ""
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -425,286 +426,23 @@ def user_login():
             session['login_type'] = 'manual'
             return redirect("/")
         else:
-            error = "Galat details!"
+            return HTML_HEADER + "<div class='container mt-5 text-center'><h3>Invalid Credentials!</h3><a href='/user_login'>Try Again</a></div>" + get_footer('account')
 
-    return HTML_HEADER + f"""
-    <div class="container mt-4" style="max-width: 380px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
-            <h4 class="mb-3">Welcome Back</h4>
-            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
-            
-            <a href="/social_login/google" class="btn btn-outline-danger w-100 mb-2" style="border-radius: 20px;">
-                <i class="bi bi-google me-2"></i> Gmail Login
-            </a>
-            <a href="/social_login/phone" class="btn btn-outline-success w-100 mb-3" style="border-radius: 20px;">
-                <i class="bi bi-phone me-2"></i> Mobile Login
-            </a>
-            
-            <div class="text-muted small mb-3">— OR —</div>
-
-            <form method="POST">
-                <input type="text" name="username" class="form-control mb-2" placeholder="Username" required style="border-radius: 12px;">
-                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required style="border-radius: 12px;">
-                <button type="submit" class="btn btn-primary w-100 mb-2" style="border-radius: 20px;">Login</button>
-            </form>
-            <a href="/user_signup" class="small text-decoration-none">New user? Register here</a>
-        </div>
+    return HTML_HEADER + """
+    <div class="container mt-5" style="max-width: 400px;">
+        <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
+            <h4 class="mb-3 text-center">User Login</h4>
+            <input type="text" name="username" class="form-control mb-3" placeholder="Username" required>
+            <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
+            <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Login</button>
+        </form>
     </div>
     """ + get_footer('account')
 
-@app.route("/my_history")
-def my_history():
-    if not session.get('user_logged'):
-        return redirect("/user_login")
-    
-    username = session.get('username')
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT query, timestamp FROM search_history WHERE username = ? ORDER BY id DESC", (username,))
-    history_items = cursor.fetchall()
-    conn.close()
-
-    history_html = ""
-    if history_items:
-        for item in history_items:
-            history_html += f"""
-            <li class="list-group-item d-flex justify-content-between align-items-center py-3">
-                <span>🔍 <b>{item[0]}</b></span>
-                <span class="text-muted small">{item[1]}</span>
-            </li>
-            """
-    else:
-        history_html = '<li class="list-group-item text-muted text-center py-4">Aapne abhi tak kuch search nahi kiya hai.</li>'
-
-    return HTML_HEADER + f"""
-    <div class="container mt-4" style="max-width: 600px;">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="m-0">📜 Search History</h4>
-            <a href="/" class="btn btn-outline-primary btn-sm" style="border-radius: 16px;">← Back</a>
-        </div>
-        <ul class="list-group shadow-sm border-0" style="border-radius: 12px; overflow: hidden;">
-            {history_html}
-        </ul>
-    </div>
-    """ + get_footer('history')
-
-@app.route("/logout_verify", methods=['GET', 'POST'])
-def logout_verify():
+@app.route("/logout")
+def logout():
     session.clear()
     return redirect("/")
 
-@app.route("/social_login/google", methods=['GET', 'POST'])
-def google_login():
-    if request.method == 'POST':
-        user_email = request.form.get('email', '').strip()
-        if user_email and "@" in user_email:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("INSERT OR IGNORE INTO users (username, password, login_type) VALUES (?, ?, ?)", 
-                           (user_email, 'google_verified', 'google'))
-            conn.commit()
-            conn.close()
-
-            session.permanent = True
-            session['user_logged'] = True
-            session['username'] = user_email
-            session['login_type'] = 'google'
-            return redirect("/")
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 380px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
-            <h5 class="mb-3"><i class="bi bi-google text-danger me-2"></i>Google Sign-In</h5>
-            <form method="POST">
-                <input type="email" name="email" class="form-control mb-3" placeholder="example@gmail.com" required style="border-radius: 12px;">
-                <button type="submit" class="btn btn-danger w-100" style="border-radius: 20px;">Continue</button>
-            </form>
-            <div class="mt-3"><a href="/user_login" class="small text-decoration-none">Cancel</a></div>
-        </div>
-    </div>
-    """ + get_footer('account')
-
-@app.route("/social_login/phone", methods=['GET', 'POST'])
-def phone_login():
-    if request.method == 'POST':
-        phone_no = request.form.get('phone', '').strip()
-        if phone_no and len(phone_no) >= 10:
-            user_id = f"+91-{phone_no}"
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("INSERT OR IGNORE INTO users (username, password, login_type) VALUES (?, ?, ?)", 
-                           (user_id, 'phone_verified', 'phone'))
-            conn.commit()
-            conn.close()
-
-            session.permanent = True
-            session['user_logged'] = True
-            session['username'] = user_id
-            session['login_type'] = 'phone'
-            return redirect("/")
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 380px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
-            <h5 class="mb-3"><i class="bi bi-phone text-success me-2"></i>Phone Sign-In</h5>
-            <form method="POST">
-                <input type="tel" name="phone" class="form-control mb-3" placeholder="Mobile Number" maxlength="10" required style="border-radius: 12px;">
-                <button type="submit" class="btn btn-success w-100" style="border-radius: 20px;">Continue</button>
-            </form>
-            <div class="mt-3"><a href="/user_login" class="small text-decoration-none">Cancel</a></div>
-        </div>
-    </div>
-    """ + get_footer('account')
-
-@app.route("/user_signup", methods=['GET', 'POST'])
-def user_signup():
-    msg = ""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO users (username, password, login_type) VALUES (?, ?, ?)", (username, password, 'manual'))
-            conn.commit()
-            conn.close()
-            return redirect("/user_login")
-        except:
-            msg = "Username pehle se registered hai!"
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 380px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border">
-            <h4 class="mb-3 text-center">Create Account</h4>
-            {f'<div class="alert alert-danger small">{msg}</div>' if msg else ''}
-            <form method="POST">
-                <div class="mb-3"><input type="text" name="username" class="form-control" placeholder="Username / Email" required style="border-radius: 12px;"></div>
-                <div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Password" required style="border-radius: 12px;"></div>
-                <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Register</button>
-            </form>
-            <div class="mt-3 text-center"><a href="/user_login" class="small text-decoration-none">Already have account? Login</a></div>
-        </div>
-    </div>
-    """ + get_footer('account')
-
-@app.route("/admin_login", methods=['GET', 'POST'])
-def admin_login():
-    error = ""
-    if request.method == 'POST':
-        if request.form.get('username') == "admin" and request.form.get('password') == "Bharat123@#$":
-            session['admin_logged'] = True
-            return redirect("/admin_dashboard")
-        else:
-            error = "Galat credentials!"
-
-    return HTML_HEADER + f"""
-    <div class="container mt-5" style="max-width: 380px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border">
-            <h4 class="mb-3 text-center">🔒 Admin Portal</h4>
-            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
-            <form method="POST">
-                <input type="text" name="username" class="form-control mb-2" placeholder="Admin ID" required style="border-radius: 12px;">
-                <input type="password" name="password" class="form-control mb-3" placeholder="Password" required style="border-radius: 12px;">
-                <button type="submit" class="btn btn-dark w-100" style="border-radius: 20px;">Login</button>
-            </form>
-        </div>
-    </div>
-    """ + get_footer()
-
-# ⚙️ ADMIN DASHBOARD WITH CRAWLER & PAGE ADDING CONTROL
-@app.route("/admin_dashboard", methods=['GET', 'POST'])
-def admin_dashboard():
-    if not session.get('admin_logged'):
-        return redirect("/admin_login")
-
-    msg = ""
-    if request.method == 'POST':
-        action = request.form.get('action')
-        
-        # 🕷️ Multi-Page Auto-Crawler
-        if action == 'crawl_url':
-            url_to_crawl = request.form.get('target_url')
-            if crawl_and_index_url(url_to_crawl):
-                msg = '<div class="alert alert-success">URL & internal sub-links successfully crawled and indexed!</div>'
-            else:
-                msg = '<div class="alert alert-danger">Crawling failed or URL blocked/invalid.</div>'
-                
-        # 📝 Custom Page Creation
-        elif action == 'add_page':
-            custom_url = request.form.get('custom_url')
-            custom_title = request.form.get('custom_title')
-            custom_content = request.form.get('custom_content')
-            
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("INSERT OR REPLACE INTO pages (url, title, content) VALUES (?, ?, ?)", 
-                           (custom_url, custom_title, custom_content))
-            conn.commit()
-            conn.close()
-            msg = '<div class="alert alert-success">Custom page added successfully!</div>'
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM pages")
-    page_count = cursor.fetchone()[0]
-
-    cursor.execute("SELECT username, query, timestamp FROM search_history ORDER BY id DESC")
-    all_histories = cursor.fetchall()
-    conn.close()
-
-    history_table = ""
-    for h in all_histories:
-        history_table += f"<tr><td>{h[0]}</td><td>{h[1]}</td><td><small>{h[2]}</small></td></tr>"
-
-    return HTML_HEADER + f"""
-    <div class="container mt-4 mb-5" style="max-width: 750px;">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3>⚙️ Admin Panel</h3>
-            <a href="/admin_logout" class="btn btn-outline-danger btn-sm" style="border-radius:16px;">Logout</a>
-        </div>
-        
-        {msg}
-
-        <div class="alert alert-info mb-4">Total Indexed Web Pages: <b>{page_count}</b></div>
-        
-        <div class="bg-white p-3 rounded-3 shadow-sm border mb-4">
-            <h6 class="fw-bold mb-2">🕷️ Advanced Multi-Page Crawler</h6>
-            <p class="text-muted extra-small mb-2" style="font-size: 12px;">Link daalne par ye us page + uske andar ke 5 aur related pages ko automatically index kar leta hai.</p>
-            <form method="POST" class="d-flex gap-2">
-                <input type="hidden" name="action" value="crawl_url">
-                <input type="url" name="target_url" class="form-control" placeholder="https://en.wikipedia.org/wiki/India" required style="border-radius: 12px;">
-                <button type="submit" class="btn btn-primary text-nowrap" style="border-radius: 12px;">Start Crawling</button>
-            </form>
-        </div>
-
-        <div class="bg-white p-3 rounded-3 shadow-sm border mb-4">
-            <h6 class="fw-bold mb-2">➕ Add Custom Page Content</h6>
-            <form method="POST">
-                <input type="hidden" name="action" value="add_page">
-                <input type="text" name="custom_url" class="form-control mb-2" placeholder="Page URL (e.g., https://bharat.com/about)" required style="border-radius: 12px;">
-                <input type="text" name="custom_title" class="form-control mb-2" placeholder="Page Title" required style="border-radius: 12px;">
-                <textarea name="custom_content" class="form-control mb-2" rows="3" placeholder="Page Content/Summary..." required style="border-radius: 12px;"></textarea>
-                <button type="submit" class="btn btn-success w-100" style="border-radius: 12px;">Save Page</button>
-            </form>
-        </div>
-
-        <div class="bg-white p-3 rounded-3 shadow-sm border">
-            <h6 class="fw-bold mb-3">📜 User Search Logs</h6>
-            <div class="table-responsive" style="max-height: 250px;">
-                <table class="table table-sm align-middle">
-                    <thead><tr><th>User</th><th>Query</th><th>Time</th></tr></thead>
-                    <tbody>{history_table if history_table else '<tr><td colspan="3">No history found.</td></tr>'}</tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    """ + get_footer()
-
-@app.route("/admin_logout")
-def admin_logout():
-    session.pop('admin_logged', None)
-    return redirect("/")
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
