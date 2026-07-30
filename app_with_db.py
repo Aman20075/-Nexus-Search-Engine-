@@ -53,11 +53,14 @@ def init_db():
 
 init_db()
 
-# 🕷️ Admin-Controlled Web Crawler Function
+# 🕷️ Advanced Recursive Web Crawler (Admin Controlled)
 def crawl_and_index_url(target_url):
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        response = requests.get(target_url, headers=headers, timeout=5)
+        # Browser-like headers to avoid website blocking
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        response = requests.get(target_url, headers=headers, timeout=6)
         
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -65,13 +68,45 @@ def crawl_and_index_url(target_url):
             paragraphs = [p.get_text().strip() for p in soup.find_all('p')]
             content = ' '.join(paragraphs)
             
-            if len(content) > 50:
+            if len(content) > 100:
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT OR REPLACE INTO pages (url, title, content)
                     VALUES (?, ?, ?)
                 ''', (target_url, title, content))
+                
+                # 🔄 Automatic Sub-Links Crawling (1 लिंक से 5 और पेजों को ऑटोमैटिक लाना)
+                sub_links = []
+                for a_tag in soup.find_all('a', href=True):
+                    link = a_tag['href']
+                    if link.startswith('/wiki/') and ':' not in link:
+                        full_url = f"https://en.wikipedia.org{link}"
+                        if full_url not in sub_links and full_url != target_url:
+                            sub_links.append(full_url)
+                    elif link.startswith('http') and target_url in link:
+                        if link not in sub_links and link != target_url:
+                            sub_links.append(link)
+                            
+                    if len(sub_links) >= 5:
+                        break
+                
+                # Sub-links को क्रॉल करना
+                for sub_url in sub_links:
+                    try:
+                        sub_res = requests.get(sub_url, headers=headers, timeout=4)
+                        if sub_res.status_code == 200:
+                            sub_soup = BeautifulSoup(sub_res.text, 'html.parser')
+                            sub_title = sub_soup.title.string.strip() if sub_soup.title else sub_url
+                            sub_content = ' '.join([p.get_text().strip() for p in sub_soup.find_all('p')])
+                            if len(sub_content) > 100:
+                                cursor.execute('''
+                                    INSERT OR REPLACE INTO pages (url, title, content)
+                                    VALUES (?, ?, ?)
+                                ''', (sub_url, sub_title, sub_content))
+                    except Exception as sub_e:
+                        print(f"Sub-link crawl error: {sub_e}")
+                
                 conn.commit()
                 conn.close()
                 return True
@@ -344,7 +379,7 @@ def search():
 
 @app.route("/user_login", methods=['GET', 'POST'])
 def user_login():
-    # 👤 Show Account Profile if User is Already Logged In
+    # 👤 User Profile Panel if Already Logged In
     if session.get('user_logged'):
         username = session.get('username', 'User')
         login_type = session.get('login_type', 'manual')
@@ -586,15 +621,15 @@ def admin_dashboard():
     if request.method == 'POST':
         action = request.form.get('action')
         
-        # 🕷️ Run Crawler manually by Admin
+        # 🕷️ Multi-Page Auto-Crawler
         if action == 'crawl_url':
             url_to_crawl = request.form.get('target_url')
             if crawl_and_index_url(url_to_crawl):
-                msg = '<div class="alert alert-success">URL successfully crawled & indexed!</div>'
+                msg = '<div class="alert alert-success">URL & internal sub-links successfully crawled and indexed!</div>'
             else:
-                msg = '<div class="alert alert-danger">Crawling failed or invalid URL.</div>'
+                msg = '<div class="alert alert-danger">Crawling failed or URL blocked/invalid.</div>'
                 
-        # 📝 Add Custom Page manually by Admin
+        # 📝 Custom Page Creation
         elif action == 'add_page':
             custom_url = request.form.get('custom_url')
             custom_title = request.form.get('custom_title')
@@ -633,11 +668,12 @@ def admin_dashboard():
         <div class="alert alert-info mb-4">Total Indexed Web Pages: <b>{page_count}</b></div>
         
         <div class="bg-white p-3 rounded-3 shadow-sm border mb-4">
-            <h6 class="fw-bold mb-2">🕷️ Web Crawler (Add URL to Index)</h6>
+            <h6 class="fw-bold mb-2">🕷️ Advanced Multi-Page Crawler</h6>
+            <p class="text-muted extra-small mb-2" style="font-size: 12px;">Link daalne par ye us page + uske andar ke 5 aur related pages ko automatically index kar leta hai.</p>
             <form method="POST" class="d-flex gap-2">
                 <input type="hidden" name="action" value="crawl_url">
-                <input type="url" name="target_url" class="form-control" placeholder="https://en.wikipedia.org/wiki/Science" required style="border-radius: 12px;">
-                <button type="submit" class="btn btn-primary text-nowrap" style="border-radius: 12px;">Crawl URL</button>
+                <input type="url" name="target_url" class="form-control" placeholder="https://en.wikipedia.org/wiki/India" required style="border-radius: 12px;">
+                <button type="submit" class="btn btn-primary text-nowrap" style="border-radius: 12px;">Start Crawling</button>
             </form>
         </div>
 
