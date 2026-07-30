@@ -90,21 +90,20 @@ HTML_HEADER = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bharat AI Search Engine</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        body { background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding-bottom: 70px; }
+        html, body { height: 100%; margin: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { padding-bottom: 75px; }
         
         .top-bar-chrome { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #ffffff; }
         .creator-badge { font-size: 13px; font-weight: 600; color: #5f6368; }
         
-        /* 3-Dots Button Style */
         .dots-btn { background: none; border: none; font-size: 22px; color: #444746; cursor: pointer; padding: 4px 8px; border-radius: 50%; }
         .dots-btn:hover { background: #f1f3f4; }
         
-        /* Chrome Like Drawer / Offcanvas Menu Style */
         .chrome-menu { border-radius: 20px 0 0 20px; width: 280px !important; }
         .chrome-action-bar { display: flex; justify-content: space-between; background: #f0f4f9; padding: 8px; border-radius: 24px; margin-bottom: 15px; }
         .chrome-action-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #444746; text-decoration: none; font-size: 16px; }
@@ -127,9 +126,9 @@ HTML_HEADER = """<!DOCTYPE html>
         .chip-card { background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 20px; padding: 10px 18px; font-size: 14px; font-weight: 500; color: #3c4043; text-decoration: none; display: flex; align-items: center; gap: 8px; }
         .chip-card:hover { background: #f1f3f4; }
 
-        /* Bottom Nav Bar */
-        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000; }
-        .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+        /* Fixed Bottom Nav Bar (Will not push up with mobile keyboard) */
+        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; transform: translateZ(0); }
+        .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
         .nav-link-item.active { color: #1a73e8; font-weight: 600; }
 
@@ -143,29 +142,44 @@ HTML_HEADER = """<!DOCTYPE html>
 <body>
 """
 
-def get_footer():
-    return """
+def get_footer(active_tab='home'):
+    home_active = 'active' if active_tab == 'home' else ''
+    search_active = 'active' if active_tab == 'search' else ''
+    history_active = 'active' if active_tab == 'history' else ''
+    account_active = 'active' if active_tab == 'account' else ''
+
+    return f"""
 <div class="bottom-nav-bar">
-    <a href="/" class="nav-link-item active"><i class="bi bi-house-door-fill"></i>Home</a>
-    <a href="/my_history" class="nav-link-item"><i class="bi bi-clock-history"></i>History</a>
-    <a href="/user_login" class="nav-link-item"><i class="bi bi-person-circle"></i>Account</a>
+    <a href="/" class="nav-link-item {home_active}"><i class="bi bi-house-door-fill"></i>Home</a>
+    <a href="javascript:void(0)" onclick="focusSearchInput()" class="nav-link-item {search_active}"><i class="bi bi-search"></i>Search</a>
+    <a href="/my_history" class="nav-link-item {history_active}"><i class="bi bi-clock-history"></i>History</a>
+    <a href="/user_login" class="nav-link-item {account_active}"><i class="bi bi-person-circle"></i>Account</a>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function startVoiceSearch() {
-    if ('webkitSpeechRecognition' in window) {
+function focusSearchInput() {{
+    var input = document.getElementById('searchInput');
+    if (input) {{
+        input.focus();
+    }} else {{
+        window.location.href = '/';
+    }}
+}}
+
+function startVoiceSearch() {{
+    if ('webkitSpeechRecognition' in window) {{
         var recognition = new webkitSpeechRecognition();
         recognition.lang = 'en-IN';
         recognition.start();
-        recognition.onresult = function(event) {
+        recognition.onresult = function(event) {{
             document.getElementById('searchInput').value = event.results[0][0].transcript;
             document.getElementById('searchForm').submit();
-        };
-    } else {
+        }};
+    }} else {{
         alert("Voice search aapke browser me supported nahi hai.");
-    }
-}
+    }}
+}}
 </script>
 </body>
 </html>
@@ -183,7 +197,6 @@ def home():
         user_info_section = ''
         login_logout_option = '<a href="/user_login" class="chrome-menu-item"><i class="bi bi-box-arrow-in-right"></i>Login / Sign Up</a>'
 
-    # Chrome 3-Dots Side Panel Menu
     top_bar_html = f"""
     <div class="top-bar-chrome">
         <div class="creator-badge">🚀 Created by <b>Aman Giri</b></div>
@@ -241,7 +254,7 @@ def home():
             <a href="#" class="chip-card"><i class="bi bi-lightning text-warning"></i> Trending</a>
         </div>
     </div>
-    """ + get_footer()
+    """ + get_footer('home')
 
 @app.route("/search")
 def search():
@@ -258,7 +271,7 @@ def search():
                 <a href="/" class="btn btn-primary btn-sm mt-3" style="border-radius: 20px;">Back to Home</a>
             </div>
         </div>
-        """ + get_footer()
+        """ + get_footer('search')
 
     if session.get('user_logged'):
         current_user = session.get('username')
@@ -301,7 +314,7 @@ def search():
             </a>
             <form action="/search" method="GET" class="google-search-container my-0 flex-grow-1" style="max-width: 100%;">
                 <i class="bi bi-search search-left-icon" style="top:12px;"></i>
-                <input type="text" name="q" value="{query}" class="form-control google-input" style="height: 42px; font-size: 14px;">
+                <input type="text" name="q" id="searchInput" value="{query}" class="form-control google-input" style="height: 42px; font-size: 14px;">
             </form>
         </div>
     </div>
@@ -331,7 +344,7 @@ def search():
         """
 
     body_results += "</div>"
-    return HTML_HEADER + header_search + body_results + get_footer()
+    return HTML_HEADER + header_search + body_results + get_footer('search')
 
 @app.route("/my_history")
 def my_history():
@@ -367,7 +380,7 @@ def my_history():
             {history_html}
         </ul>
     </div>
-    """ + get_footer()
+    """ + get_footer('history')
 
 @app.route("/logout_verify", methods=['GET', 'POST'])
 def logout_verify():
@@ -439,7 +452,7 @@ def google_login():
             <div class="mt-3"><a href="/" class="small text-decoration-none">Cancel</a></div>
         </div>
     </div>
-    """ + get_footer()
+    """ + get_footer('account')
 
 @app.route("/social_login/phone", methods=['GET', 'POST'])
 def phone_login():
@@ -471,7 +484,7 @@ def phone_login():
             <div class="mt-3"><a href="/" class="small text-decoration-none">Cancel</a></div>
         </div>
     </div>
-    """ + get_footer()
+    """ + get_footer('account')
 
 @app.route("/user_signup", methods=['GET', 'POST'])
 def user_signup():
@@ -502,7 +515,7 @@ def user_signup():
             <div class="mt-3 text-center"><a href="/user_login" class="small text-decoration-none">Already have account? Login</a></div>
         </div>
     </div>
-    """ + get_footer()
+    """ + get_footer('account')
 
 @app.route("/user_login", methods=['GET', 'POST'])
 def user_login():
@@ -549,7 +562,7 @@ def user_login():
             <a href="/user_signup" class="small text-decoration-none">New user? Register here</a>
         </div>
     </div>
-    """ + get_footer()
+    """ + get_footer('account')
 
 @app.route("/admin_login", methods=['GET', 'POST'])
 def admin_login():
