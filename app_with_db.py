@@ -54,14 +54,12 @@ def init_db():
             timestamp TEXT
         )
     ''')
-    
-    # NOTE: Yahan purane default admin ko hata diya gaya hai taaki sirf Owner apni marzi se naye admin jod sake.
     conn.commit()
     conn.close()
 
 init_db()
 
-# 🕷️ Advanced Automatic Recursive Crawler Logic
+# 🕷️ Advanced Automatic Recursive Crawler Logic with Live Terminal Debugging
 def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
     visited = set()
     queue = [(start_url, 1)]
@@ -81,7 +79,9 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
         visited.add(current_url)
 
         try:
+            print(f"🕷️ Crawling URL: {current_url}")
             response = requests.get(current_url, headers=headers, timeout=5)
+            print(f"📡 Status Code: {response.status_code}")
 
             if response.status_code == 200:
                 soup = BeautifulSoup(response.text, 'html.parser')
@@ -89,6 +89,8 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
                 title = soup.title.string.strip() if soup.title and soup.title.string else current_url
                 paragraphs = [p.get_text().strip() for p in soup.find_all('p')]
                 content = ' '.join(paragraphs)
+                
+                print(f"📝 Extracted Content Length: {len(content)} characters")
 
                 if len(content) > 50:
                     conn = sqlite3.connect(DB_PATH)
@@ -100,6 +102,9 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
                     conn.commit()
                     conn.close()
                     pages_crawled += 1
+                    print(f"✅ Successfully Saved to Database: {title}")
+                else:
+                    print("⚠️ Content is less than 50 characters, skipping save.")
 
                 if depth < max_depth:
                     for a_tag in soup.find_all('a', href=True):
@@ -114,7 +119,7 @@ def perform_multi_page_crawl(start_url, max_pages=5, max_depth=2):
             time.sleep(1)
 
         except Exception as e:
-            print(f"Error crawling {current_url}: {e}")
+            print(f"❌ Error crawling {current_url}: {e}")
 
 def crawl_and_index_url(target_url):
     thread = threading.Thread(target=perform_multi_page_crawl, args=(target_url, 5, 2))
@@ -235,17 +240,13 @@ def home():
         login_logout_option = '<a href="/user_login" class="chrome-menu-item"><i class="bi bi-box-arrow-in-right"></i>User Login</a>'
 
     role_options = ''
-    
-    # 🔒 नियम: केवल Owner को Owner Dashboard दिखेगा। साधारण यूजर या सामान्य एडमिन को नहीं।
     if owner_logged:
         role_options += '<a href="/owner_dashboard" class="chrome-menu-item text-warning"><i class="bi bi-crown-fill"></i> Owner Dashboard</a>'
         role_options += '<a href="/confirm_logout?type=owner" class="chrome-menu-item text-danger"><i class="bi bi-box-arrow-left"></i> Owner Logout</a>'
     else:
-        # अगर कोई यूजर लॉग इन है, तो उसे Owner Login न दिखाएं (या गुप्त रख सकते हैं, यहाँ केवल साधारण मेनू है)
         if not user_logged:
             role_options += '<a href="/owner_login" class="chrome-menu-item"><i class="bi bi-shield-lock-fill"></i> Owner Login</a>'
 
-    # 🔒 नियम: सामान्य यूजर को Admin Crawl Panel या Admin Login बिल्कुल नहीं दिखेगा।
     if not user_logged:
         if admin_logged or owner_logged:
             role_options += '<a href="/add_url" class="chrome-menu-item text-success"><i class="bi bi-gear-fill"></i> Admin Crawl Panel</a>'
@@ -468,7 +469,7 @@ def owner_login():
     </div>
     """ + get_footer('home')
 
-# 📊 OWNER DASHBOARD (यहाँ Owner नए एडमिन या यूजर जोड़ सकता है और लिंक भी जोड़ सकता है)
+# 📊 OWNER DASHBOARD
 @app.route("/owner_dashboard", methods=['GET', 'POST'])
 def owner_dashboard():
     if not session.get('owner_logged'):
@@ -476,12 +477,11 @@ def owner_dashboard():
 
     message = ""
     if request.method == 'POST':
-        # चेक करें कि यह फॉर्म यूजर जोड़ने का है या यूआरएल/लिंक जोड़ने का
         if 'url' in request.form:
             new_url = request.form.get('url', '').strip()
             if new_url:
                 crawl_and_index_url(new_url)
-                message = "✅ Link successfully added and multi-page crawling started!"
+                message = "✅ Link successfully added and multi-page crawling started in background!"
         else:
             new_user = request.form.get('username', '').strip()
             new_pass = request.form.get('password', '').strip()
@@ -569,7 +569,6 @@ def owner_dashboard():
     </div>
     """ + get_footer('home')
 
-# 🗑️ Owner Delete Account Route (डिलीट होने पर सेशन अपने आप बंद हो जाएगा)
 @app.route("/delete_account/<int:user_id>")
 def delete_account(user_id):
     if not session.get('owner_logged'):
@@ -597,7 +596,6 @@ def delete_account(user_id):
     conn.close()
     return redirect("/owner_dashboard")
 
-# 🔑 ADMIN LOGIN ROUTE
 @app.route("/admin_login", methods=['GET', 'POST'])
 def admin_login():
     error = ""
@@ -631,7 +629,6 @@ def admin_login():
     </div>
     """ + get_footer('home')
 
-# 🛡️ Protected Route: Admin Crawl Panel
 @app.route("/add_url", methods=['GET', 'POST'])
 def add_url():
     if not session.get('admin_logged') and not session.get('owner_logged'):
