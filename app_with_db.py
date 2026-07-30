@@ -94,27 +94,43 @@ HTML_HEADER = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bharat Safe AI Search Engine</title>
+    <title>Bharat AI Search Engine</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        body { background: #ffffff; font-family: 'Segoe UI', Roboto, Arial, sans-serif; overflow-x: hidden; }
-        .bharat-logo { font-size: 65px; font-weight: 700; letter-spacing: -2px; }
-        .search-box-container { max-width: 584px; width: 100%; margin: 0 auto; position: relative; }
-        .search-input { height: 48px; border-radius: 24px; padding-left: 45px; padding-right: 45px; border: 1px solid #dfe1e5; box-shadow: none; }
-        .search-input:focus { border-color: transparent; box-shadow: 0 1px 6px rgba(32,33,36,0.28); }
-        .search-icon { position: absolute; left: 16px; top: 14px; color: #9aa0a6; font-size: 16px; }
-        .mic-icon { position: absolute; right: 16px; top: 13px; color: #FF9933; font-size: 20px; cursor: pointer; }
-        .results-wrapper { max-width: 700px; margin: 0 auto; padding: 0 20px; }
-        .ai-card { background: #f8f9fa; border-left: 4px solid #000080; border-radius: 8px; padding: 18px; margin-bottom: 25px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .result-card { margin-bottom: 24px; word-break: break-word; }
-        .result-title { color: #1a0dab; text-decoration: none; font-size: 18px; font-weight: 400; display: block; }
+        body { background: #ffffff; font-family: arial, sans-serif; overflow-x: hidden; margin: 0; }
+        
+        /* Top Navigation Header (Google Style) */
+        .google-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; font-size: 14px; }
+        .creator-info { font-weight: 600; color: #5f6368; }
+        .top-right-nav { display: flex; align-items: center; gap: 12px; }
+        .user-email-badge { background: #f1f3f4; padding: 6px 12px; border-radius: 16px; font-size: 13px; color: #3c4043; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* Google Main Logo & Search Box */
+        .main-container { margin-top: 80px; text-align: center; }
+        .bharat-logo { font-size: 80px; font-weight: 600; letter-spacing: -2px; user-select: none; }
+        
+        .search-wrapper { max-width: 584px; margin: 20px auto 0 auto; padding: 0 12px; }
+        .search-box { position: relative; display: flex; align-items: center; border: 1px solid #dfe1e5; border-radius: 24px; padding: 0 14px; height: 46px; box-shadow: none; transition: box-shadow 0.2s; }
+        .search-box:hover, .search-box:focus-within { box-shadow: 0 1px 6px rgba(32,33,36,0.28); border-color: rgba(223,225,229,0); }
+        .search-box input { border: none; outline: none; width: 100%; font-size: 16px; padding: 0 10px; background: transparent; }
+        
+        .search-icon-left { color: #9aa0a6; font-size: 18px; }
+        .mic-icon-right { color: #4285f4; font-size: 20px; cursor: pointer; }
+
+        .btn-group-google { margin-top: 28px; }
+        .btn-google { background-color: #f8f9fa; border: 1px solid #f8f9fa; border-radius: 4px; color: #3c4043; font-size: 14px; padding: 10px 16px; margin: 4px 6px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-google:hover { border: 1px solid #dadce0; color: #202124; }
+
+        /* Search Results Page Layout */
+        .results-wrapper { max-width: 650px; margin-left: 160px; padding: 20px 0; }
+        @media (max-width: 768px) { .results-wrapper { margin-left: 0; padding: 15px; } }
+        .ai-card { background: #f8f9fa; border-left: 4px solid #1a73e8; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+        .result-card { margin-bottom: 28px; word-break: break-word; }
+        .result-url { color: #202124; font-size: 12px; margin-bottom: 4px; line-height: 1.3; }
+        .result-title { color: #1a0dab; text-decoration: none; font-size: 20px; font-weight: 400; line-height: 1.3; display: block; }
         .result-title:hover { text-decoration: underline; }
-        .result-url { color: #202124; font-size: 13px; margin-bottom: 2px; }
-        .result-snippet { color: #4d5156; font-size: 14px; line-height: 1.58; }
-        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #fafafa; border-bottom: 1px solid #eee; flex-wrap: wrap; gap: 10px; }
-        .creator-badge { font-size: 13px; font-weight: 600; color: #444; }
-        .user-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .result-snippet { color: #4d5156; font-size: 14px; line-height: 1.58; margin-top: 4px; }
         .social-btn { width: 100%; border-radius: 20px; font-weight: 500; margin-bottom: 10px; padding: 10px; text-decoration: none; display: inline-block; }
     </style>
 </head>
@@ -148,39 +164,38 @@ def home():
 
     if user_logged:
         nav_links = f'''
-            <span class="text-secondary small">👤 <b>{username}</b></span> 
-            <a href="/my_history" class="btn btn-outline-secondary btn-sm ms-2">📜 History</a>
+            <span class="user-email-badge" title="{username}">👤 {username}</span> 
+            <a href="/my_history" class="btn btn-outline-secondary btn-sm ms-1">History</a>
             <a href="/logout_verify" class="btn btn-outline-danger btn-sm ms-1">Logout</a>
         '''
     else:
-        nav_links = '<a href="/user_login" class="btn btn-outline-primary btn-sm me-1">Login</a> <a href="/user_signup" class="btn btn-primary btn-sm">Sign Up</a>'
+        nav_links = '<a href="/user_login" class="btn btn-primary btn-sm px-3" style="border-radius:4px;">Sign in</a>'
 
-    top_header = f"""
-    <div class="top-bar">
-        <div class="creator-badge">🚀 Created by <b>Aman Giri</b></div>
-        <div class="user-nav">{nav_links}</div>
+    return HTML_HEADER + f"""
+    <div class="google-header">
+        <div class="creator-info">🚀 Created by <b>Aman Giri</b></div>
+        <div class="top-right-nav">{nav_links}</div>
     </div>
-    """
 
-    return HTML_HEADER + top_header + f"""
-    <div class="container text-center mt-4 pt-2">
-        <div class="bharat-logo mb-2">
-            <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
+    <div class="main-container">
+        <div class="bharat-logo">
+            <span style="color:#4285F4">B</span><span style="color:#EA4335">h</span><span style="color:#FBBC05">a</span><span style="color:#4285F4">r</span><span style="color:#34A853">a</span><span style="color:#EA4335">t</span>
         </div>
-        <p class="text-muted mb-4">India's Safe & Educational AI Search Engine 🇮🇳</p>
+        <p class="text-muted small mt-1 mb-4">India's Safe & Educational AI Search Engine 🇮🇳</p>
 
-        <form action="/search" method="GET" id="searchForm" class="search-box-container mb-4">
-            <i class="bi bi-search search-icon"></i>
-            <input type="text" name="q" id="searchInput" class="form-control search-input" placeholder="Search books, science, history or concepts..." required autocomplete="off">
-            <i class="bi bi-mic-fill mic-icon" onclick="startVoiceSearch()" title="Search by voice"></i>
-            
-            <div class="mt-4">
-                <button type="submit" class="btn btn-light border px-4 py-2 me-2 text-secondary">Bharat Search</button>
-            </div>
-        </form>
-
-        <div class="mt-5">
-            <a href="/admin_login" class="text-muted small text-decoration-none">🔒 Admin Portal Login</a>
+        <div class="search-wrapper">
+            <form action="/search" method="GET" id="searchForm">
+                <div class="search-box">
+                    <i class="bi bi-search search-icon-left"></i>
+                    <input type="text" name="q" id="searchInput" placeholder="" required autocomplete="off">
+                    <i class="bi bi-mic-fill mic-icon-right" onclick="startVoiceSearch()" title="Search by voice"></i>
+                </div>
+                
+                <div class="btn-group-google">
+                    <button type="submit" class="btn-google">Bharat Search</button>
+                    <a href="/admin_login" class="btn-google text-decoration-none">Admin Portal</a>
+                </div>
+            </form>
         </div>
     </div>
     """ + HTML_FOOTER
@@ -193,7 +208,7 @@ def search():
 
     if not is_safe_query(query):
         return HTML_HEADER + f"""
-        <div class="results-wrapper pt-5 text-center">
+        <div class="container pt-5 text-center">
             <div class="alert alert-danger p-4 shadow-sm" style="max-width: 600px; margin: 0 auto;">
                 <h4 class="alert-heading">🚫 Safe Search Blocked</h4>
                 <p>Aapne jo query search ki hai wo <b>Bharat Safe Search Policy</b> ke khilaf hai.</p>
@@ -239,24 +254,25 @@ def search():
     ai_summary = f"✨ <b>Bharat Educational Overview:</b> Verified insights for <b>{query}</b>."
 
     header_nav = f"""
-    <div class="border-bottom pt-3 px-3">
-        <div class="d-flex align-items-center mb-3 flex-wrap">
-            <a href="/" class="bharat-logo text-decoration-none me-4 mb-2 mb-md-0" style="font-size: 30px;">
-                <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
+    <div class="border-bottom py-2 px-3">
+        <div class="d-flex align-items-center flex-wrap gap-3">
+            <a href="/" class="bharat-logo text-decoration-none me-3" style="font-size: 28px;">
+                <span style="color:#4285F4">B</span><span style="color:#EA4335">h</span><span style="color:#FBBC05">a</span><span style="color:#4285F4">r</span><span style="color:#34A853">a</span><span style="color:#EA4335">t</span>
             </a>
-            <form action="/search" method="GET" id="searchForm" class="search-box-container ms-0 flex-grow-1" style="max-width: 600px;">
-                <i class="bi bi-search search-icon"></i>
-                <input type="text" name="q" id="searchInput" value="{query}" class="form-control search-input" required>
-                <i class="bi bi-mic-fill mic-icon" onclick="startVoiceSearch()"></i>
+            <form action="/search" method="GET" id="searchForm" class="flex-grow-1" style="max-width: 600px;">
+                <div class="search-box" style="height: 40px;">
+                    <input type="text" name="q" id="searchInput" value="{query}" required>
+                    <i class="bi bi-mic-fill mic-icon-right" onclick="startVoiceSearch()"></i>
+                </div>
             </form>
         </div>
     </div>
     
-    <div class="results-wrapper pt-4">
+    <div class="results-wrapper">
         <div class="ai-card">
-            <div class="text-dark" style="font-size: 15px; line-height: 1.6;">{ai_summary}</div>
+            <div class="text-dark" style="font-size: 14px; line-height: 1.6;">{ai_summary}</div>
         </div>
-        <p class="text-muted small mb-4">Educational database records for: <b>{query}</b></p>
+        <p class="text-muted small mb-4">About {len(rows)} educational results for: <b>{query}</b></p>
     """
 
     body_results = ""
@@ -268,7 +284,7 @@ def search():
             <div class="result-card">
                 <div class="result-url">{url}</div>
                 <a href="{url}" target="_blank" class="result-title">{title}</a>
-                <div class="result-snippet mt-1">{snippet}</div>
+                <div class="result-snippet">{snippet}</div>
             </div>
             """
     else:
