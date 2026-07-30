@@ -549,7 +549,7 @@ def owner_dashboard():
     </div>
     """ + get_footer('home')
 
-# 🗑️ Owner Delete Admin/User Account Route
+# 🗑️ Owner Delete Admin/User Account Route (साथ में लाइव सेशन भी खत्म होगा)
 @app.route("/delete_account/<int:user_id>")
 def delete_account(user_id):
     if not session.get('owner_logged'):
@@ -569,7 +569,7 @@ def delete_account(user_id):
         cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()
 
-        # If deleted user was active in session, log them out
+        # If deleted user was active in session, log them out instantly
         if target_role == 'admin' and session.get('admin_username') == target_username:
             session.pop('admin_logged', None)
             session.pop('admin_username', None)
@@ -660,4 +660,41 @@ def user_login():
                     <div class="small text-muted mb-1">Logged in as</div>
                     <div class="fw-bold text-dark fs-5">{username}</div>
                 </div>
-                <a href="/confirm_logout?type=user" class="btn btn-
+                <a href="/confirm_logout?type=user" class="btn btn-outline-danger w-100" style="border-radius: 20px;">Logout</a>
+            </div>
+        </div>
+        """ + get_footer('account')
+
+    error = ""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ? AND role = 'user'", (username, password))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            session.permanent = True
+            session['user_logged'] = True
+            session['username'] = username
+            return redirect("/")
+        else:
+            error = "Invalid Credentials! Contact Owner to get an account."
+
+    return HTML_HEADER + f"""
+    <div class="container mt-5" style="max-width: 400px;">
+        <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
+            <h4 class="mb-3 text-center">User Login</h4>
+            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
+            <input type="text" name="username" class="form-control mb-3" placeholder="Username" required>
+            <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
+            <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Login</button>
+        </form>
+    </div>
+    """ + get_footer('account')
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
