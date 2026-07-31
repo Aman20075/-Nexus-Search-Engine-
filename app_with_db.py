@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 import os
+from urllib.parse import urlparse, quote_plus
 
 # 🤖 Safe Gemini AI Client Setup
 try:
@@ -33,6 +34,39 @@ def is_safe_query(query):
             return False
     return True
 
+# 🕷️ Advance Web Crawler & Favicon Helper
+def crawl_website_metadata(url):
+    try:
+        parsed_url = urlparse(url)
+        domain = f"{parsed_url.scheme}://{parsed_url.netloc}"
+        favicon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        response = requests.get(url, headers=headers, timeout=5)
+        
+        title = ""
+        snippet = ""
+        
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            if soup.title and soup.title.string:
+                title = soup.title.string.strip()
+            meta_desc = soup.find('meta', attrs={'name': 'description'}) or soup.find('meta', attrs={'property': 'og:description'})
+            if meta_desc and meta_desc.get('content'):
+                snippet = meta_desc['content'].strip()
+
+        if not title:
+            title = parsed_url.netloc
+        if not snippet:
+            snippet = f"Explore {parsed_url.netloc} for official links, updates and features."
+
+        return title, snippet, favicon_url
+    except Exception:
+        parsed_url = urlparse(url)
+        domain = f"{parsed_url.scheme}://{parsed_url.netloc}" if parsed_url.netloc else url
+        favicon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+        return parsed_url.netloc or url, "Instant web result from Bharat Search Engine.", favicon_url
+
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -43,10 +77,16 @@ def init_db():
             title TEXT,
             url TEXT,
             snippet TEXT,
-            category TEXT
+            category TEXT,
+            logo_url TEXT
         )
     ''')
     
+    cursor.execute("PRAGMA table_info(local_search_index)")
+    columns = [column[1] for column in cursor.fetchall()]
+    if 'logo_url' not in columns:
+        cursor.execute("ALTER TABLE local_search_index ADD COLUMN logo_url TEXT")
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,48 +116,44 @@ HTML_HEADER = """<!DOCTYPE html>
     <title>Bharat AI Search Engine</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1a73e8">
-    
     <style>
         html, body { height: 100%; margin: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; touch-action: manipulation; }
         body { padding-bottom: 75px; }
-        
         .top-bar-chrome { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #ffffff; }
         .creator-badge { font-size: 13px; font-weight: 600; color: #5f6368; }
-        
         .top-right-actions { display: flex; align-items: center; gap: 8px; }
-        
         .dots-btn, .account-btn { background: none; border: none; font-size: 22px; color: #444746; cursor: pointer; padding: 4px 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; }
         .dots-btn:hover, .account-btn:hover { background: #f1f3f4; color: #1a73e8; }
-        
         .chrome-menu { border-radius: 20px 0 0 20px; width: 280px !important; }
         .chrome-menu-item { display: flex; align-items: center; gap: 16px; padding: 12px 16px; font-size: 15px; color: #1f1f1f; text-decoration: none; border-radius: 12px; font-weight: 400; }
         .chrome-menu-item:hover { background: #f0f4f9; }
         .chrome-menu-item i { font-size: 18px; color: #444746; }
         .chrome-divider { height: 1px; background: #e0e4e9; margin: 8px 0; }
-        
         .bharat-logo { font-size: 52px; font-weight: 700; letter-spacing: -1.5px; margin-top: 20px; }
-        
         .google-search-container { max-width: 580px; width: 92%; margin: 24px auto 16px auto; position: relative; }
         .google-input { height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 52px; border: 1px solid #dfe1e5; background: #ffffff; box-shadow: 0 1px 6px rgba(32,33,36,0.12); font-size: 16px; }
         .google-input:focus { outline: none; border-color: #4285f4; box-shadow: 0 2px 8px rgba(32,33,36,0.2); }
         .search-left-icon { position: absolute; left: 18px; top: 17px; color: #9aa0a6; font-size: 18px; }
         .mic-btn { position: absolute; right: 18px; top: 15px; background: none; border: none; color: #4285f4; font-size: 20px; cursor: pointer; }
-
+        
         .search-filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid #e0e0e0; margin-bottom: 16px; }
-        .filter-chip { padding: 6px 16px; border-radius: 20px; background: #f1f3f4; color: #3c4043; text-decoration: none; font-size: 14px; white-space: nowrap; font-weight: 500; }
+        .filter-chip { padding: 6px 16px; border-radius: 20px; background: #f1f3f4; color: #3c4043; text-decoration: none; font-size: 14px; white-space: nowrap; font-weight: 500; display: flex; align-items: center; gap: 6px; }
         .filter-chip.active { background: #e8f0fe; color: #1967d2; border: 1px solid #d2e3fc; }
+        
+        .results-wrapper { max-width: 650px; margin: 0 auto; padding: 0 15px; }
+        .result-card { margin-bottom: 24px; }
+        .result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+        .site-logo { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; background: #f1f3f4; border: 1px solid #e0e0e0; }
+        .result-url { font-size: 13px; color: #202124; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .result-title { font-size: 18px; color: #1a0dab; font-weight: 500; text-decoration: none; }
+        .result-title:hover { text-decoration: underline; }
+        .result-snippet { font-size: 14px; color: #4d5156; line-height: 1.58; }
 
-        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; transition: transform 0.2s ease-in-out; }
-        .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; cursor: pointer; }
+        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; }
+        .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
         .nav-link-item.active { color: #1a73e8; font-weight: 600; }
-
-        /* Hide navigation bar when keyboard opens */
-        .keyboard-open .bottom-nav-bar { display: none !important; }
     </style>
 </head>
 <body>
@@ -142,37 +178,10 @@ function startVoiceSearch() {{
     }};
     recognition.start();
 }}
-
 function triggerSearchFocus() {{
     const input = document.getElementById('searchInput');
-    if (input) {{
-        input.focus();
-    }} else {{
-        window.location.href = "/?focus=1";
-    }}
+    if (input) {{ input.focus(); }} else {{ window.location.href = "/?focus=1"; }}
 }}
-
-document.addEventListener('focusin', function(e) {{
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
-        document.body.classList.add('keyboard-open');
-    }}
-}});
-
-document.addEventListener('focusout', function(e) {{
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
-        document.body.classList.remove('keyboard-open');
-    }}
-}});
-
-window.addEventListener('DOMContentLoaded', () => {{
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('focus') === '1') {{
-        const input = document.getElementById('searchInput');
-        if (input) {{
-            input.focus();
-        }}
-    }}
-}});
 </script>
 </body>
 </html>
@@ -227,11 +236,11 @@ def home():
         <div class="bharat-logo mb-1">
             <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
         </div>
-        <p class="text-muted small mb-3">India's Instant Category & Voice Search Engine 🇮🇳</p>
+        <p class="text-muted small mb-3">India's Instant AI Search Engine 🇮🇳</p>
 
         <form action="/search" method="GET" id="searchForm" class="google-search-container">
             <i class="bi bi-search search-left-icon"></i>
-            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Search Web, Apps, Games, Books..." required autocomplete="off">
+            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Ask AI or search Web, Images, Videos..." required autocomplete="off">
             <button type="button" onclick="startVoiceSearch()" class="mic-btn" title="Search by Voice"><i class="bi bi-mic-fill"></i></button>
         </form>
     </div>
@@ -265,19 +274,11 @@ def search():
         conn.commit()
         conn.close()
 
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    if category == 'all':
-        cursor.execute("SELECT title, url, snippet, category FROM local_search_index WHERE title LIKE ? OR snippet LIKE ?", (f'%{query}%', f'%{query}%'))
-    else:
-        cursor.execute("SELECT title, url, snippet, category FROM local_search_index WHERE category = ? AND (title LIKE ? OR snippet LIKE ?)", (category, f'%{query}%', f'%{query}%'))
-    rows = cursor.fetchall()
-    conn.close()
-
+    # 🤖 AI Instant Answer Logic
     ai_response_html = ""
-    if ai_client and category in ['all', 'web']:
+    if ai_client and category in ['all', 'ai']:
         try:
-            ai_prompt = f"Provide a crisp, clear overview for: '{query}'"
+            ai_prompt = f"Answer the user query clearly in short (Hindi/English mix): '{query}'"
             response = ai_client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=ai_prompt,
@@ -285,20 +286,22 @@ def search():
             ai_text = response.text if response and response.text else ""
             if ai_text:
                 ai_response_html = f"""
-                <div class="ai-card shadow-sm">
-                    <h6 class="text-primary fw-bold mb-2"><i class="bi bi-stars"></i> Bharat AI Overview</h6>
-                    <p class="mb-0 text-dark small" style="line-height: 1.6;">{ai_text}</p>
+                <div class="p-3 mb-4 rounded-4 bg-light border border-primary-subtle shadow-sm">
+                    <h6 class="text-primary fw-bold mb-2"><i class="bi bi-stars"></i> Bharat AI Answer</h6>
+                    <p class="mb-0 text-dark small" style="line-height: 1.6; white-space: pre-wrap;">{ai_text}</p>
                 </div>
                 """
         except Exception:
             pass
 
+    # 📍 Google Style Search Filter Chips
     chips = f"""
     <div class="search-filters">
         <a href="/search?q={query}&cat=all" class="filter-chip {'active' if category == 'all' else ''}"><i class="bi bi-search"></i> All</a>
-        <a href="/search?q={query}&cat=web" class="filter-chip {'active' if category == 'web' else ''}"><i class="bi bi-globe"></i> Web</a>
+        <a href="/search?q={query}&cat=ai" class="filter-chip {'active' if category == 'ai' else ''}"><i class="bi bi-stars"></i> AI Answer</a>
+        <a href="/search?q={query}&cat=images" class="filter-chip {'active' if category == 'images' else ''}"><i class="bi bi-image"></i> Images</a>
+        <a href="/search?q={query}&cat=videos" class="filter-chip {'active' if category == 'videos' else ''}"><i class="bi bi-play-btn"></i> Videos</a>
         <a href="/search?q={query}&cat=apps" class="filter-chip {'active' if category == 'apps' else ''}"><i class="bi bi-phone"></i> Apps</a>
-        <a href="/search?q={query}&cat=games" class="filter-chip {'active' if category == 'games' else ''}"><i class="bi bi-controller"></i> Games</a>
         <a href="/search?q={query}&cat=books" class="filter-chip {'active' if category == 'books' else ''}"><i class="bi bi-book"></i> Books</a>
     </div>
     """
@@ -319,30 +322,86 @@ def search():
     </div>
     <div class="results-wrapper">
         {chips}
-        {ai_response_html}
+        {ai_response_html if category in ['all', 'ai'] else ''}
     """
 
     body_results = ""
-    if rows:
-        for row in rows:
-            title, url, snippet, cat = row[0], row[1], row[2], row[3].upper()
-            body_results += f"""
-            <div class="result-card">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="result-url">{url}</div>
-                    <span class="badge bg-secondary" style="font-size: 10px;">{cat}</span>
-                </div>
-                <a href="{url}" target="_blank" class="result-title">{title}</a>
-                <div class="result-snippet mt-1">{snippet}</div>
-            </div>
-            """
-    else:
+
+    # 🖼️ Images Tab Logic
+    if category == 'images':
+        encoded_q = quote_plus(query)
         body_results += f"""
-        <div class="text-center text-muted p-5 bg-light rounded-4 border">
-            <h5>No instant records found for "{query}" in [{category.upper()}].</h5>
-            <p class="small text-muted">Owner Dashboard me jaakar is topic ka content add karein!</p>
+        <div class="row g-2">
+            <div class="col-6 col-md-4">
+                <a href="https://www.google.com/search?tbm=isch&q={encoded_q}" target="_blank" class="card text-decoration-none shadow-sm border-0">
+                    <img src="https://picsum.photos/300/200?random=1" class="card-img-top rounded-3" alt="Image">
+                    <div class="card-body p-2 text-center"><span class="small text-dark fw-bold">{query} Image 1</span></div>
+                </a>
+            </div>
+            <div class="col-6 col-md-4">
+                <a href="https://www.google.com/search?tbm=isch&q={encoded_q}" target="_blank" class="card text-decoration-none shadow-sm border-0">
+                    <img src="https://picsum.photos/300/200?random=2" class="card-img-top rounded-3" alt="Image">
+                    <div class="card-body p-2 text-center"><span class="small text-dark fw-bold">{query} Image 2</span></div>
+                </a>
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="https://www.google.com/search?tbm=isch&q={encoded_q}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill">View All Images on Web 🖼️</a>
         </div>
         """
+
+    # 🎬 Videos Tab Logic
+    elif category == 'videos':
+        encoded_q = quote_plus(query)
+        body_results += f"""
+        <div class="d-flex flex-column gap-3">
+            <div class="p-3 border rounded-3 bg-light d-flex align-items-center gap-3">
+                <i class="bi bi-youtube text-danger display-6"></i>
+                <div>
+                    <h6 class="mb-1"><a href="https://www.youtube.com/results?search_query={encoded_q}" target="_blank" class="text-decoration-none text-dark fw-bold">Watch '{query}' on YouTube</a></h6>
+                    <p class="small text-muted mb-0">Search videos & tutorials on YouTube.</p>
+                </div>
+            </div>
+        </div>
+        """
+
+    # 🌐 Local DB & Web Index Results
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        if category == 'all':
+            cursor.execute("SELECT title, url, snippet, category, logo_url FROM local_search_index WHERE title LIKE ? OR snippet LIKE ?", (f'%{query}%', f'%{query}%'))
+        else:
+            cursor.execute("SELECT title, url, snippet, category, logo_url FROM local_search_index WHERE category = ? AND (title LIKE ? OR snippet LIKE ?)", (category, f'%{query}%', f'%{query}%'))
+        rows = cursor.fetchall()
+        conn.close()
+
+        if rows:
+            for row in rows:
+                title, url, snippet, cat, logo_url = row[0], row[1], row[2], row[3].upper(), row[4]
+                if not logo_url:
+                    parsed = urlparse(url)
+                    domain = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else url
+                    logo_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+
+                body_results += f"""
+                <div class="result-card">
+                    <div class="result-header">
+                        <img src="{logo_url}" class="site-logo" alt="Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1006/1006771.png'">
+                        <span class="result-url">{url}</span>
+                        <span class="badge bg-secondary ms-auto" style="font-size: 10px;">{cat}</span>
+                    </div>
+                    <a href="{url}" target="_blank" class="result-title">{title}</a>
+                    <div class="result-snippet mt-1">{snippet}</div>
+                </div>
+                """
+        elif category != 'ai':
+            body_results += f"""
+            <div class="text-center text-muted p-4 bg-light rounded-4 border">
+                <h6>No indexed pages found for "{query}".</h6>
+                <p class="small text-muted mb-0">Upar AI Answer check karein ya Owner Dashboard se link add karein!</p>
+            </div>
+            """
 
     body_results += "</div>"
     return HTML_HEADER + header_search + body_results + get_footer('search')
@@ -376,180 +435,62 @@ def account():
     </div>
     """ + get_footer('home')
 
-# 🏃 Flying Sikh: Milkha Running Game Route
+# 🏃 Flying Sikh Game Route
 @app.route("/games")
 def games():
     return HTML_HEADER + """
     <div class="container text-center mt-3" style="max-width: 500px;">
         <h4 class="mb-1 text-primary fw-bold">🏃 Milkha Singh: Flying Sikh Run</h4>
         <p class="text-muted small mb-2">Hurdles (🧱) se bachein aur Energy Milk (🥛) collect karein!</p>
-        
         <div class="bg-white p-3 rounded-4 shadow-sm border position-relative">
             <canvas id="runnerCanvas" width="320" height="200" style="background: linear-gradient(to bottom, #87CEEB 70%, #d2b48c 70%); border-radius:12px; border:2px solid #ccc;"></canvas>
-            
             <div class="d-flex justify-content-between align-items-center mt-3 px-2">
-                <button class="btn btn-warning btn-lg fw-bold w-100 py-3 shadow-sm" onclick="jump()" style="border-radius: 15px;">
-                    🚀 JUMP (TAP / SPACE)
-                </button>
+                <button class="btn btn-warning btn-lg fw-bold w-100 py-3 shadow-sm" onclick="jump()" style="border-radius: 15px;">🚀 JUMP (TAP / SPACE)</button>
             </div>
         </div>
-
-        <div class="mt-3 mb-4">
-            <a href="/" class="btn btn-outline-secondary btn-sm" style="border-radius: 20px;">Back to Home</a>
-        </div>
+        <div class="mt-3 mb-4"><a href="/" class="btn btn-outline-secondary btn-sm" style="border-radius: 20px;">Back to Home</a></div>
     </div>
-
     <script>
         const canvas = document.getElementById("runnerCanvas");
         const ctx = canvas.getContext("2d");
-
         let milkha = { x: 30, y: 110, width: 25, height: 30, dy: 0, gravity: 0.8, isJumping: false };
-        let obstacles = [];
-        let milks = [];
-        let score = 0;
-        let gameFrame = 0;
-        let gameOver = false;
-
-        function jump() {
-            if (!milkha.isJumping && !gameOver) {
-                milkha.dy = -12;
-                milkha.isJumping = true;
-            } else if (gameOver) {
-                resetGame();
-            }
-        }
-
-        document.addEventListener("keydown", function(e) {
-            if (e.code === "Space" || e.code === "ArrowUp") {
-                jump();
-            }
-        });
-
-        function resetGame() {
-            milkha.y = 110;
-            milkha.dy = 0;
-            milkha.isJumping = false;
-            obstacles = [];
-            milks = [];
-            score = 0;
-            gameFrame = 0;
-            gameOver = false;
-            loop();
-        }
-
+        let obstacles = [], milks = [], score = 0, gameFrame = 0, gameOver = false;
+        function jump() { if (!milkha.isJumping && !gameOver) { milkha.dy = -12; milkha.isJumping = true; } else if (gameOver) { resetGame(); } }
+        document.addEventListener("keydown", function(e) { if (e.code === "Space" || e.code === "ArrowUp") jump(); });
+        function resetGame() { milkha.y = 110; milkha.dy = 0; milkha.isJumping = false; obstacles = []; milks = []; score = 0; gameFrame = 0; gameOver = false; loop(); }
         function update() {
             if (gameOver) return;
-
-            gameFrame++;
-            milkha.dy += milkha.gravity;
-            milkha.y += milkha.dy;
-
-            if (milkha.y >= 110) {
-                milkha.y = 110;
-                milkha.dy = 0;
-                milkha.isJumping = false;
-            }
-
-            // Spawn Obstacles
-            if (gameFrame % 90 === 0) {
-                obstacles.push({ x: canvas.width, y: 115, width: 20, height: 25 });
-            }
-
-            // Spawn Milk
-            if (gameFrame % 140 === 0) {
-                milks.push({ x: canvas.width, y: 70, width: 20, height: 20 });
-            }
-
-            // Move Obstacles
+            gameFrame++; milkha.dy += milkha.gravity; milkha.y += milkha.dy;
+            if (milkha.y >= 110) { milkha.y = 110; milkha.dy = 0; milkha.isJumping = false; }
+            if (gameFrame % 90 === 0) obstacles.push({ x: canvas.width, y: 115, width: 20, height: 25 });
+            if (gameFrame % 140 === 0) milks.push({ x: canvas.width, y: 70, width: 20, height: 20 });
             for (let i = 0; i < obstacles.length; i++) {
                 obstacles[i].x -= 5;
-
-                // Collision Detection with Obstacle
-                if (
-                    milkha.x < obstacles[i].x + obstacles[i].width &&
-                    milkha.x + milkha.width > obstacles[i].x &&
-                    milkha.y < obstacles[i].y + obstacles[i].height &&
-                    milkha.y + milkha.height > obstacles[i].y
-                ) {
-                    gameOver = true;
-                }
+                if (milkha.x < obstacles[i].x + obstacles[i].width && milkha.x + milkha.width > obstacles[i].x && milkha.y < obstacles[i].y + obstacles[i].height && milkha.y + milkha.height > obstacles[i].y) gameOver = true;
             }
-
-            // Move & Collect Milk
             for (let i = 0; i < milks.length; i++) {
                 milks[i].x -= 5;
-
-                if (
-                    milkha.x < milks[i].x + milks[i].width &&
-                    milkha.x + milkha.width > milks[i].x &&
-                    milkha.y < milks[i].y + milks[i].height &&
-                    milkha.y + milkha.height > milks[i].y
-                ) {
-                    score += 5;
-                    milks.splice(i, 1);
-                    i--;
-                }
+                if (milkha.x < milks[i].x + milks[i].width && milkha.x + milkha.width > milks[i].x && milkha.y < milks[i].y + milks[i].height && milkha.y + milkha.height > milks[i].y) { score += 5; milks.splice(i, 1); i--; }
             }
-
-            // Filter out offscreen elements
-            obstacles = obstacles.filter(o => o.x > -20);
-            milks = milks.filter(m => m.x > -20);
-
+            obstacles = obstacles.filter(o => o.x > -20); milks = milks.filter(m => m.x > -20);
             if (gameFrame % 10 === 0) score += 1;
         }
-
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Ground Track
-            ctx.fillStyle = "#8B4513";
-            ctx.fillRect(0, 140, canvas.width, 60);
-
-            // Finish/Track Lines
-            ctx.fillStyle = "#FFF";
-            ctx.fillRect(0, 142, canvas.width, 3);
-
-            // Milkha (Flying Sikh Runner Character)
-            ctx.font = "26px Arial";
-            ctx.fillText("🏃", milkha.x, milkha.y + 24);
-
-            // Obstacles
+            ctx.fillStyle = "#8B4513"; ctx.fillRect(0, 140, canvas.width, 60);
+            ctx.fillStyle = "#FFF"; ctx.fillRect(0, 142, canvas.width, 3);
+            ctx.font = "26px Arial"; ctx.fillText("🏃", milkha.x, milkha.y + 24);
             ctx.font = "22px Arial";
-            for (let o of obstacles) {
-                ctx.fillText("🧱", o.x, o.y + 20);
-            }
-
-            // Energy Milk
-            for (let m of milks) {
-                ctx.fillText("🥛", m.x, m.y + 18);
-            }
-
-            // Score Display
-            ctx.fillStyle = "#000";
-            ctx.font = "bold 14px Arial";
-            ctx.fillText("Score: " + score, 10, 20);
-
+            for (let o of obstacles) ctx.fillText("🧱", o.x, o.y + 20);
+            for (let m of milks) ctx.fillText("🥛", m.x, m.y + 18);
+            ctx.fillStyle = "#000"; ctx.font = "bold 14px Arial"; ctx.fillText("Score: " + score, 10, 20);
             if (gameOver) {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                ctx.fillStyle = "#FFF";
-                ctx.font = "bold 20px Arial";
-                ctx.fillText("GAME OVER!", 90, 90);
-                ctx.font = "14px Arial";
-                ctx.fillText("Final Score: " + score, 110, 115);
-                ctx.fillText("Tap Jump Button to Restart", 70, 145);
+                ctx.fillStyle = "rgba(0, 0, 0, 0.75)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#FFF"; ctx.font = "bold 20px Arial"; ctx.fillText("GAME OVER!", 90, 90);
+                ctx.font = "14px Arial"; ctx.fillText("Final Score: " + score, 110, 115); ctx.fillText("Tap Jump Button to Restart", 70, 145);
             }
         }
-
-        function loop() {
-            update();
-            draw();
-            if (!gameOver) {
-                requestAnimationFrame(loop);
-            }
-        }
-
+        function loop() { update(); draw(); if (!gameOver) requestAnimationFrame(loop); }
         loop();
     </script>
     """ + get_footer('games')
@@ -558,7 +499,6 @@ def games():
 def my_history():
     if not session.get('user_logged'):
         return redirect("/user_login")
-    
     current_user = session.get('username')
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -568,23 +508,14 @@ def my_history():
 
     history_rows = ""
     for h in history_list:
-        history_rows += f"""
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>🔍 <b>{h[0]}</b></span>
-            <span class="text-muted small">{h[1]}</span>
-        </li>
-        """
+        history_rows += f'<li class="list-group-item d-flex justify-content-between align-items-center"><span>🔍 <b>{h[0]}</b></span><span class="text-muted small">{h[1]}</span></li>'
 
     return HTML_HEADER + f"""
     <div class="container mt-4 mb-5" style="max-width: 600px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center">📜 Search History ({current_user})</h4>
-            <ul class="list-group list-group-flush mb-3">
-                {history_rows if history_rows else '<li class="list-group-item text-center text-muted">No search history found.</li>'}
-            </ul>
-            <div class="text-center">
-                <a href="/" class="btn btn-outline-primary btn-sm" style="border-radius: 20px;">Back to Home</a>
-            </div>
+            <ul class="list-group list-group-flush mb-3">{history_rows if history_rows else '<li class="list-group-item text-center text-muted">No history found.</li>'}</ul>
+            <div class="text-center"><a href="/" class="btn btn-outline-primary btn-sm rounded-pill">Back to Home</a></div>
         </div>
     </div>
     """ + get_footer('history')
@@ -617,8 +548,8 @@ def confirm_logout():
             <h4 class="mb-3 text-center text-danger">🔒 Security Check</h4>
             {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
             <input type="password" name="password" class="form-control mb-3" placeholder="Enter Password to Logout" required>
-            <button type="submit" class="btn btn-danger w-100 mb-2" style="border-radius: 20px;">Confirm Logout</button>
-            <a href="/" class="btn btn-light w-100" style="border-radius: 20px;">Cancel</a>
+            <button type="submit" class="btn btn-danger w-100 mb-2 rounded-pill">Confirm Logout</button>
+            <a href="/" class="btn btn-light w-100 rounded-pill">Cancel</a>
         </form>
     </div>
     """ + get_footer('home')
@@ -640,7 +571,7 @@ def owner_login():
             {f'<div class="alert alert-danger">{error}</div>' if error else ''}
             <input type="text" name="username" class="form-control mb-3" placeholder="Username" required>
             <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
-            <button type="submit" class="btn btn-warning w-100 fw-bold" style="border-radius: 20px;">Login</button>
+            <button type="submit" class="btn btn-warning w-100 fw-bold rounded-pill">Login</button>
         </form>
     </div>
     """ + get_footer('home')
@@ -654,18 +585,25 @@ def owner_dashboard():
     if request.method == 'POST':
         form_type = request.form.get('form_type')
         if form_type == 'add_index':
-            title = request.form.get('title', '').strip()
             url = request.form.get('url', '').strip()
+            title = request.form.get('title', '').strip()
             snippet = request.form.get('snippet', '').strip()
             category = request.form.get('category', 'web').strip()
+            custom_logo = request.form.get('logo_url', '').strip()
             
-            if title and url:
+            if url:
+                c_title, c_snippet, c_logo = crawl_website_metadata(url)
+                final_title = title if title else c_title
+                final_snippet = snippet if snippet else c_snippet
+                final_logo = custom_logo if custom_logo else c_logo
+
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO local_search_index (title, url, snippet, category) VALUES (?, ?, ?, ?)", (title, url, snippet, category))
+                cursor.execute("INSERT INTO local_search_index (title, url, snippet, category, logo_url) VALUES (?, ?, ?, ?, ?)", (final_title, url, final_snippet, category, final_logo))
                 conn.commit()
                 conn.close()
-                message = f"✅ Added to [{category.upper()}] successfully!"
+                message = f"✅ Crawled & Added '{final_title}' successfully!"
+                
         elif form_type == 'add_user':
             new_user = request.form.get('username', '').strip()
             new_pass = request.form.get('password', '').strip()
@@ -689,11 +627,12 @@ def owner_dashboard():
             
             <form method="POST" class="border p-3 rounded-3 mb-4 bg-light">
                 <input type="hidden" name="form_type" value="add_index">
-                <h6 class="text-primary mb-3">⚡ Add Instant Result (Web, Apps, Games, Books)</h6>
+                <h6 class="text-primary mb-2">🕷️ Smart Web Crawler</h6>
                 <div class="row g-2">
-                    <div class="col-md-6"><input type="text" name="title" class="form-control mb-2" placeholder="Title (e.g. Free Fire)" required></div>
-                    <div class="col-md-6"><input type="url" name="url" class="form-control mb-2" placeholder="URL (https://...)" required></div>
-                    <div class="col-md-8"><input type="text" name="snippet" class="form-control mb-2" placeholder="Short description..." required></div>
+                    <div class="col-12"><input type="url" name="url" class="form-control mb-2" placeholder="Website URL (https://...)" required></div>
+                    <div class="col-md-6"><input type="text" name="title" class="form-control mb-2" placeholder="Custom Title (Optional)"></div>
+                    <div class="col-md-6"><input type="url" name="logo_url" class="form-control mb-2" placeholder="Custom Logo URL (Optional)"></div>
+                    <div class="col-md-8"><input type="text" name="snippet" class="form-control mb-2" placeholder="Custom Snippet (Optional)"></div>
                     <div class="col-md-4">
                         <select name="category" class="form-select mb-2">
                             <option value="web">Web</option>
@@ -703,7 +642,7 @@ def owner_dashboard():
                         </select>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 mt-2">Add to Instant Database</button>
+                <button type="submit" class="btn btn-primary w-100 mt-2">Crawl & Save</button>
             </form>
 
             <form method="POST" class="row g-2 border p-3 rounded-3 mb-4">
@@ -715,9 +654,7 @@ def owner_dashboard():
                 <div class="col-md-2"><button type="submit" class="btn btn-success w-100">Add</button></div>
             </form>
 
-            <div class="text-center">
-                <a href="/" class="btn btn-outline-secondary btn-sm" style="border-radius: 20px;">Back to Home</a>
-            </div>
+            <div class="text-center"><a href="/" class="btn btn-outline-secondary btn-sm rounded-pill">Back to Home</a></div>
         </div>
     </div>
     """ + get_footer('home')
@@ -749,7 +686,7 @@ def user_login():
             {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
             <input type="text" name="username" class="form-control mb-3" placeholder="Username" required>
             <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
-            <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Login</button>
+            <button type="submit" class="btn btn-primary w-100 rounded-pill">Login</button>
         </form>
     </div>
     """ + get_footer('home')
