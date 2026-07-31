@@ -116,12 +116,6 @@ HTML_HEADER = """<!DOCTYPE html>
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
         .nav-link-item.active { color: #1a73e8; font-weight: 600; }
 
-        /* 🎮 Mobile Touch Controls Style */
-        .dpad-container { display: flex; flex-direction: column; align-items: center; margin-top: 15px; }
-        .dpad-row { display: flex; gap: 10px; margin: 3px 0; }
-        .dpad-btn { width: 55px; height: 55px; font-size: 22px; border-radius: 50%; border: none; background: #1a73e8; color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-        .dpad-btn:active { background: #0b57d0; transform: scale(0.95); }
-
         /* Hide navigation bar when keyboard opens */
         .keyboard-open .bottom-nav-bar { display: none !important; }
     </style>
@@ -149,7 +143,6 @@ function startVoiceSearch() {{
     recognition.start();
 }}
 
-// 🔍 Search Button click par Keyboard open karne ka logic
 function triggerSearchFocus() {{
     const input = document.getElementById('searchInput');
     if (input) {{
@@ -159,7 +152,6 @@ function triggerSearchFocus() {{
     }}
 }}
 
-// ⌨️ Keyboard open hone par Bottom Navigation ko Hide karne ka logic
 document.addEventListener('focusin', function(e) {{
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
         document.body.classList.add('keyboard-open');
@@ -172,7 +164,6 @@ document.addEventListener('focusout', function(e) {{
     }}
 }});
 
-// Auto focus if redirected from another page
 window.addEventListener('DOMContentLoaded', () => {{
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('focus') === '1') {{
@@ -222,7 +213,7 @@ def home():
             {user_info}
             <a href="/" class="chrome-menu-item"><i class="bi bi-plus-square"></i> New tab</a>
             <a href="{account_url}" class="chrome-menu-item"><i class="bi bi-person-circle"></i> My Account</a>
-            <a href="/games" class="chrome-menu-item"><i class="bi bi-controller"></i> Play Snake Game</a>
+            <a href="/games" class="chrome-menu-item"><i class="bi bi-controller"></i> Play Milkha Runner</a>
             <a href="/my_history" class="chrome-menu-item"><i class="bi bi-clock-history"></i> History</a>
             <div class="chrome-divider"></div>
             {login_logout}
@@ -385,100 +376,181 @@ def account():
     </div>
     """ + get_footer('home')
 
-# 🐍 Built-in Snake Game Route
+# 🏃 Flying Sikh: Milkha Running Game Route
 @app.route("/games")
 def games():
     return HTML_HEADER + """
-    <div class="container text-center mt-3">
-        <h4 class="mb-2">🎮 Bharat Arcade: Snake Game Pro</h4>
-        <div class="bg-white p-2 rounded-4 shadow-sm d-inline-block border">
-            <canvas id="snakeCanvas" width="280" height="280" style="background:#111; border-radius:10px;"></canvas>
+    <div class="container text-center mt-3" style="max-width: 500px;">
+        <h4 class="mb-1 text-primary fw-bold">🏃 Milkha Singh: Flying Sikh Run</h4>
+        <p class="text-muted small mb-2">Hurdles (🧱) se bachein aur Energy Milk (🥛) collect karein!</p>
+        
+        <div class="bg-white p-3 rounded-4 shadow-sm border position-relative">
+            <canvas id="runnerCanvas" width="320" height="200" style="background: linear-gradient(to bottom, #87CEEB 70%, #d2b48c 70%); border-radius:12px; border:2px solid #ccc;"></canvas>
             
-            <div class="dpad-container">
-                <div class="dpad-row">
-                    <button class="dpad-btn" onclick="setDir('UP')"><i class="bi bi-caret-up-fill"></i></button>
-                </div>
-                <div class="dpad-row">
-                    <button class="dpad-btn" onclick="setDir('LEFT')"><i class="bi bi-caret-left-fill"></i></button>
-                    <button class="dpad-btn" onclick="setDir('DOWN')"><i class="bi bi-caret-down-fill"></i></button>
-                    <button class="dpad-btn" onclick="setDir('RIGHT')"><i class="bi bi-caret-right-fill"></i></button>
-                </div>
+            <div class="d-flex justify-content-between align-items-center mt-3 px-2">
+                <button class="btn btn-warning btn-lg fw-bold w-100 py-3 shadow-sm" onclick="jump()" style="border-radius: 15px;">
+                    🚀 JUMP (TAP / SPACE)
+                </button>
             </div>
         </div>
+
         <div class="mt-3 mb-4">
-            <a href="/" class="btn btn-outline-primary btn-sm" style="border-radius: 20px;">Back to Home</a>
+            <a href="/" class="btn btn-outline-secondary btn-sm" style="border-radius: 20px;">Back to Home</a>
         </div>
     </div>
-    <script>
-        const canvas = document.getElementById("snakeCanvas");
-        const ctx = canvas.getContext("2d");
-        let box = 20;
-        let snake = [{x: 7 * box, y: 7 * box}];
-        let food = {x: Math.floor(Math.random() * 14) * box, y: Math.floor(Math.random() * 14) * box};
-        let score = 0;
-        let d = "RIGHT";
 
-        document.addEventListener("keydown", direction);
-        function direction(event) {
-            if(event.keyCode == 37 && d != "RIGHT") d = "LEFT";
-            else if(event.keyCode == 38 && d != "DOWN") d = "UP";
-            else if(event.keyCode == 39 && d != "LEFT") d = "RIGHT";
-            else if(event.keyCode == 40 && d != "UP") d = "DOWN";
+    <script>
+        const canvas = document.getElementById("runnerCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let milkha = { x: 30, y: 110, width: 25, height: 30, dy: 0, gravity: 0.8, isJumping: false };
+        let obstacles = [];
+        let milks = [];
+        let score = 0;
+        let gameFrame = 0;
+        let gameOver = false;
+
+        function jump() {
+            if (!milkha.isJumping && !gameOver) {
+                milkha.dy = -12;
+                milkha.isJumping = true;
+            } else if (gameOver) {
+                resetGame();
+            }
         }
 
-        function setDir(dir) {
-            if(dir == "LEFT" && d != "RIGHT") d = "LEFT";
-            if(dir == "UP" && d != "DOWN") d = "UP";
-            if(dir == "RIGHT" && d != "LEFT") d = "RIGHT";
-            if(dir == "DOWN" && d != "UP") d = "DOWN";
+        document.addEventListener("keydown", function(e) {
+            if (e.code === "Space" || e.code === "ArrowUp") {
+                jump();
+            }
+        });
+
+        function resetGame() {
+            milkha.y = 110;
+            milkha.dy = 0;
+            milkha.isJumping = false;
+            obstacles = [];
+            milks = [];
+            score = 0;
+            gameFrame = 0;
+            gameOver = false;
+            loop();
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            gameFrame++;
+            milkha.dy += milkha.gravity;
+            milkha.y += milkha.dy;
+
+            if (milkha.y >= 110) {
+                milkha.y = 110;
+                milkha.dy = 0;
+                milkha.isJumping = false;
+            }
+
+            // Spawn Obstacles
+            if (gameFrame % 90 === 0) {
+                obstacles.push({ x: canvas.width, y: 115, width: 20, height: 25 });
+            }
+
+            // Spawn Milk
+            if (gameFrame % 140 === 0) {
+                milks.push({ x: canvas.width, y: 70, width: 20, height: 20 });
+            }
+
+            // Move Obstacles
+            for (let i = 0; i < obstacles.length; i++) {
+                obstacles[i].x -= 5;
+
+                // Collision Detection with Obstacle
+                if (
+                    milkha.x < obstacles[i].x + obstacles[i].width &&
+                    milkha.x + milkha.width > obstacles[i].x &&
+                    milkha.y < obstacles[i].y + obstacles[i].height &&
+                    milkha.y + milkha.height > obstacles[i].y
+                ) {
+                    gameOver = true;
+                }
+            }
+
+            // Move & Collect Milk
+            for (let i = 0; i < milks.length; i++) {
+                milks[i].x -= 5;
+
+                if (
+                    milkha.x < milks[i].x + milks[i].width &&
+                    milkha.x + milkha.width > milks[i].x &&
+                    milkha.y < milks[i].y + milks[i].height &&
+                    milkha.y + milkha.height > milks[i].y
+                ) {
+                    score += 5;
+                    milks.splice(i, 1);
+                    i--;
+                }
+            }
+
+            // Filter out offscreen elements
+            obstacles = obstacles.filter(o => o.x > -20);
+            milks = milks.filter(m => m.x > -20);
+
+            if (gameFrame % 10 === 0) score += 1;
         }
 
         function draw() {
-            ctx.fillStyle = "#111";
-            ctx.fillRect(0, 0, 280, 280);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            for(let i = 0; i < snake.length; i++) {
-                ctx.fillStyle = (i == 0) ? "#138808" : "#FF9933";
-                ctx.fillRect(snake[i].x, snake[i].y, box, box);
+            // Ground Track
+            ctx.fillStyle = "#8B4513";
+            ctx.fillRect(0, 140, canvas.width, 60);
+
+            // Finish/Track Lines
+            ctx.fillStyle = "#FFF";
+            ctx.fillRect(0, 142, canvas.width, 3);
+
+            // Milkha (Flying Sikh Runner Character)
+            ctx.font = "26px Arial";
+            ctx.fillText("🏃", milkha.x, milkha.y + 24);
+
+            // Obstacles
+            ctx.font = "22px Arial";
+            for (let o of obstacles) {
+                ctx.fillText("🧱", o.x, o.y + 20);
             }
 
-            ctx.fillStyle = "red";
-            ctx.fillRect(food.x, food.y, box, box);
-
-            let snakeX = snake[0].x;
-            let snakeY = snake[0].y;
-
-            if(d == "LEFT") snakeX -= box;
-            if(d == "UP") snakeY -= box;
-            if(d == "RIGHT") snakeX += box;
-            if(d == "DOWN") snakeY += box;
-
-            if(snakeX == food.x && snakeY == food.y) {
-                score++;
-                food = {x: Math.floor(Math.random() * 14) * box, y: Math.floor(Math.random() * 14) * box};
-            } else {
-                snake.pop();
+            // Energy Milk
+            for (let m of milks) {
+                ctx.fillText("🥛", m.x, m.y + 18);
             }
 
-            let newHead = {x: snakeX, y: snakeY};
+            // Score Display
+            ctx.fillStyle = "#000";
+            ctx.font = "bold 14px Arial";
+            ctx.fillText("Score: " + score, 10, 20);
 
-            if(snakeX < 0 || snakeX >= 280 || snakeY < 0 || snakeY >= 280 || collision(newHead, snake)) {
-                clearInterval(game);
-                alert("Game Over! Score: " + score);
-                location.reload();
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = "#FFF";
+                ctx.font = "bold 20px Arial";
+                ctx.fillText("GAME OVER!", 90, 90);
+                ctx.font = "14px Arial";
+                ctx.fillText("Final Score: " + score, 110, 115);
+                ctx.fillText("Tap Jump Button to Restart", 70, 145);
             }
-
-            snake.unshift(newHead);
         }
 
-        function collision(head, array) {
-            for(let i = 0; i < array.length; i++) {
-                if(head.x == array[i].x && head.y == array[i].y) return true;
+        function loop() {
+            update();
+            draw();
+            if (!gameOver) {
+                requestAnimationFrame(loop);
             }
-            return false;
         }
 
-        let game = setInterval(draw, 120);
+        loop();
     </script>
     """ + get_footer('games')
 
