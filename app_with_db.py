@@ -111,8 +111,8 @@ HTML_HEADER = """<!DOCTYPE html>
         .filter-chip { padding: 6px 16px; border-radius: 20px; background: #f1f3f4; color: #3c4043; text-decoration: none; font-size: 14px; white-space: nowrap; font-weight: 500; }
         .filter-chip.active { background: #e8f0fe; color: #1967d2; border: 1px solid #d2e3fc; }
 
-        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; }
-        .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; transition: transform 0.2s ease-in-out; }
+        .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; cursor: pointer; }
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
         .nav-link-item.active { color: #1a73e8; font-weight: 600; }
 
@@ -121,6 +121,9 @@ HTML_HEADER = """<!DOCTYPE html>
         .dpad-row { display: flex; gap: 10px; margin: 3px 0; }
         .dpad-btn { width: 55px; height: 55px; font-size: 22px; border-radius: 50%; border: none; background: #1a73e8; color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         .dpad-btn:active { background: #0b57d0; transform: scale(0.95); }
+
+        /* Hide navigation bar when keyboard opens */
+        .keyboard-open .bottom-nav-bar { display: none !important; }
     </style>
 </head>
 <body>
@@ -130,7 +133,7 @@ def get_footer(active_tab='home'):
     return f"""
 <div class="bottom-nav-bar" id="bottomNav">
     <a href="/" class="nav-link-item {'active' if active_tab == 'home' else ''}"><i class="bi bi-house-door-fill"></i>Home</a>
-    <a href="/" class="nav-link-item {'active' if active_tab == 'search' else ''}"><i class="bi bi-search"></i>Search</a>
+    <a href="javascript:void(0)" onclick="triggerSearchFocus()" class="nav-link-item {'active' if active_tab == 'search' else ''}"><i class="bi bi-search"></i>Search</a>
     <a href="/games" class="nav-link-item {'active' if active_tab == 'games' else ''}"><i class="bi bi-controller"></i>Games</a>
     <a href="/my_history" class="nav-link-item {'active' if active_tab == 'history' else ''}"><i class="bi bi-clock-history"></i>History</a>
 </div>
@@ -145,6 +148,40 @@ function startVoiceSearch() {{
     }};
     recognition.start();
 }}
+
+// 🔍 Search Button click par Keyboard open karne ka logic
+function triggerSearchFocus() {{
+    const input = document.getElementById('searchInput');
+    if (input) {{
+        input.focus();
+    }} else {{
+        window.location.href = "/?focus=1";
+    }}
+}}
+
+// ⌨️ Keyboard open hone par Bottom Navigation ko Hide karne ka logic
+document.addEventListener('focusin', function(e) {{
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
+        document.body.classList.add('keyboard-open');
+    }}
+}});
+
+document.addEventListener('focusout', function(e) {{
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
+        document.body.classList.remove('keyboard-open');
+    }}
+}});
+
+// Auto focus if redirected from another page
+window.addEventListener('DOMContentLoaded', () => {{
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('focus') === '1') {{
+        const input = document.getElementById('searchInput');
+        if (input) {{
+            input.focus();
+        }}
+    }}
+}});
 </script>
 </body>
 </html>
@@ -281,7 +318,7 @@ def search():
             <a href="/" class="bharat-logo text-decoration-none my-0 me-2" style="font-size: 26px;">
                 <span style="color:#FF9933">B</span><span style="color:#000080">h</span><span style="color:#138808">at</span>
             </a>
-            <form action="/search" method="GET" class="google-search-container my-0 flex-grow-1" style="max-width: 100%;">
+            <form action="/search" method="GET" id="searchForm" class="google-search-container my-0 flex-grow-1" style="max-width: 100%;">
                 <input type="hidden" name="cat" value="{category}">
                 <i class="bi bi-search search-left-icon" style="top:12px;"></i>
                 <input type="text" name="q" id="searchInput" value="{query}" class="form-control google-input" style="height: 42px; font-size: 14px;">
@@ -348,7 +385,7 @@ def account():
     </div>
     """ + get_footer('home')
 
-# 🐍 Built-in Snake Game Route (Mobile Touch Upgrade)
+# 🐍 Built-in Snake Game Route
 @app.route("/games")
 def games():
     return HTML_HEADER + """
