@@ -9,7 +9,7 @@ from urllib.parse import urlparse, quote_plus
 # -------------------------------------------------------------
 # 🔑 GEMINI API KEY SETUP
 # Apni Free Key 'https://aistudio.google.com/' se lein 
-# aur niche quotes (" ") ke andar paste karein:
+# aur Environment Variable mein set karein ya yahan paste karein:
 # -------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 
@@ -153,10 +153,14 @@ HTML_HEADER = """<!DOCTYPE html>
         .result-title:hover { text-decoration: underline; }
         .result-snippet { font-size: 14px; color: #4d5156; line-height: 1.5; }
 
-        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; }
+        /* 📱 Bottom Navigation Bar Styles */
+        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out; }
         .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
         .nav-link-item.active { color: #1a73e8; font-weight: 600; }
+        
+        /* ⌨️ Hide Nav Bar when Keyboard Opens */
+        .nav-hidden { display: none !important; opacity: 0; visibility: hidden; }
     </style>
 </head>
 <body>
@@ -181,10 +185,38 @@ function startVoiceSearch() {{
     }};
     recognition.start();
 }}
+
 function triggerSearchFocus() {{
     const input = document.getElementById('searchInput');
     if (input) {{ input.focus(); }} else {{ window.location.href = "/?focus=1"; }}
 }}
+
+// ⌨️ KEYBOARD OPEN DETECTOR: Hide Bottom Navigation Bar
+const bottomNav = document.getElementById('bottomNav');
+
+if (window.visualViewport) {{
+    const initialHeight = window.visualViewport.height;
+    window.visualViewport.addEventListener('resize', () => {{
+        if (window.visualViewport.height < initialHeight - 120) {{
+            bottomNav.classList.add('nav-hidden');
+        }} else {{
+            bottomNav.classList.remove('nav-hidden');
+        }}
+    }});
+}}
+
+// Input focus & blur fallbacks for mobile browsers
+document.addEventListener('focusin', (e) => {{
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
+        bottomNav.classList.add('nav-hidden');
+    }}
+}});
+
+document.addEventListener('focusout', (e) => {{
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
+        bottomNav.classList.remove('nav-hidden');
+    }}
+}});
 </script>
 </body>
 </html>
@@ -307,7 +339,7 @@ def search():
         else:
             ai_response_html = """
             <div class="p-3 mb-3 rounded-4 bg-light border border-warning shadow-sm">
-                <p class="small mb-0 text-muted">💡 <b>AI Answer Feature:</b> GEMINI_API_KEY set karne ke baad automatic AI answers chalu ho jayenge.</p>
+                <p class="small mb-0 text-muted">💡 <b>AI Answer Feature:</b> Render Environment Variables mein <code>GEMINI_API_KEY</code> set karne ke baad automatic AI answers start ho jayenge.</p>
             </div>
             """
 
