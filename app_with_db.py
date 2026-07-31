@@ -88,8 +88,10 @@ HTML_HEADER = """<!DOCTYPE html>
         .top-bar-chrome { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #ffffff; }
         .creator-badge { font-size: 13px; font-weight: 600; color: #5f6368; }
         
-        .dots-btn { background: none; border: none; font-size: 22px; color: #444746; cursor: pointer; padding: 4px 8px; border-radius: 50%; }
-        .dots-btn:hover { background: #f1f3f4; }
+        .top-right-actions { display: flex; align-items: center; gap: 8px; }
+        
+        .dots-btn, .account-btn { background: none; border: none; font-size: 22px; color: #444746; cursor: pointer; padding: 4px 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+        .dots-btn:hover, .account-btn:hover { background: #f1f3f4; color: #1a73e8; }
         
         .chrome-menu { border-radius: 20px 0 0 20px; width: 280px !important; }
         .chrome-menu-item { display: flex; align-items: center; gap: 16px; padding: 12px 16px; font-size: 15px; color: #1f1f1f; text-decoration: none; border-radius: 12px; font-weight: 400; }
@@ -114,13 +116,6 @@ HTML_HEADER = """<!DOCTYPE html>
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
         .nav-link-item.active { color: #1a73e8; font-weight: 600; }
 
-        .results-wrapper { max-width: 680px; margin: 0 auto; padding: 0 16px; }
-        .result-card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #f1f3f4; }
-        .ai-card { background: #f0f4f9; border-radius: 16px; padding: 20px; margin-bottom: 20px; border: 1px solid #d3e3fd; }
-        .result-title { color: #1a0dab; font-size: 18px; text-decoration: none; font-weight: 400; }
-        .result-url { color: #202124; font-size: 12px; margin-bottom: 4px; }
-        .result-snippet { color: #4d5156; font-size: 14px; line-height: 1.5; }
-
         /* 🎮 Mobile Touch Controls Style */
         .dpad-container { display: flex; flex-direction: column; align-items: center; margin-top: 15px; }
         .dpad-row { display: flex; gap: 10px; margin: 3px 0; }
@@ -135,9 +130,9 @@ def get_footer(active_tab='home'):
     return f"""
 <div class="bottom-nav-bar" id="bottomNav">
     <a href="/" class="nav-link-item {'active' if active_tab == 'home' else ''}"><i class="bi bi-house-door-fill"></i>Home</a>
+    <a href="/" class="nav-link-item {'active' if active_tab == 'search' else ''}"><i class="bi bi-search"></i>Search</a>
     <a href="/games" class="nav-link-item {'active' if active_tab == 'games' else ''}"><i class="bi bi-controller"></i>Games</a>
     <a href="/my_history" class="nav-link-item {'active' if active_tab == 'history' else ''}"><i class="bi bi-clock-history"></i>History</a>
-    <a href="/user_login" class="nav-link-item {'active' if active_tab == 'account' else ''}"><i class="bi bi-person-circle"></i>Account</a>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -161,6 +156,7 @@ def home():
     owner_logged = session.get('owner_logged')
     username = session.get('username', '')
 
+    account_url = "/account" if (user_logged or owner_logged) else "/user_login"
     user_info = f'<div class="px-3 py-2 mb-2 text-primary bg-light rounded-3 small">👤 <b>{username}</b></div>' if user_logged else ''
     login_logout = '<a href="/confirm_logout?type=user" class="chrome-menu-item text-danger"><i class="bi bi-box-arrow-right"></i>Logout</a>' if user_logged else '<a href="/user_login" class="chrome-menu-item"><i class="bi bi-box-arrow-in-right"></i>User Login</a>'
     
@@ -175,14 +171,20 @@ def home():
     top_bar = f"""
     <div class="top-bar-chrome">
         <div class="creator-badge">🚀 Created by <b>Aman Giri</b></div>
-        <button class="dots-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#chromeMenu">
-            <i class="bi bi-three-dots-vertical"></i>
-        </button>
+        <div class="top-right-actions">
+            <a href="{account_url}" class="account-btn" title="Account">
+                <i class="bi bi-person-circle" style="color: {'#1a73e8' if (user_logged or owner_logged) else '#444746'};"></i>
+            </a>
+            <button class="dots-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#chromeMenu">
+                <i class="bi bi-three-dots-vertical"></i>
+            </button>
+        </div>
     </div>
     <div class="offcanvas offcanvas-end chrome-menu p-2" tabindex="-1" id="chromeMenu">
         <div class="offcanvas-body p-2">
             {user_info}
             <a href="/" class="chrome-menu-item"><i class="bi bi-plus-square"></i> New tab</a>
+            <a href="{account_url}" class="chrome-menu-item"><i class="bi bi-person-circle"></i> My Account</a>
             <a href="/games" class="chrome-menu-item"><i class="bi bi-controller"></i> Play Snake Game</a>
             <a href="/my_history" class="chrome-menu-item"><i class="bi bi-clock-history"></i> History</a>
             <div class="chrome-divider"></div>
@@ -316,6 +318,35 @@ def search():
 
     body_results += "</div>"
     return HTML_HEADER + header_search + body_results + get_footer('search')
+
+# 👤 Account Details Route
+@app.route("/account")
+def account():
+    user_logged = session.get('user_logged')
+    owner_logged = session.get('owner_logged')
+    username = session.get('username', '')
+
+    if not user_logged and not owner_logged:
+        return redirect("/user_login")
+
+    role_title = "👑 Owner" if owner_logged else "👤 User"
+    display_name = OWNER_USERNAME if owner_logged else username
+
+    return HTML_HEADER + f"""
+    <div class="container mt-4 mb-5" style="max-width: 500px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
+            <div class="display-4 mb-2">👤</div>
+            <h4>{display_name}</h4>
+            <span class="badge bg-primary mb-3">{role_title}</span>
+            <hr>
+            <div class="d-grid gap-2 mt-4">
+                <a href="/my_history" class="btn btn-outline-secondary"><i class="bi bi-clock-history"></i> Search History</a>
+                {'<a href="/owner_dashboard" class="btn btn-warning"><i class="bi bi-crown-fill"></i> Owner Dashboard</a>' if owner_logged else ''}
+                <a href="/confirm_logout?type={'owner' if owner_logged else 'user'}" class="btn btn-danger"><i class="bi bi-box-arrow-right"></i> Logout</a>
+            </div>
+        </div>
+    </div>
+    """ + get_footer('home')
 
 # 🐍 Built-in Snake Game Route (Mobile Touch Upgrade)
 @app.route("/games")
@@ -585,7 +616,7 @@ def owner_dashboard():
 @app.route("/user_login", methods=['GET', 'POST'])
 def user_login():
     if session.get('user_logged'):
-        return redirect("/")
+        return redirect("/account")
     error = ""
     if request.method == 'POST':
         username = request.form.get('username')
@@ -599,7 +630,7 @@ def user_login():
             session.permanent = True
             session['user_logged'] = True
             session['username'] = username
-            return redirect("/")
+            return redirect("/account")
         else:
             error = "Invalid Credentials!"
     return HTML_HEADER + f"""
@@ -612,7 +643,7 @@ def user_login():
             <button type="submit" class="btn btn-primary w-100" style="border-radius: 20px;">Login</button>
         </form>
     </div>
-    """ + get_footer('account')
+    """ + get_footer('home')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
