@@ -76,8 +76,13 @@ HTML_HEADER = """<!DOCTYPE html>
     <title>Bharat AI Search Engine</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1a73e8">
+    
     <style>
-        html, body { height: 100%; margin: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        html, body { height: 100%; margin: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; touch-action: manipulation; }
         body { padding-bottom: 75px; }
         
         .top-bar-chrome { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #ffffff; }
@@ -115,6 +120,12 @@ HTML_HEADER = """<!DOCTYPE html>
         .result-title { color: #1a0dab; font-size: 18px; text-decoration: none; font-weight: 400; }
         .result-url { color: #202124; font-size: 12px; margin-bottom: 4px; }
         .result-snippet { color: #4d5156; font-size: 14px; line-height: 1.5; }
+
+        /* 🎮 Mobile Touch Controls Style */
+        .dpad-container { display: flex; flex-direction: column; align-items: center; margin-top: 15px; }
+        .dpad-row { display: flex; gap: 10px; margin: 3px 0; }
+        .dpad-btn { width: 55px; height: 55px; font-size: 22px; border-radius: 50%; border: none; background: #1a73e8; color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .dpad-btn:active { background: #0b57d0; transform: scale(0.95); }
     </style>
 </head>
 <body>
@@ -306,17 +317,27 @@ def search():
     body_results += "</div>"
     return HTML_HEADER + header_search + body_results + get_footer('search')
 
-# 🐍 Built-in Snake Game Route
+# 🐍 Built-in Snake Game Route (Mobile Touch Upgrade)
 @app.route("/games")
 def games():
     return HTML_HEADER + """
-    <div class="container text-center mt-4">
-        <h3 class="mb-3">🎮 Bharat Arcade: Snake Game Pro</h3>
-        <div class="bg-white p-3 rounded-4 shadow-sm d-inline-block border">
-            <canvas id="snakeCanvas" width="300" height="300" style="background:#111; border-radius:10px;"></canvas>
-            <div class="mt-2 text-muted small">Use Arrow keys on keyboard to play</div>
+    <div class="container text-center mt-3">
+        <h4 class="mb-2">🎮 Bharat Arcade: Snake Game Pro</h4>
+        <div class="bg-white p-2 rounded-4 shadow-sm d-inline-block border">
+            <canvas id="snakeCanvas" width="280" height="280" style="background:#111; border-radius:10px;"></canvas>
+            
+            <div class="dpad-container">
+                <div class="dpad-row">
+                    <button class="dpad-btn" onclick="setDir('UP')"><i class="bi bi-caret-up-fill"></i></button>
+                </div>
+                <div class="dpad-row">
+                    <button class="dpad-btn" onclick="setDir('LEFT')"><i class="bi bi-caret-left-fill"></i></button>
+                    <button class="dpad-btn" onclick="setDir('DOWN')"><i class="bi bi-caret-down-fill"></i></button>
+                    <button class="dpad-btn" onclick="setDir('RIGHT')"><i class="bi bi-caret-right-fill"></i></button>
+                </div>
+            </div>
         </div>
-        <div class="mt-3">
+        <div class="mt-3 mb-4">
             <a href="/" class="btn btn-outline-primary btn-sm" style="border-radius: 20px;">Back to Home</a>
         </div>
     </div>
@@ -324,8 +345,8 @@ def games():
         const canvas = document.getElementById("snakeCanvas");
         const ctx = canvas.getContext("2d");
         let box = 20;
-        let snake = [{x: 9 * box, y: 10 * box}];
-        let food = {x: Math.floor(Math.random() * 15) * box, y: Math.floor(Math.random() * 15) * box};
+        let snake = [{x: 7 * box, y: 7 * box}];
+        let food = {x: Math.floor(Math.random() * 14) * box, y: Math.floor(Math.random() * 14) * box};
         let score = 0;
         let d = "RIGHT";
 
@@ -337,9 +358,16 @@ def games():
             else if(event.keyCode == 40 && d != "UP") d = "DOWN";
         }
 
+        function setDir(dir) {
+            if(dir == "LEFT" && d != "RIGHT") d = "LEFT";
+            if(dir == "UP" && d != "DOWN") d = "UP";
+            if(dir == "RIGHT" && d != "LEFT") d = "RIGHT";
+            if(dir == "DOWN" && d != "UP") d = "DOWN";
+        }
+
         function draw() {
             ctx.fillStyle = "#111";
-            ctx.fillRect(0, 0, 300, 300);
+            ctx.fillRect(0, 0, 280, 280);
 
             for(let i = 0; i < snake.length; i++) {
                 ctx.fillStyle = (i == 0) ? "#138808" : "#FF9933";
@@ -359,14 +387,14 @@ def games():
 
             if(snakeX == food.x && snakeY == food.y) {
                 score++;
-                food = {x: Math.floor(Math.random() * 15) * box, y: Math.floor(Math.random() * 15) * box};
+                food = {x: Math.floor(Math.random() * 14) * box, y: Math.floor(Math.random() * 14) * box};
             } else {
                 snake.pop();
             }
 
             let newHead = {x: snakeX, y: snakeY};
 
-            if(snakeX < 0 || snakeX >= 300 || snakeY < 0 || snakeY >= 300 || collision(newHead, snake)) {
+            if(snakeX < 0 || snakeX >= 280 || snakeY < 0 || snakeY >= 280 || collision(newHead, snake)) {
                 clearInterval(game);
                 alert("Game Over! Score: " + score);
                 location.reload();
@@ -382,7 +410,7 @@ def games():
             return false;
         }
 
-        let game = setInterval(draw, 100);
+        let game = setInterval(draw, 120);
     </script>
     """ + get_footer('games')
 
