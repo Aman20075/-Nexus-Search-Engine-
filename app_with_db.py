@@ -6,14 +6,19 @@ from datetime import datetime
 import os
 from urllib.parse import urlparse, quote_plus
 
-# 🤖 Safe Gemini AI Client Setup
+# -------------------------------------------------------------
+# 🔑 GEMINI API KEY SETUP
+# Apni Free Key 'https://aistudio.google.com/' se lein 
+# aur niche quotes (" ") ke andar paste karein:
+# -------------------------------------------------------------
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
+
 try:
     from google import genai
-    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
     ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE" else None
 except ImportError:
     ai_client = None
-    print("⚠️ Warning: google-genai module not found. AI features will be disabled.")
+    print("⚠️ Warning: google-genai module not installed. Run: pip install google-genai")
 
 app = Flask(__name__)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60  
@@ -25,7 +30,7 @@ OWNER_USERNAME = "Aman Giri"
 OWNER_PASSWORD = "@Aman2007"
 
 # 🚫 Safe Search Blocklist
-BLOCKED_KEYWORDS = ['porn', 'xxx', 'sex', 'adult', 'nude', 'nsfw', 'hot video', 'bhabhi']
+BLOCKED_KEYWORDS = ['porn', 'xxx', 'sex', 'adult', 'nsfw', 'nude', 'hot video']
 
 def is_safe_query(query):
     query_lower = query.lower()
@@ -58,7 +63,7 @@ def crawl_website_metadata(url):
         if not title:
             title = parsed_url.netloc
         if not snippet:
-            snippet = f"Explore {parsed_url.netloc} for official links, updates and features."
+            snippet = f"Explore {parsed_url.netloc} for official links, features and updates."
 
         return title, snippet, favicon_url
     except Exception:
@@ -143,12 +148,10 @@ HTML_HEADER = """<!DOCTYPE html>
         
         .results-wrapper { max-width: 650px; margin: 0 auto; padding: 0 15px; }
         .result-card { margin-bottom: 24px; }
-        .result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-        .site-logo { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; background: #f1f3f4; border: 1px solid #e0e0e0; }
-        .result-url { font-size: 13px; color: #202124; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .result-title { font-size: 18px; color: #1a0dab; font-weight: 500; text-decoration: none; }
+        .site-logo { width: 18px; height: 18px; object-fit: contain; }
+        .result-title { font-size: 19px; color: #1a0dab; font-weight: 600; text-decoration: none; }
         .result-title:hover { text-decoration: underline; }
-        .result-snippet { font-size: 14px; color: #4d5156; line-height: 1.58; }
+        .result-snippet { font-size: 14px; color: #4d5156; line-height: 1.5; }
 
         .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; }
         .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
@@ -236,11 +239,11 @@ def home():
         <div class="bharat-logo mb-1">
             <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
         </div>
-        <p class="text-muted small mb-3">India's Instant AI Search Engine 🇮🇳</p>
+        <p class="text-muted small mb-3">India's Automatic AI Search Engine 🇮🇳</p>
 
         <form action="/search" method="GET" id="searchForm" class="google-search-container">
             <i class="bi bi-search search-left-icon"></i>
-            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Ask AI or search Web, Images, Videos..." required autocomplete="off">
+            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Poochhein AI se ya search karein web..." required autocomplete="off">
             <button type="button" onclick="startVoiceSearch()" class="mic-btn" title="Search by Voice"><i class="bi bi-mic-fill"></i></button>
         </form>
     </div>
@@ -274,31 +277,45 @@ def search():
         conn.commit()
         conn.close()
 
-    # 🤖 AI Instant Answer Logic
+    # 🤖 1. Automatic AI Overview Answer Logic (Google AI Style)
     ai_response_html = ""
-    if ai_client and category in ['all', 'ai']:
-        try:
-            ai_prompt = f"Answer the user query clearly in short (Hindi/English mix): '{query}'"
-            response = ai_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=ai_prompt,
-            )
-            ai_text = response.text if response and response.text else ""
-            if ai_text:
-                ai_response_html = f"""
-                <div class="p-3 mb-4 rounded-4 bg-light border border-primary-subtle shadow-sm">
-                    <h6 class="text-primary fw-bold mb-2"><i class="bi bi-stars"></i> Bharat AI Answer</h6>
-                    <p class="mb-0 text-dark small" style="line-height: 1.6; white-space: pre-wrap;">{ai_text}</p>
-                </div>
+    if category in ['all', 'ai']:
+        if ai_client:
+            try:
+                ai_prompt = f"""
+                User Question/Query: "{query}"
+                Provide a crisp, accurate, and easy-to-read answer in short (Hinglish/Hindi). 
+                Format it nicely with bullet points if explaining steps.
                 """
-        except Exception:
-            pass
+                response = ai_client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=ai_prompt,
+                )
+                ai_text = response.text if response and response.text else ""
+                if ai_text:
+                    ai_response_html = f"""
+                    <div class="p-3 mb-4 rounded-4 bg-light border border-primary-subtle shadow-sm">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-stars text-primary fs-5"></i>
+                            <h6 class="text-primary fw-bold mb-0">Bharat AI Overview</h6>
+                        </div>
+                        <div class="text-dark small" style="line-height: 1.6; white-space: pre-line;">{ai_text}</div>
+                    </div>
+                    """
+            except Exception as e:
+                print(f"AI Generation Error: {e}")
+        else:
+            ai_response_html = """
+            <div class="p-3 mb-3 rounded-4 bg-light border border-warning shadow-sm">
+                <p class="small mb-0 text-muted">💡 <b>AI Answer Feature:</b> GEMINI_API_KEY set karne ke baad automatic AI answers chalu ho jayenge.</p>
+            </div>
+            """
 
-    # 📍 Google Style Search Filter Chips
+    # 📍 Filter Chips (Google Tabs Layout)
     chips = f"""
     <div class="search-filters">
         <a href="/search?q={query}&cat=all" class="filter-chip {'active' if category == 'all' else ''}"><i class="bi bi-search"></i> All</a>
-        <a href="/search?q={query}&cat=ai" class="filter-chip {'active' if category == 'ai' else ''}"><i class="bi bi-stars"></i> AI Answer</a>
+        <a href="/search?q={query}&cat=ai" class="filter-chip {'active' if category == 'ai' else ''}"><i class="bi bi-stars"></i> AI Mode</a>
         <a href="/search?q={query}&cat=images" class="filter-chip {'active' if category == 'images' else ''}"><i class="bi bi-image"></i> Images</a>
         <a href="/search?q={query}&cat=videos" class="filter-chip {'active' if category == 'videos' else ''}"><i class="bi bi-play-btn"></i> Videos</a>
         <a href="/search?q={query}&cat=apps" class="filter-chip {'active' if category == 'apps' else ''}"><i class="bi bi-phone"></i> Apps</a>
@@ -327,7 +344,7 @@ def search():
 
     body_results = ""
 
-    # 🖼️ Images Tab Logic
+    # 🖼️ Images Tab
     if category == 'images':
         encoded_q = quote_plus(query)
         body_results += f"""
@@ -335,22 +352,19 @@ def search():
             <div class="col-6 col-md-4">
                 <a href="https://www.google.com/search?tbm=isch&q={encoded_q}" target="_blank" class="card text-decoration-none shadow-sm border-0">
                     <img src="https://picsum.photos/300/200?random=1" class="card-img-top rounded-3" alt="Image">
-                    <div class="card-body p-2 text-center"><span class="small text-dark fw-bold">{query} Image 1</span></div>
+                    <div class="card-body p-2 text-center"><span class="small text-dark fw-bold">{query} 1</span></div>
                 </a>
             </div>
             <div class="col-6 col-md-4">
                 <a href="https://www.google.com/search?tbm=isch&q={encoded_q}" target="_blank" class="card text-decoration-none shadow-sm border-0">
                     <img src="https://picsum.photos/300/200?random=2" class="card-img-top rounded-3" alt="Image">
-                    <div class="card-body p-2 text-center"><span class="small text-dark fw-bold">{query} Image 2</span></div>
+                    <div class="card-body p-2 text-center"><span class="small text-dark fw-bold">{query} 2</span></div>
                 </a>
             </div>
         </div>
-        <div class="text-center mt-4">
-            <a href="https://www.google.com/search?tbm=isch&q={encoded_q}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill">View All Images on Web 🖼️</a>
-        </div>
         """
 
-    # 🎬 Videos Tab Logic
+    # 🎬 Videos Tab
     elif category == 'videos':
         encoded_q = quote_plus(query)
         body_results += f"""
@@ -365,7 +379,7 @@ def search():
         </div>
         """
 
-    # 🌐 Local DB & Web Index Results
+    # 🌐 Dynamic Result Search with Website Logo (Favicon)
     else:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -379,27 +393,40 @@ def search():
         if rows:
             for row in rows:
                 title, url, snippet, cat, logo_url = row[0], row[1], row[2], row[3].upper(), row[4]
+                parsed = urlparse(url)
+                domain_name = parsed.netloc if parsed.netloc else url
+                
+                # Dynamic Favicon Generation
                 if not logo_url:
-                    parsed = urlparse(url)
-                    domain = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else url
-                    logo_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+                    logo_url = f"https://www.google.com/s2/favicons?domain={domain_name}&sz=64"
 
                 body_results += f"""
-                <div class="result-card">
-                    <div class="result-header">
-                        <img src="{logo_url}" class="site-logo" alt="Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1006/1006771.png'">
-                        <span class="result-url">{url}</span>
-                        <span class="badge bg-secondary ms-auto" style="font-size: 10px;">{cat}</span>
+                <div class="result-card mb-4 pb-2 border-bottom">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <div class="bg-light rounded-circle d-flex align-items-center justify-content-center border" style="width:28px; height:28px; overflow:hidden;">
+                            <img src="{logo_url}" class="site-logo" alt="Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1006/1006771.png'">
+                        </div>
+                        <div class="d-flex flex-column" style="line-height: 1.2;">
+                            <span class="fw-medium text-dark" style="font-size: 14px;">{domain_name}</span>
+                            <span class="text-muted" style="font-size: 12px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url}</span>
+                        </div>
+                        <i class="bi bi-three-dots-vertical ms-auto text-muted small"></i>
                     </div>
-                    <a href="{url}" target="_blank" class="result-title">{title}</a>
-                    <div class="result-snippet mt-1">{snippet}</div>
+
+                    <a href="{url}" target="_blank" class="result-title">
+                        {title}
+                    </a>
+
+                    <div class="result-snippet mt-1">
+                        {snippet}
+                    </div>
                 </div>
                 """
         elif category != 'ai':
             body_results += f"""
             <div class="text-center text-muted p-4 bg-light rounded-4 border">
                 <h6>No indexed pages found for "{query}".</h6>
-                <p class="small text-muted mb-0">Upar AI Answer check karein ya Owner Dashboard se link add karein!</p>
+                <p class="small text-muted mb-0">Owner Dashboard se link add karein!</p>
             </div>
             """
 
