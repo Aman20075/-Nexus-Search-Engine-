@@ -1,36 +1,52 @@
-from flask import Flask, request, redirect, url_for, session
-import sqlite3
-import requests
-from bs4 import BeautifulSoup
-from datetime import datetime
 import os
-from urllib.parse import urlparse, quote_plus
+import sqlite3
+from datetime import datetime
+from urllib.parse import quote_plus, urlparse
+
+from bs4 import BeautifulSoup
+from flask import Flask, jsonify, redirect, request, session, url_for
+import requests
 
 # -------------------------------------------------------------
 # 🔑 GEMINI API KEY SETUP
-# Apni Free Key 'https://aistudio.google.com/' se lein 
-# aur Environment Variable mein set karein ya yahan paste karein:
 # -------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 
 try:
     from google import genai
-    ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE" else None
+
+    ai_client = (
+        genai.Client(api_key=GEMINI_API_KEY)
+        if GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE"
+        else None
+    )
 except ImportError:
     ai_client = None
-    print("⚠️ Warning: google-genai module not installed. Run: pip install google-genai")
+    print(
+        "⚠️ Warning: google-genai module not installed. Run: pip install"
+        " google-genai"
+    )
 
 app = Flask(__name__)
-app.permanent_session_lifetime = 365 * 24 * 60 * 60  
-app.secret_key = 'bharat_search_permanent_session_key_2026'
-DB_PATH = 'search_engine.db'
+app.permanent_session_lifetime = 365 * 24 * 60 * 60
+app.secret_key = os.environ.get(
+    "SECRET_KEY", "bharat_search_permanent_session_key_2026"
+)
+
+# Render Persistent Storage support
+DB_PATH = os.environ.get("DB_PATH", "search_engine.db")
+
+db_dir = os.path.dirname(DB_PATH)
+if db_dir and not os.path.exists(db_dir):
+    os.makedirs(db_dir)
 
 # 👑 Owner Credentials
 OWNER_USERNAME = "Aman Giri"
 OWNER_PASSWORD = "@Aman2007"
 
 # 🚫 Safe Search Blocklist
-BLOCKED_KEYWORDS = ['porn', 'xxx', 'sex', 'adult', 'nsfw', 'nude', 'hot video']
+BLOCKED_KEYWORDS = ["porn", "xxx", "sex", "adult", "nsfw", "nude", "hot video"]
+
 
 def is_safe_query(query):
     query_lower = query.lower()
@@ -39,6 +55,7 @@ def is_safe_query(query):
             return False
     return True
 
+
 # 🕷️ Advance Web Crawler & Favicon Helper
 def crawl_website_metadata(url):
     try:
@@ -46,37 +63,51 @@ def crawl_website_metadata(url):
         domain = f"{parsed_url.scheme}://{parsed_url.netloc}"
         favicon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
 
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
         response = requests.get(url, headers=headers, timeout=5)
-        
+
         title = ""
         snippet = ""
-        
+
         if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
+            soup = BeautifulSoup(response.text, "html.parser")
             if soup.title and soup.title.string:
                 title = soup.title.string.strip()
-            meta_desc = soup.find('meta', attrs={'name': 'description'}) or soup.find('meta', attrs={'property': 'og:description'})
-            if meta_desc and meta_desc.get('content'):
-                snippet = meta_desc['content'].strip()
+            meta_desc = soup.find(
+                "meta", attrs={"name": "description"}
+            ) or soup.find("meta", attrs={"property": "og:description"})
+            if meta_desc and meta_desc.get("content"):
+                snippet = meta_desc["content"].strip()
 
         if not title:
             title = parsed_url.netloc
         if not snippet:
-            snippet = f"Explore {parsed_url.netloc} for official links, features and updates."
+            snippet = (
+                f"Explore {parsed_url.netloc} for official links, features and"
+                " updates."
+            )
 
         return title, snippet, favicon_url
     except Exception:
         parsed_url = urlparse(url)
-        domain = f"{parsed_url.scheme}://{parsed_url.netloc}" if parsed_url.netloc else url
+        domain = (
+            f"{parsed_url.scheme}://{parsed_url.netloc}"
+            if parsed_url.netloc
+            else url
+        )
         favicon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
-        return parsed_url.netloc or url, "Instant web result from Bharat Search Engine.", favicon_url
+        return (
+            parsed_url.netloc or url,
+            "Instant web result from Bharat Search Engine.",
+            favicon_url,
+        )
+
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
-    cursor.execute('''
+
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS local_search_index (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
@@ -85,31 +116,32 @@ def init_db():
             category TEXT,
             logo_url TEXT
         )
-    ''')
-    
+    """)
+
     cursor.execute("PRAGMA table_info(local_search_index)")
     columns = [column[1] for column in cursor.fetchall()]
-    if 'logo_url' not in columns:
+    if "logo_url" not in columns:
         cursor.execute("ALTER TABLE local_search_index ADD COLUMN logo_url TEXT")
 
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
             password TEXT,
             role TEXT DEFAULT 'user'
         )
-    ''')
-    cursor.execute('''
+    """)
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS search_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
             query TEXT,
             timestamp TEXT
         )
-    ''')
+    """)
     conn.commit()
     conn.close()
+
 
 init_db()
 
@@ -119,6 +151,7 @@ HTML_HEADER = """<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bharat AI Search Engine</title>
+    <link rel="manifest" href="/manifest.json">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <meta name="theme-color" content="#1a73e8">
@@ -153,20 +186,46 @@ HTML_HEADER = """<!DOCTYPE html>
         .result-title:hover { text-decoration: underline; }
         .result-snippet { font-size: 14px; color: #4d5156; line-height: 1.5; }
 
+        /* 🔍 Auto Suggestions Dropdown Styles */
+        .suggestions-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border: 1px solid #dfe1e5;
+            border-radius: 0 0 24px 24px;
+            box-shadow: 0 4px 6px rgba(32,33,36,0.28);
+            z-index: 1000;
+            overflow: hidden;
+            display: none;
+            margin-top: -8px;
+        }
+        .suggestion-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #212529;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .suggestion-item:hover { background-color: #f8f9fa; }
+
         /* 📱 Bottom Navigation Bar Styles */
         .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out; }
         .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
         .nav-link-item.active { color: #1a73e8; font-weight: 600; }
-        
-        /* ⌨️ Hide Nav Bar when Keyboard Opens */
         .nav-hidden { display: none !important; opacity: 0; visibility: hidden; }
     </style>
 </head>
 <body>
 """
 
-def get_footer(active_tab='home'):
+
+def get_footer(active_tab="home"):
     return f"""
 <div class="bottom-nav-bar" id="bottomNav">
     <a href="/" class="nav-link-item {'active' if active_tab == 'home' else ''}"><i class="bi bi-house-door-fill"></i>Home</a>
@@ -191,9 +250,50 @@ function triggerSearchFocus() {{
     if (input) {{ input.focus(); }} else {{ window.location.href = "/?focus=1"; }}
 }}
 
-// ⌨️ KEYBOARD OPEN DETECTOR: Hide Bottom Navigation Bar
-const bottomNav = document.getElementById('bottomNav');
+// 🔍 Search Auto Suggestion Logic
+document.addEventListener("DOMContentLoaded", function() {{
+    const input = document.getElementById('searchInput');
+    const box = document.getElementById('suggestionsBox');
 
+    if (input && box) {{
+        input.addEventListener('input', async function() {{
+            const val = this.value.trim();
+            if (val.length < 2) {{
+                box.style.display = 'none';
+                return;
+            }}
+
+            try {{
+                const res = await fetch(`/suggest?q=${{encodeURIComponent(val)}}`);
+                const data = await res.json();
+
+                if (data.length > 0) {{
+                    box.innerHTML = data.map(item => 
+                        `<div class="suggestion-item" onclick="selectSuggestion('${{item.replace(/'/g, "\\'")}}')">
+                            <i class="bi bi-search text-muted"></i> ${{item}}
+                        </div>`
+                    ).join('');
+                    box.style.display = 'block';
+                }} else {{
+                    box.style.display = 'none';
+                }}
+            }} catch(e) {{
+                box.style.display = 'none';
+            }}
+        }});
+    }}
+}});
+
+function selectSuggestion(val) {{
+    const input = document.getElementById('searchInput');
+    if (input) {{
+        input.value = val;
+        document.getElementById('searchForm').submit();
+    }}
+}}
+
+// ⌨️ Keyboard Detector
+const bottomNav = document.getElementById('bottomNav');
 if (window.visualViewport) {{
     const initialHeight = window.visualViewport.height;
     window.visualViewport.addEventListener('resize', () => {{
@@ -205,40 +305,115 @@ if (window.visualViewport) {{
     }});
 }}
 
-// Input focus & blur fallbacks for mobile browsers
-document.addEventListener('focusin', (e) => {{
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
-        bottomNav.classList.add('nav-hidden');
-    }}
-}});
-
-document.addEventListener('focusout', (e) => {{
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
-        bottomNav.classList.remove('nav-hidden');
-    }}
-}});
+// 📱 PWA Service Worker Registration
+if ('serviceWorker' in navigator) {{
+  window.addEventListener('load', () => {{
+    navigator.serviceWorker.register('/sw.js').then(() => {{
+      console.log('Service Worker Registered Successfully!');
+    }}).catch(err => console.log('SW registration failed: ', err));
+  }});
+}}
 </script>
 </body>
 </html>
 """
 
+
+# -------------------------------------------------------------
+# 🚀 PWA Supporting Endpoints (App Installation)
+# -------------------------------------------------------------
+@app.route("/manifest.json")
+def manifest():
+    return jsonify({
+        "short_name": "Bharat AI",
+        "name": "Bharat AI Search Engine",
+        "icons": [{
+            "src": (
+                "https://cdn-icons-png.flaticon.com/512/1006/1006771.png"
+            ),
+            "type": "image/png",
+            "sizes": "512x512",
+        }],
+        "start_url": "/",
+        "background_color": "#ffffff",
+        "theme_color": "#1a73e8",
+        "display": "standalone",
+    })
+
+
+@app.route("/sw.js")
+def service_worker():
+    js = """
+    self.addEventListener('install', (e) => {
+      self.skipWaiting();
+    });
+    self.addEventListener('fetch', (event) => {
+      event.respondWith(fetch(event.request));
+    });
+    """
+    return js, 200, {"Content-Type": "application/javascript"}
+
+
+# 🔍 Search Autocomplete API Route
+@app.route("/suggest")
+def suggest():
+    query = request.args.get("q", "").strip()
+    if not query or len(query) < 2:
+        return jsonify([])
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT DISTINCT title FROM local_search_index WHERE title LIKE ? LIMIT"
+        " 5",
+        (f"%{query}%",),
+    )
+    results = cursor.fetchall()
+    conn.close()
+
+    suggestions = [row[0] for row in results]
+    return jsonify(suggestions)
+
+
 @app.route("/")
 def home():
-    user_logged = session.get('user_logged')
-    owner_logged = session.get('owner_logged')
-    username = session.get('username', '')
+    user_logged = session.get("user_logged")
+    owner_logged = session.get("owner_logged")
+    username = session.get("username", "")
 
     account_url = "/account" if (user_logged or owner_logged) else "/user_login"
-    user_info = f'<div class="px-3 py-2 mb-2 text-primary bg-light rounded-3 small">👤 <b>{username}</b></div>' if user_logged else ''
-    login_logout = '<a href="/confirm_logout?type=user" class="chrome-menu-item text-danger"><i class="bi bi-box-arrow-right"></i>Logout</a>' if user_logged else '<a href="/user_login" class="chrome-menu-item"><i class="bi bi-box-arrow-in-right"></i>User Login</a>'
-    
-    role_options = ''
+    user_info = (
+        f'<div class="px-3 py-2 mb-2 text-primary bg-light rounded-3 small">👤'
+        f" <b>{username}</b></div>"
+        if user_logged
+        else ""
+    )
+    login_logout = (
+        '<a href="/confirm_logout?type=user" class="chrome-menu-item'
+        ' text-danger"><i class="bi bi-box-arrow-right"></i>Logout</a>'
+        if user_logged
+        else (
+            '<a href="/user_login" class="chrome-menu-item"><i class="bi'
+            ' bi-box-arrow-in-right"></i>User Login</a>'
+        )
+    )
+
+    role_options = ""
     if owner_logged:
-        role_options += '<a href="/owner_dashboard" class="chrome-menu-item text-warning"><i class="bi bi-crown-fill"></i> Owner Dashboard</a>'
-        role_options += '<a href="/confirm_logout?type=owner" class="chrome-menu-item text-danger"><i class="bi bi-box-arrow-left"></i> Owner Logout</a>'
+        role_options += (
+            '<a href="/owner_dashboard" class="chrome-menu-item text-warning"><i'
+            ' class="bi bi-crown-fill"></i> Owner Dashboard</a>'
+        )
+        role_options += (
+            '<a href="/confirm_logout?type=owner" class="chrome-menu-item'
+            ' text-danger"><i class="bi bi-box-arrow-left"></i> Owner Logout</a>'
+        )
     else:
         if not user_logged:
-            role_options += '<a href="/owner_login" class="chrome-menu-item"><i class="bi bi-shield-lock-fill"></i> Owner Login</a>'
+            role_options += (
+                '<a href="/owner_login" class="chrome-menu-item"><i class="bi'
+                ' bi-shield-lock-fill"></i> Owner Login</a>'
+            )
 
     top_bar = f"""
     <div class="top-bar-chrome">
@@ -266,7 +441,10 @@ def home():
     </div>
     """
 
-    return HTML_HEADER + top_bar + f"""
+    return (
+        HTML_HEADER
+        + top_bar
+        + f"""
     <div class="container text-center">
         <div class="bharat-logo mb-1">
             <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
@@ -277,20 +455,26 @@ def home():
             <i class="bi bi-search search-left-icon"></i>
             <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Poochhein AI se ya search karein web..." required autocomplete="off">
             <button type="button" onclick="startVoiceSearch()" class="mic-btn" title="Search by Voice"><i class="bi bi-mic-fill"></i></button>
+            <div id="suggestionsBox" class="suggestions-dropdown"></div>
         </form>
     </div>
-    """ + get_footer('home')
+    """
+        + get_footer("home")
+    )
+
 
 @app.route("/search")
 def search():
-    query = request.args.get('q', '').strip()
-    category = request.args.get('cat', 'all').strip().lower()
-    
+    query = request.args.get("q", "").strip()
+    category = request.args.get("cat", "all").strip().lower()
+
     if not query:
         return redirect("/")
 
     if not is_safe_query(query):
-        return HTML_HEADER + f"""
+        return (
+            HTML_HEADER
+            + f"""
         <div class="results-wrapper pt-5 text-center">
             <div class="alert alert-danger p-4 shadow-sm">
                 <h5>🚫 Safe Search Active</h5>
@@ -298,20 +482,26 @@ def search():
                 <a href="/" class="btn btn-primary btn-sm mt-3">Back to Home</a>
             </div>
         </div>
-        """ + get_footer('search')
+        """
+            + get_footer("search")
+        )
 
-    if session.get('user_logged'):
-        current_user = session.get('username')
+    if session.get("user_logged"):
+        current_user = session.get("username")
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO search_history (username, query, timestamp) VALUES (?, ?, ?)", (current_user, query, current_time))
+        cursor.execute(
+            "INSERT INTO search_history (username, query, timestamp) VALUES (?,"
+            " ?, ?)",
+            (current_user, query, current_time),
+        )
         conn.commit()
         conn.close()
 
     # 🤖 1. Automatic AI Overview Answer Logic (Google AI Style)
     ai_response_html = ""
-    if category in ['all', 'ai']:
+    if category in ["all", "ai"]:
         if ai_client:
             try:
                 ai_prompt = f"""
@@ -364,8 +554,9 @@ def search():
             <form action="/search" method="GET" id="searchForm" class="google-search-container my-0 flex-grow-1" style="max-width: 100%;">
                 <input type="hidden" name="cat" value="{category}">
                 <i class="bi bi-search search-left-icon" style="top:12px;"></i>
-                <input type="text" name="q" id="searchInput" value="{query}" class="form-control google-input" style="height: 42px; font-size: 14px;">
+                <input type="text" name="q" id="searchInput" value="{query}" class="form-control google-input" style="height: 42px; font-size: 14px;" autocomplete="off">
                 <button type="button" onclick="startVoiceSearch()" class="mic-btn" style="top:8px;" title="Search by Voice"><i class="bi bi-mic-fill"></i></button>
+                <div id="suggestionsBox" class="suggestions-dropdown"></div>
             </form>
         </div>
     </div>
@@ -377,7 +568,7 @@ def search():
     body_results = ""
 
     # 🖼️ Images Tab
-    if category == 'images':
+    if category == "images":
         encoded_q = quote_plus(query)
         body_results += f"""
         <div class="row g-2">
@@ -397,7 +588,7 @@ def search():
         """
 
     # 🎬 Videos Tab
-    elif category == 'videos':
+    elif category == "videos":
         encoded_q = quote_plus(query)
         body_results += f"""
         <div class="d-flex flex-column gap-3">
@@ -415,22 +606,38 @@ def search():
     else:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        if category == 'all':
-            cursor.execute("SELECT title, url, snippet, category, logo_url FROM local_search_index WHERE title LIKE ? OR snippet LIKE ?", (f'%{query}%', f'%{query}%'))
+        if category == "all":
+            cursor.execute(
+                "SELECT title, url, snippet, category, logo_url FROM"
+                " local_search_index WHERE title LIKE ? OR snippet LIKE ?",
+                (f"%{query}%", f"%{query}%"),
+            )
         else:
-            cursor.execute("SELECT title, url, snippet, category, logo_url FROM local_search_index WHERE category = ? AND (title LIKE ? OR snippet LIKE ?)", (category, f'%{query}%', f'%{query}%'))
+            cursor.execute(
+                "SELECT title, url, snippet, category, logo_url FROM"
+                " local_search_index WHERE category = ? AND (title LIKE ? OR snippet"
+                " LIKE ?)",
+                (category, f"%{query}%", f"%{query}%"),
+            )
         rows = cursor.fetchall()
         conn.close()
 
         if rows:
             for row in rows:
-                title, url, snippet, cat, logo_url = row[0], row[1], row[2], row[3].upper(), row[4]
+                title, url, snippet, cat, logo_url = (
+                    row[0],
+                    row[1],
+                    row[2],
+                    row[3].upper(),
+                    row[4],
+                )
                 parsed = urlparse(url)
                 domain_name = parsed.netloc if parsed.netloc else url
-                
-                # Dynamic Favicon Generation
+
                 if not logo_url:
-                    logo_url = f"https://www.google.com/s2/favicons?domain={domain_name}&sz=64"
+                    logo_url = (
+                        f"https://www.google.com/s2/favicons?domain={domain_name}&sz=64"
+                    )
 
                 body_results += f"""
                 <div class="result-card mb-4 pb-2 border-bottom">
@@ -454,7 +661,7 @@ def search():
                     </div>
                 </div>
                 """
-        elif category != 'ai':
+        elif category != "ai":
             body_results += f"""
             <div class="text-center text-muted p-4 bg-light rounded-4 border">
                 <h6>No indexed pages found for "{query}".</h6>
@@ -463,14 +670,15 @@ def search():
             """
 
     body_results += "</div>"
-    return HTML_HEADER + header_search + body_results + get_footer('search')
+    return HTML_HEADER + header_search + body_results + get_footer("search")
+
 
 # 👤 Account Details Route
 @app.route("/account")
 def account():
-    user_logged = session.get('user_logged')
-    owner_logged = session.get('owner_logged')
-    username = session.get('username', '')
+    user_logged = session.get("user_logged")
+    owner_logged = session.get("owner_logged")
+    username = session.get("username", "")
 
     if not user_logged and not owner_logged:
         return redirect("/user_login")
@@ -478,7 +686,9 @@ def account():
     role_title = "👑 Owner" if owner_logged else "👤 User"
     display_name = OWNER_USERNAME if owner_logged else username
 
-    return HTML_HEADER + f"""
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-4 mb-5" style="max-width: 500px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
             <div class="display-4 mb-2">👤</div>
@@ -492,12 +702,17 @@ def account():
             </div>
         </div>
     </div>
-    """ + get_footer('home')
+    """
+        + get_footer("home")
+    )
 
-# 🏃 Flying Sikh Game Route
+
+# 🏃 Flying Sikh Game Route (Fixed Milkha Direction - Right Facing)
 @app.route("/games")
 def games():
-    return HTML_HEADER + """
+    return (
+        HTML_HEADER
+        + """
     <div class="container text-center mt-3" style="max-width: 500px;">
         <h4 class="mb-1 text-primary fw-bold">🏃 Milkha Singh: Flying Sikh Run</h4>
         <p class="text-muted small mb-2">Hurdles (🧱) se bachein aur Energy Milk (🥛) collect karein!</p>
@@ -514,54 +729,94 @@ def games():
         const ctx = canvas.getContext("2d");
         let milkha = { x: 30, y: 110, width: 25, height: 30, dy: 0, gravity: 0.8, isJumping: false };
         let obstacles = [], milks = [], score = 0, gameFrame = 0, gameOver = false;
-        function jump() { if (!milkha.isJumping && !gameOver) { milkha.dy = -12; milkha.isJumping = true; } else if (gameOver) { resetGame(); } }
-        document.addEventListener("keydown", function(e) { if (e.code === "Space" || e.code === "ArrowUp") jump(); });
-        function resetGame() { milkha.y = 110; milkha.dy = 0; milkha.isJumping = false; obstacles = []; milks = []; score = 0; gameFrame = 0; gameOver = false; loop(); }
+        
+        function jump() { 
+            if (!milkha.isJumping && !gameOver) { 
+                milkha.dy = -12; 
+                milkha.isJumping = true; 
+            } else if (gameOver) { 
+                resetGame(); 
+            } 
+        }
+        
+        document.addEventListener("keydown", function(e) { 
+            if (e.code === "Space" || e.code === "ArrowUp") jump(); 
+        });
+        
+        function resetGame() { 
+            milkha.y = 110; milkha.dy = 0; milkha.isJumping = false; 
+            obstacles = []; milks = []; score = 0; gameFrame = 0; gameOver = false; 
+            loop(); 
+        }
+        
         function update() {
             if (gameOver) return;
             gameFrame++; milkha.dy += milkha.gravity; milkha.y += milkha.dy;
             if (milkha.y >= 110) { milkha.y = 110; milkha.dy = 0; milkha.isJumping = false; }
             if (gameFrame % 90 === 0) obstacles.push({ x: canvas.width, y: 115, width: 20, height: 25 });
             if (gameFrame % 140 === 0) milks.push({ x: canvas.width, y: 70, width: 20, height: 20 });
+            
             for (let i = 0; i < obstacles.length; i++) {
                 obstacles[i].x -= 5;
                 if (milkha.x < obstacles[i].x + obstacles[i].width && milkha.x + milkha.width > obstacles[i].x && milkha.y < obstacles[i].y + obstacles[i].height && milkha.y + milkha.height > obstacles[i].y) gameOver = true;
             }
+            
             for (let i = 0; i < milks.length; i++) {
                 milks[i].x -= 5;
                 if (milkha.x < milks[i].x + milks[i].width && milkha.x + milkha.width > milks[i].x && milkha.y < milks[i].y + milks[i].height && milkha.y + milkha.height > milks[i].y) { score += 5; milks.splice(i, 1); i--; }
             }
-            obstacles = obstacles.filter(o => o.x > -20); milks = milks.filter(m => m.x > -20);
+            
+            obstacles = obstacles.filter(o => o.x > -20); 
+            milks = milks.filter(m => m.x > -20);
             if (gameFrame % 10 === 0) score += 1;
         }
+        
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = "#8B4513"; ctx.fillRect(0, 140, canvas.width, 60);
             ctx.fillStyle = "#FFF"; ctx.fillRect(0, 142, canvas.width, 3);
-            ctx.font = "26px Arial"; ctx.fillText("🏃", milkha.x, milkha.y + 24);
+            
+            // 🏃 Milkha Singh Facing Right Direction (Fixed Transformation)
+            ctx.save();
+            ctx.translate(milkha.x + milkha.width, milkha.y);
+            ctx.scale(-1, 1);
+            ctx.font = "26px Arial"; 
+            ctx.fillText("🏃", 0, 24);
+            ctx.restore();
+            
             ctx.font = "22px Arial";
             for (let o of obstacles) ctx.fillText("🧱", o.x, o.y + 20);
             for (let m of milks) ctx.fillText("🥛", m.x, m.y + 18);
+            
             ctx.fillStyle = "#000"; ctx.font = "bold 14px Arial"; ctx.fillText("Score: " + score, 10, 20);
+            
             if (gameOver) {
                 ctx.fillStyle = "rgba(0, 0, 0, 0.75)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = "#FFF"; ctx.font = "bold 20px Arial"; ctx.fillText("GAME OVER!", 90, 90);
                 ctx.font = "14px Arial"; ctx.fillText("Final Score: " + score, 110, 115); ctx.fillText("Tap Jump Button to Restart", 70, 145);
             }
         }
+        
         function loop() { update(); draw(); if (!gameOver) requestAnimationFrame(loop); }
         loop();
     </script>
-    """ + get_footer('games')
+    """
+        + get_footer("games")
+    )
+
 
 @app.route("/my_history")
 def my_history():
-    if not session.get('user_logged'):
+    if not session.get("user_logged"):
         return redirect("/user_login")
-    current_user = session.get('username')
+    current_user = session.get("username")
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT query, timestamp FROM search_history WHERE username = ? ORDER BY id DESC", (current_user,))
+    cursor.execute(
+        "SELECT query, timestamp FROM search_history WHERE username = ? ORDER BY"
+        " id DESC",
+        (current_user,),
+    )
     history_list = cursor.fetchall()
     conn.close()
 
@@ -569,7 +824,9 @@ def my_history():
     for h in history_list:
         history_rows += f'<li class="list-group-item d-flex justify-content-between align-items-center"><span>🔍 <b>{h[0]}</b></span><span class="text-muted small">{h[1]}</span></li>'
 
-    return HTML_HEADER + f"""
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-4 mb-5" style="max-width: 600px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center">📜 Search History ({current_user})</h4>
@@ -577,31 +834,39 @@ def my_history():
             <div class="text-center"><a href="/" class="btn btn-outline-primary btn-sm rounded-pill">Back to Home</a></div>
         </div>
     </div>
-    """ + get_footer('history')
+    """
+        + get_footer("history")
+    )
 
-@app.route("/confirm_logout", methods=['GET', 'POST'])
+
+@app.route("/confirm_logout", methods=["GET", "POST"])
 def confirm_logout():
-    account_type = request.args.get('type', 'user')
+    account_type = request.args.get("type", "user")
     error = ""
-    if request.method == 'POST':
-        entered_password = request.form.get('password')
-        if account_type == 'owner' and entered_password == OWNER_PASSWORD:
-            session.pop('owner_logged', None)
+    if request.method == "POST":
+        entered_password = request.form.get("password")
+        if account_type == "owner" and entered_password == OWNER_PASSWORD:
+            session.pop("owner_logged", None)
             return redirect("/")
-        elif account_type == 'user':
-            current_user = session.get('username')
+        elif account_type == "user":
+            current_user = session.get("username")
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (current_user, entered_password))
+            cursor.execute(
+                "SELECT * FROM users WHERE username = ? AND password = ?",
+                (current_user, entered_password),
+            )
             user = cursor.fetchone()
             conn.close()
             if user:
-                session.pop('user_logged', None)
-                session.pop('username', None)
+                session.pop("user_logged", None)
+                session.pop("username", None)
                 return redirect("/")
         error = "Incorrect Password!"
 
-    return HTML_HEADER + f"""
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center text-danger">🔒 Security Check</h4>
@@ -611,19 +876,27 @@ def confirm_logout():
             <a href="/" class="btn btn-light w-100 rounded-pill">Cancel</a>
         </form>
     </div>
-    """ + get_footer('home')
+    """
+        + get_footer("home")
+    )
 
-@app.route("/owner_login", methods=['GET', 'POST'])
+
+@app.route("/owner_login", methods=["GET", "POST"])
 def owner_login():
     error = ""
-    if request.method == 'POST':
-        if request.form.get('username') == OWNER_USERNAME and request.form.get('password') == OWNER_PASSWORD:
+    if request.method == "POST":
+        if (
+            request.form.get("username") == OWNER_USERNAME
+            and request.form.get("password") == OWNER_PASSWORD
+        ):
             session.permanent = True
-            session['owner_logged'] = True
+            session["owner_logged"] = True
             return redirect("/owner_dashboard")
         else:
             error = "Invalid Owner Credentials!"
-    return HTML_HEADER + f"""
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center text-warning">👑 Owner Login</h4>
@@ -633,23 +906,26 @@ def owner_login():
             <button type="submit" class="btn btn-warning w-100 fw-bold rounded-pill">Login</button>
         </form>
     </div>
-    """ + get_footer('home')
+    """
+        + get_footer("home")
+    )
 
-@app.route("/owner_dashboard", methods=['GET', 'POST'])
+
+@app.route("/owner_dashboard", methods=["GET", "POST"])
 def owner_dashboard():
-    if not session.get('owner_logged'):
+    if not session.get("owner_logged"):
         return redirect("/owner_login")
-    
+
     message = ""
-    if request.method == 'POST':
-        form_type = request.form.get('form_type')
-        if form_type == 'add_index':
-            url = request.form.get('url', '').strip()
-            title = request.form.get('title', '').strip()
-            snippet = request.form.get('snippet', '').strip()
-            category = request.form.get('category', 'web').strip()
-            custom_logo = request.form.get('logo_url', '').strip()
-            
+    if request.method == "POST":
+        form_type = request.form.get("form_type")
+        if form_type == "add_index":
+            url = request.form.get("url", "").strip()
+            title = request.form.get("title", "").strip()
+            snippet = request.form.get("snippet", "").strip()
+            category = request.form.get("category", "web").strip()
+            custom_logo = request.form.get("logo_url", "").strip()
+
             if url:
                 c_title, c_snippet, c_logo = crawl_website_metadata(url)
                 final_title = title if title else c_title
@@ -658,27 +934,36 @@ def owner_dashboard():
 
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO local_search_index (title, url, snippet, category, logo_url) VALUES (?, ?, ?, ?, ?)", (final_title, url, final_snippet, category, final_logo))
+                cursor.execute(
+                    "INSERT INTO local_search_index (title, url, snippet, category,"
+                    " logo_url) VALUES (?, ?, ?, ?, ?)",
+                    (final_title, url, final_snippet, category, final_logo),
+                )
                 conn.commit()
                 conn.close()
                 message = f"✅ Crawled & Added '{final_title}' successfully!"
-                
-        elif form_type == 'add_user':
-            new_user = request.form.get('username', '').strip()
-            new_pass = request.form.get('password', '').strip()
-            new_role = request.form.get('role', 'user')
+
+        elif form_type == "add_user":
+            new_user = request.form.get("username", "").strip()
+            new_pass = request.form.get("password", "").strip()
+            new_role = request.form.get("role", "user")
             if new_user and new_pass:
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
                 try:
-                    cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (new_user, new_pass, new_role))
+                    cursor.execute(
+                        "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+                        (new_user, new_pass, new_role),
+                    )
                     conn.commit()
                     message = f"✅ Added user: {new_user}"
                 except sqlite3.IntegrityError:
                     message = "⚠️ Username already exists!"
                 conn.close()
 
-    return HTML_HEADER + f"""
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-4 mb-5" style="max-width: 750px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center">👑 Owner Control Center</h4>
@@ -716,29 +1001,37 @@ def owner_dashboard():
             <div class="text-center"><a href="/" class="btn btn-outline-secondary btn-sm rounded-pill">Back to Home</a></div>
         </div>
     </div>
-    """ + get_footer('home')
+    """
+        + get_footer("home")
+    )
 
-@app.route("/user_login", methods=['GET', 'POST'])
+
+@app.route("/user_login", methods=["GET", "POST"])
 def user_login():
-    if session.get('user_logged'):
+    if session.get("user_logged"):
         return redirect("/account")
     error = ""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        cursor.execute(
+            "SELECT * FROM users WHERE username = ? AND password = ?",
+            (username, password),
+        )
         user = cursor.fetchone()
         conn.close()
         if user:
             session.permanent = True
-            session['user_logged'] = True
-            session['username'] = username
+            session["user_logged"] = True
+            session["username"] = username
             return redirect("/account")
         else:
             error = "Invalid Credentials!"
-    return HTML_HEADER + f"""
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center">User Login</h4>
@@ -748,7 +1041,10 @@ def user_login():
             <button type="submit" class="btn btn-primary w-100 rounded-pill">Login</button>
         </form>
     </div>
-    """ + get_footer('home')
+    """
+        + get_footer("home")
+    )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app.run(debug=True, port=5000)
