@@ -18,7 +18,7 @@ try:
 client = genai.Client(api_key="YOUR_API_KEY")
 
 interaction = client.interactions.create(
-    model="gemini-3.6-flash",
+    model="gemini-2.5-flash",
     input="Explain how AI works in a few words"
 )
 print(interaction.output_text)
