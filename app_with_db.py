@@ -13,19 +13,19 @@ import requests
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 
 try:
-  from google import genai
+    from google import genai
 
-  ai_client = (
-      genai.Client(api_key=GEMINI_API_KEY)
-      if GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE"
-      else None
-  )
+    ai_client = (
+        genai.Client(api_key=GEMINI_API_KEY)
+        if GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE"
+        else None
+    )
 except ImportError:
-  ai_client = None
-  print(
-      "⚠️ Warning: google-genai module not installed. Run: pip install"
-      " google-genai"
-  )
+    ai_client = None
+    print(
+        "⚠️ Warning: google-genai module not installed. Run: pip install"
+        " google-genai"
+    )
 
 app = Flask(__name__)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60
@@ -38,7 +38,7 @@ DB_PATH = os.environ.get("DB_PATH", "search_engine.db")
 
 db_dir = os.path.dirname(DB_PATH)
 if db_dir and not os.path.exists(db_dir):
-  os.makedirs(db_dir)
+    os.makedirs(db_dir)
 
 # 👑 Owner Credentials
 OWNER_USERNAME = "Aman Giri"
@@ -49,65 +49,65 @@ BLOCKED_KEYWORDS = ["porn", "xxx", "sex", "adult", "nsfw", "nude", "hot video"]
 
 
 def is_safe_query(query):
-  query_lower = query.lower()
-  for word in BLOCKED_KEYWORDS:
-    if word in query_lower:
-      return False
-  return True
+    query_lower = query.lower()
+    for word in BLOCKED_KEYWORDS:
+        if word in query_lower:
+            return False
+    return True
 
 
 # 🕷️ Advance Web Crawler & Favicon Helper
 def crawl_website_metadata(url):
-  try:
-    parsed_url = urlparse(url)
-    domain = f"{parsed_url.scheme}://{parsed_url.netloc}"
-    favicon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+    try:
+        parsed_url = urlparse(url)
+        domain = f"{parsed_url.scheme}://{parsed_url.netloc}"
+        favicon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
 
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    response = requests.get(url, headers=headers, timeout=5)
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        response = requests.get(url, headers=headers, timeout=5)
 
-    title = ""
-    snippet = ""
+        title = ""
+        snippet = ""
 
-    if response.status_code == 200:
-      soup = BeautifulSoup(response.text, "html.parser")
-      if soup.title and soup.title.string:
-        title = soup.title.string.strip()
-      meta_desc = soup.find(
-          "meta", attrs={"name": "description"}
-      ) or soup.find("meta", attrs={"property": "og:description"})
-      if meta_desc and meta_desc.get("content"):
-        snippet = meta_desc["content"].strip()
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, "html.parser")
+            if soup.title and soup.title.string:
+                title = soup.title.string.strip()
+            meta_desc = soup.find(
+                "meta", attrs={"name": "description"}
+            ) or soup.find("meta", attrs={"property": "og:description"})
+            if meta_desc and meta_desc.get("content"):
+                snippet = meta_desc["content"].strip()
 
-    if not title:
-      title = parsed_url.netloc
-    if not snippet:
-      snippet = (
-          f"Explore {parsed_url.netloc} for official links, features and"
-          " updates."
-      )
+        if not title:
+            title = parsed_url.netloc
+        if not snippet:
+            snippet = (
+                f"Explore {parsed_url.netloc} for official links, features and"
+                " updates."
+            )
 
-    return title, snippet, favicon_url
-  except Exception:
-    parsed_url = urlparse(url)
-    domain = (
-        f"{parsed_url.scheme}://{parsed_url.netloc}"
-        if parsed_url.netloc
-        else url
-    )
-    favicon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
-    return (
-        parsed_url.netloc or url,
-        "Instant web result from Bharat Search Engine.",
-        favicon_url,
-    )
+        return title, snippet, favicon_url
+    except Exception:
+        parsed_url = urlparse(url)
+        domain = (
+            f"{parsed_url.scheme}://{parsed_url.netloc}"
+            if parsed_url.netloc
+            else url
+        )
+        favicon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+        return (
+            parsed_url.netloc or url,
+            "Instant web result from Bharat Search Engine.",
+            favicon_url,
+        )
 
 
 def init_db():
-  conn = sqlite3.connect(DB_PATH)
-  cursor = conn.cursor()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
 
-  cursor.execute("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS local_search_index (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
@@ -118,12 +118,12 @@ def init_db():
         )
     """)
 
-  cursor.execute("PRAGMA table_info(local_search_index)")
-  columns = [column[1] for column in cursor.fetchall()]
-  if "logo_url" not in columns:
-    cursor.execute("ALTER TABLE local_search_index ADD COLUMN logo_url TEXT")
+    cursor.execute("PRAGMA table_info(local_search_index)")
+    columns = [column[1] for column in cursor.fetchall()]
+    if "logo_url" not in columns:
+        cursor.execute("ALTER TABLE local_search_index ADD COLUMN logo_url TEXT")
 
-  cursor.execute("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
@@ -131,7 +131,7 @@ def init_db():
             role TEXT DEFAULT 'user'
         )
     """)
-  cursor.execute("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS search_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
@@ -140,52 +140,52 @@ def init_db():
         )
     """)
 
-  all_user_items = [
-      "Google", "Google India", "YouTube", "Facebook", "Instagram", "X (Twitter)", "Wikipedia", "Reddit", "Amazon", "Netflix", "LinkedIn", "Yahoo", "Bing", "Microsoft", "Apple", "OpenAI", "WhatsApp Web", "Gmail", "Google Maps", "Google Drive", "Google Translate", "Canva", "Pinterest", "Quora", "TikTok", "Discord", "Twitch", "IMDb", "Stack Overflow", "GitHub", "Medium", "WordPress", "Blogger", "Tumblr", "eBay", "AliExpress", "Flipkart", "Myntra", "Snapdeal", "Spotify", "SoundCloud", "VLC", "Adobe", "Figma", "Notion", "Zoom", "Telegram Web", "Dropbox", "OneDrive", "Mega", "DuckDuckGo", "Brave Search", "Yandex", "Baidu", "Naver", "BBC", "CNN", "The New York Times", "The Guardian", "Reuters", "ESPN", "Cricbuzz", "NDTV", "India Today", "Times of India", "Hindustan Times", "The Hindu", "Threads", "Snapchat", "Skype", "Waze", "Google Earth", "Files by Google", "Google Photos", "Google Lens", "Google Keep", "Google Calendar", "Google Tasks", "YouTube Music", "YouTube Studio", "Disney+", "JioHotstar", "Sony LIV", "ZEE5", "MX Player", "Amazon Music", "Gaana", "JioSaavn", "Wynk Music", "Shazam",
-      "ChatGPT", "Gemini", "Claude", "Perplexity AI", "Microsoft Copilot", "Grok AI", "Meta AI", "DeepSeek AI", "Character.AI", "Poe AI", "Pi AI", "You.com AI", "Phind", "Hugging Face", "OpenRouter", "OpenAI API Platform", "Anthropic Console", "Google AI Studio", "Vertex AI", "Azure AI Foundry", "Amazon Bedrock", "Cohere", "Mistral AI", "Stability AI", "Together AI", "Fireworks AI", "Replicate", "GroqCloud", "Cerebras AI", "ElevenLabs", "Murf AI", "PlayHT", "Speechify", "LOVO AI", "Resemble AI", "WellSaid Labs", "Descript", "Otter.ai", "AssemblyAI", "Deepgram", "Rev AI", "Whisper API", "Suno AI", "Udio", "AIVA", "Soundraw", "Boomy", "Beatoven AI", "Ecrett Music", "Loudly AI", "Midjourney", "DALL·E", "Adobe Firefly", "Leonardo AI", "Ideogram", "Recraft AI", "Playground AI", "DreamStudio", "Flux AI", "Craiyon", "NightCafe", "Artbreeder", "BlueWillow", "Krea AI", "Mage.Space", "Runway", "Pika", "Luma AI", "Kling AI", "Hailuo AI", "PixVerse AI", "InVideo AI", "Synthesia", "HeyGen", "VEED AI", "Kapwing AI", "Canva AI", "Clipchamp AI", "Filmora AI", "FlexClip AI", "Gamma", "Tome", "Notion AI", "Coda AI", "ClickUp AI", "Grammarly AI", "QuillBot AI", "Wordtune", "Jasper AI", "Copy.ai", "Writesonic", "Rytr", "Sudowrite", "HyperWrite", "Frase", "Surfer AI", "Scalenut", "Anyword", "TextCortex", "Jenni AI", "Zapier AI", "Make AI", "n8n AI", "Bardeen AI", "Taskade AI", "Rewind AI", "Mem AI", "NotebookLM", "Elicit", "Consensus AI", "SciSpace", "Research Rabbit", "Semantic Scholar AI", "Litmaps", "Explainpaper", "Humata AI", "ChatPDF", "AskYourPDF", "PDF.ai", "LightPDF AI", "Documind AI", "Unriddle AI", "Glean AI", "Beautiful.ai", "SlidesAI", "Presentations.AI", "Decktopus AI", "Plus AI", "Pitch AI", "Canva Magic Studio", "Microsoft Designer", "Figma AI", "Uizard", "Galileo AI", "Visily AI", "Relume AI", "Framer AI", "Durable AI", "Hostinger AI Website Builder", "Wix AI", "Squarespace AI", "Shopify Magic", "Remove.bg", "Clipdrop", "Cleanup.pictures", "Remini AI", "Cursor AI", "Windsurf Editor", "Tabnine", "Codeium", "Replit AI", "Blackbox AI", "Bolt.new", "Lovable", "v0 by Vercel", "Claude Code",
-      "Google Wallet", "Samsung Wallet", "BHIM UPI", "Google Pay", "PhonePe", "Paytm", "Amazon Pay", "PayPal", "Wise", "Payoneer", "Western Union", "Skrill", "Revolut", "Binance", "Coinbase", "CoinDCX", "CoinSwitch Kuber", "WazirX", "TradingView", "Investing.com", "Moneycontrol", "Groww", "Zerodha Kite", "Upstox", "Angel One", "INDmoney", "ET Money", "Tickertape", "Yahoo Finance", "Bloomberg", "CNBC", "Screener.in", "Trendlyne", "Value Research Online", "Policybazaar", "Paisabazaar", "CreditMantri", "Dhan", "5paisa", "Kotak Securities", "Motilal Oswal", "Sharekhan", "Paytm Money", "Stripe", "Razorpay", "MobiKwik", "Freecharge", "SBI Yono", "State Bank of India", "HDFC Bank NetBanking", "ICICI Bank iMobile", "Axis Bank", "Kotak Mahindra Bank", "Punjab National Bank", "Bank of Baroda", "Canara Bank", "Union Bank of India", "Indian Bank", "IDFC FIRST Bank", "IndusInd Bank", "Yes Bank", "AU Small Finance Bank", "Federal Bank", "NSE India", "BSE India",
-      "Aavas Financiers Home Loan", "Navi Instant Loan", "KreditBee", "MoneyView Loans", "mPokket", "Cashe Loan", "SmartCoin Personal Loan", "RupeeRedee", "Branch Personal Loan", "RING Instant Credit", "Fibe Instant Personal Loan", "TrueBalance Loan", "Kissht Personal Loan", "PaySense", "Faircent Peer to Peer Lending", "Lendingkart Business Loan", "JanSamarth Govt Loan Portal", "PM SVANidhi Loan", "Mudra Loan Govt Portal", "Vidya Lakshmi Education Loan", "Stand-Up India Govt Loan", "Bajaj Finserv Personal Loan", "Tata Capital Loan", "L&T Finance Loan", "Aditya Birla Capital Loan", "Hero FinCorp Loan", "Muthoot Finance Gold Loan", "Manappuram Gold Loan", "BankBazaar Free Loan Check", "CIBIL Free Credit Score", "Experian Credit Score India", "CRIF High Mark Credit Score", "Wishfin Loans",
-      "Project Gutenberg", "Internet Archive", "Open Library", "Google Books", "Standard Ebooks", "ManyBooks", "PDF Drive", "Anna's Archive", "Wikisource", "DOAB Books", "Directory of Open Access Books", "Bookboon", "Free-eBooks.net", "Smashwords", "Feedbooks", "Planet eBook", "Open Textbook Library", "LibreTexts", "MIT OpenCourseWare", "National Digital Library of India", "NCERT ePathshala", "eGyankosh IGNOU", "Saylor Academy", "OpenStax", "CK-12 Foundation", "Khan Academy", "Coursera", "Udemy", "edX", "W3Schools", "GeeksforGeeks", "MDN Web Docs", "freeCodeCamp", "Codecademy", "HackerRank", "LeetCode", "Codeforces", "CodeChef", "Duolingo", "Physics Wallah", "BYJU'S", "Vedantu", "Testbook", "Adda247", "Embibe", "Doubtnut", "Photomath", "Microsoft Math Solver", "WolframAlpha", "GeoGebra", "Brainly", "Sololearn",
-      "Minecraft", "Roblox", "PUBG MOBILE", "BGMI", "Free Fire MAX", "Call of Duty: Mobile", "Call of Duty: Warzone", "Fortnite", "Apex Legends", "Valorant", "Counter-Strike 2", "Dota 2", "League of Legends", "League of Legends: Wild Rift", "Mobile Legends: Bang Bang", "Arena of Valor", "Honor of Kings", "Genshin Impact", "Honkai: Star Rail", "Zenless Zone Zero", "Wuthering Waves", "Clash of Clans", "Clash Royale", "Brawl Stars", "Hay Day", "Boom Beach", "Candy Crush Saga", "Candy Crush Soda Saga", "Royal Match", "Gardenscapes", "Homescapes", "Subway Surfers", "Temple Run 2", "Hill Climb Racing 2", "Asphalt 9: Legends", "Asphalt 8: Airborne", "Real Racing 3", "Need for Speed: No Limits", "CarX Drift Racing 2", "CSR Racing 2", "EA SPORTS FC Mobile", "eFootball™", "Dream League Soccer", "8 Ball Pool", "Ludo King", "Chess.com", "Lichess", "Stumble Guys", "Among Us", "Fall Guys", "Terraria", "Stardew Valley", "Monument Valley", "LIMBO", "Dead Cells", "Shadow Fight 2", "Shadow Fight 3", "Shadow Fight 4: Arena", "Mortal Kombat Mobile", "Dragon Ball Legends", "Brawlhalla", "Pokémon GO", "Pokémon Unite", "Steam", "Epic Games Store", "PlayStation App", "Xbox Game Pass", "Nintendo Switch Online", "Grand Theft Auto V", "Red Dead Redemption 2", "Cyberpunk 2077", "Elden Ring", "The Witcher 3: Wild Hunt"
-  ]
+    all_user_items = [
+        "Google", "Google India", "YouTube", "Facebook", "Instagram", "X (Twitter)", "Wikipedia", "Reddit", "Amazon", "Netflix", "LinkedIn", "Yahoo", "Bing", "Microsoft", "Apple", "OpenAI", "WhatsApp Web", "Gmail", "Google Maps", "Google Drive", "Google Translate", "Canva", "Pinterest", "Quora", "TikTok", "Discord", "Twitch", "IMDb", "Stack Overflow", "GitHub", "Medium", "WordPress", "Blogger", "Tumblr", "eBay", "AliExpress", "Flipkart", "Myntra", "Snapdeal", "Spotify", "SoundCloud", "VLC", "Adobe", "Figma", "Notion", "Zoom", "Telegram Web", "Dropbox", "OneDrive", "Mega", "DuckDuckGo", "Brave Search", "Yandex", "Baidu", "Naver", "BBC", "CNN", "The New York Times", "The Guardian", "Reuters", "ESPN", "Cricbuzz", "NDTV", "India Today", "Times of India", "Hindustan Times", "The Hindu", "Threads", "Snapchat", "Skype", "Waze", "Google Earth", "Files by Google", "Google Photos", "Google Lens", "Google Keep", "Google Calendar", "Google Tasks", "YouTube Music", "YouTube Studio", "Disney+", "JioHotstar", "Sony LIV", "ZEE5", "MX Player", "Amazon Music", "Gaana", "JioSaavn", "Wynk Music", "Shazam",
+        "ChatGPT", "Gemini", "Claude", "Perplexity AI", "Microsoft Copilot", "Grok AI", "Meta AI", "DeepSeek AI", "Character.AI", "Poe AI", "Pi AI", "You.com AI", "Phind", "Hugging Face", "OpenRouter", "OpenAI API Platform", "Anthropic Console", "Google AI Studio", "Vertex AI", "Azure AI Foundry", "Amazon Bedrock", "Cohere", "Mistral AI", "Stability AI", "Together AI", "Fireworks AI", "Replicate", "GroqCloud", "Cerebras AI", "ElevenLabs", "Murf AI", "PlayHT", "Speechify", "LOVO AI", "Resemble AI", "WellSaid Labs", "Descript", "Otter.ai", "AssemblyAI", "Deepgram", "Rev AI", "Whisper API", "Suno AI", "Udio", "AIVA", "Soundraw", "Boomy", "Beatoven AI", "Ecrett Music", "Loudly AI", "Midjourney", "DALL·E", "Adobe Firefly", "Leonardo AI", "Ideogram", "Recraft AI", "Playground AI", "DreamStudio", "Flux AI", "Craiyon", "NightCafe", "Artbreeder", "BlueWillow", "Krea AI", "Mage.Space", "Runway", "Pika", "Luma AI", "Kling AI", "Hailuo AI", "PixVerse AI", "InVideo AI", "Synthesia", "HeyGen", "VEED AI", "Kapwing AI", "Canva AI", "Clipchamp AI", "Filmora AI", "FlexClip AI", "Gamma", "Tome", "Notion AI", "Coda AI", "ClickUp AI", "Grammarly AI", "QuillBot AI", "Wordtune", "Jasper AI", "Copy.ai", "Writesonic", "Rytr", "Sudowrite", "HyperWrite", "Frase", "Surfer AI", "Scalenut", "Anyword", "TextCortex", "Jenni AI", "Zapier AI", "Make AI", "n8n AI", "Bardeen AI", "Taskade AI", "Rewind AI", "Mem AI", "NotebookLM", "Elicit", "Consensus AI", "SciSpace", "Research Rabbit", "Semantic Scholar AI", "Litmaps", "Explainpaper", "Humata AI", "ChatPDF", "AskYourPDF", "PDF.ai", "LightPDF AI", "Documind AI", "Unriddle AI", "Glean AI", "Beautiful.ai", "SlidesAI", "Presentations.AI", "Decktopus AI", "Plus AI", "Pitch AI", "Canva Magic Studio", "Microsoft Designer", "Figma AI", "Uizard", "Galileo AI", "Visily AI", "Relume AI", "Framer AI", "Durable AI", "Hostinger AI Website Builder", "Wix AI", "Squarespace AI", "Shopify Magic", "Remove.bg", "Clipdrop", "Cleanup.pictures", "Remini AI", "Cursor AI", "Windsurf Editor", "Tabnine", "Codeium", "Replit AI", "Blackbox AI", "Bolt.new", "Lovable", "v0 by Vercel", "Claude Code",
+        "Google Wallet", "Samsung Wallet", "BHIM UPI", "Google Pay", "PhonePe", "Paytm", "Amazon Pay", "PayPal", "Wise", "Payoneer", "Western Union", "Skrill", "Revolut", "Binance", "Coinbase", "CoinDCX", "CoinSwitch Kuber", "WazirX", "TradingView", "Investing.com", "Moneycontrol", "Groww", "Zerodha Kite", "Upstox", "Angel One", "INDmoney", "ET Money", "Tickertape", "Yahoo Finance", "Bloomberg", "CNBC", "Screener.in", "Trendlyne", "Value Research Online", "Policybazaar", "Paisabazaar", "CreditMantri", "Dhan", "5paisa", "Kotak Securities", "Motilal Oswal", "Sharekhan", "Paytm Money", "Stripe", "Razorpay", "MobiKwik", "Freecharge", "SBI Yono", "State Bank of India", "HDFC Bank NetBanking", "ICICI Bank iMobile", "Axis Bank", "Kotak Mahindra Bank", "Punjab National Bank", "Bank of Baroda", "Canara Bank", "Union Bank of India", "Indian Bank", "IDFC FIRST Bank", "IndusInd Bank", "Yes Bank", "AU Small Finance Bank", "Federal Bank", "NSE India", "BSE India",
+        "Aavas Financiers Home Loan", "Navi Instant Loan", "KreditBee", "MoneyView Loans", "mPokket", "Cashe Loan", "SmartCoin Personal Loan", "RupeeRedee", "Branch Personal Loan", "RING Instant Credit", "Fibe Instant Personal Loan", "TrueBalance Loan", "Kissht Personal Loan", "PaySense", "Faircent Peer to Peer Lending", "Lendingkart Business Loan", "JanSamarth Govt Loan Portal", "PM SVANidhi Loan", "Mudra Loan Govt Portal", "Vidya Lakshmi Education Loan", "Stand-Up India Govt Loan", "Bajaj Finserv Personal Loan", "Tata Capital Loan", "L&T Finance Loan", "Aditya Birla Capital Loan", "Hero FinCorp Loan", "Muthoot Finance Gold Loan", "Manappuram Gold Loan", "BankBazaar Free Loan Check", "CIBIL Free Credit Score", "Experian Credit Score India", "CRIF High Mark Credit Score", "Wishfin Loans",
+        "Project Gutenberg", "Internet Archive", "Open Library", "Google Books", "Standard Ebooks", "ManyBooks", "PDF Drive", "Anna's Archive", "Wikisource", "DOAB Books", "Directory of Open Access Books", "Bookboon", "Free-eBooks.net", "Smashwords", "Feedbooks", "Planet eBook", "Open Textbook Library", "LibreTexts", "MIT OpenCourseWare", "National Digital Library of India", "NCERT ePathshala", "eGyankosh IGNOU", "Saylor Academy", "OpenStax", "CK-12 Foundation", "Khan Academy", "Coursera", "Udemy", "edX", "W3Schools", "GeeksforGeeks", "MDN Web Docs", "freeCodeCamp", "Codecademy", "HackerRank", "LeetCode", "Codeforces", "CodeChef", "Duolingo", "Physics Wallah", "BYJU'S", "Vedantu", "Testbook", "Adda247", "Embibe", "Doubtnut", "Photomath", "Microsoft Math Solver", "WolframAlpha", "GeoGebra", "Brainly", "Sololearn",
+        "Minecraft", "Roblox", "PUBG MOBILE", "BGMI", "Free Fire MAX", "Call of Duty: Mobile", "Call of Duty: Warzone", "Fortnite", "Apex Legends", "Valorant", "Counter-Strike 2", "Dota 2", "League of Legends", "League of Legends: Wild Rift", "Mobile Legends: Bang Bang", "Arena of Valor", "Honor of Kings", "Genshin Impact", "Honkai: Star Rail", "Zenless Zone Zero", "Wuthering Waves", "Clash of Clans", "Clash Royale", "Brawl Stars", "Hay Day", "Boom Beach", "Candy Crush Saga", "Candy Crush Soda Saga", "Royal Match", "Gardenscapes", "Homescapes", "Subway Surfers", "Temple Run 2", "Hill Climb Racing 2", "Asphalt 9: Legends", "Asphalt 8: Airborne", "Real Racing 3", "Need for Speed: No Limits", "CarX Drift Racing 2", "CSR Racing 2", "EA SPORTS FC Mobile", "eFootball™", "Dream League Soccer", "8 Ball Pool", "Ludo King", "Chess.com", "Lichess", "Stumble Guys", "Among Us", "Fall Guys", "Terraria", "Stardew Valley", "Monument Valley", "LIMBO", "Dead Cells", "Shadow Fight 2", "Shadow Fight 3", "Shadow Fight 4: Arena", "Mortal Kombat Mobile", "Dragon Ball Legends", "Brawlhalla", "Pokémon GO", "Pokémon Unite", "Steam", "Epic Games Store", "PlayStation App", "Xbox Game Pass", "Nintendo Switch Online", "Grand Theft Auto V", "Red Dead Redemption 2", "Cyberpunk 2077", "Elden Ring", "The Witcher 3: Wild Hunt"
+    ]
 
-  for item in all_user_items:
-    clean_name = item.strip()
-    if not clean_name:
-      continue
+    for item in all_user_items:
+        clean_name = item.strip()
+        if not clean_name:
+            continue
 
-    domain_name = (
-        clean_name.lower()
-        .replace(" ", "")
-        .replace("(", "")
-        .replace(")", "")
-        .replace("+", "")
-        .replace(":", "")
-        .replace("'", "")
-        .replace("™", "")
-        + ".com"
-    )
+        domain_name = (
+            clean_name.lower()
+            .replace(" ", "")
+            .replace("(", "")
+            .replace(")", "")
+            .replace("+", "")
+            .replace(":", "")
+            .replace("'", "")
+            .replace("™", "")
+            + ".com"
+        )
 
-    if "aavas" in clean_name.lower():
-      url = "https://www.aavas.in"
-      logo_url = "https://www.google.com/s2/favicons?domain=aavas.in&sz=64"
-    else:
-      url = f"https://www.{domain_name}"
-      logo_url = f"https://www.google.com/s2/favicons?domain={domain_name}&sz=64"
+        if "aavas" in clean_name.lower():
+            url = "https://www.aavas.in"
+            logo_url = "https://www.google.com/s2/favicons?domain=aavas.in&sz=64"
+        else:
+            url = f"https://www.{domain_name}"
+            logo_url = f"https://www.google.com/s2/favicons?domain={domain_name}&sz=64"
 
-    snippet = (
-        f"Explore official links, apps, details and updates for {clean_name}"
-        " on Bharat Search."
-    )
+        snippet = (
+            f"Explore official links, apps, details and updates for {clean_name}"
+            " on Bharat Search."
+        )
 
-    cursor.execute(
-        "INSERT OR IGNORE INTO local_search_index (title, url, snippet,"
-        " category, logo_url) VALUES (?, ?, ?, ?, ?)",
-        (clean_name, url, snippet, "web", logo_url),
-    )
+        cursor.execute(
+            "INSERT OR IGNORE INTO local_search_index (title, url, snippet,"
+            " category, logo_url) VALUES (?, ?, ?, ?, ?)",
+            (clean_name, url, snippet, "web", logo_url),
+        )
 
-  conn.commit()
-  conn.close()
+    conn.commit()
+    conn.close()
 
 
 init_db()
@@ -286,8 +286,24 @@ HTML_HEADER = """<!DOCTYPE html>
         #cameraModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; align-items: center; justify-content: center; flex-direction: column; }
         #cameraVideo { width: 90%; max-width: 450px; border-radius: 16px; border: 2px solid #ff9933; }
 
-        /* PWA Install Banner */
-        .pwa-banner { position: fixed; bottom: 70px; left: 5%; right: 5%; background: #ff7700; color: white; border-radius: 16px; padding: 12px 18px; display: none; align-items: center; justify-content: space-between; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        /* 💻 PWA Install Banner (Desktop PC + Mobile Support) */
+        .pwa-banner { 
+            position: fixed; 
+            bottom: 70px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 90%; 
+            max-width: 500px; 
+            background: #ff7700; 
+            color: white; 
+            border-radius: 16px; 
+            padding: 12px 18px; 
+            display: none; 
+            align-items: center; 
+            justify-content: space-between; 
+            z-index: 9999; 
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25); 
+        }
 
         .search-filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; }
         .filter-chip { padding: 6px 16px; border-radius: 20px; background: var(--card-bg); color: var(--text-color); text-decoration: none; font-size: 14px; white-space: nowrap; font-weight: 500; display: flex; align-items: center; gap: 6px; }
@@ -345,13 +361,13 @@ HTML_HEADER = """<!DOCTYPE html>
     </div>
 </div>
 
-<!-- PWA Install Banner -->
+<!-- PWA Install Banner (PC & Mobile) -->
 <div id="pwaBanner" class="pwa-banner">
     <div class="d-flex align-items-center gap-2">
-        <i class="bi bi-download fs-4"></i>
+        <i class="bi bi-laptop fs-4"></i>
         <div>
             <strong style="font-size: 14px;">Install Bharat App</strong>
-            <div style="font-size: 11px; opacity: 0.9;">Fast AI Search on your phone</div>
+            <div style="font-size: 11px; opacity: 0.9;">Run on PC or Phone as Desktop App</div>
         </div>
     </div>
     <button id="installPwaBtn" class="btn btn-light btn-sm fw-bold rounded-pill px-3">Install</button>
@@ -360,7 +376,7 @@ HTML_HEADER = """<!DOCTYPE html>
 
 
 def get_footer(active_tab="home"):
-  return f"""
+    return f"""
 <div class="bottom-nav-bar" id="bottomNav">
     <a href="/" class="nav-link-item {'active' if active_tab == 'home' else ''}"><i class="bi bi-house-door-fill"></i>Home</a>
     <a href="javascript:void(0)" onclick="triggerSearchFocus()" class="nav-link-item {'active' if active_tab == 'search' else ''}"><i class="bi bi-search"></i>Search</a>
@@ -452,33 +468,33 @@ if ('serviceWorker' in navigator) {{
 
 @app.route("/ads.txt")
 def ads_txt():
-  return (
-      "google.com, pub-6514818403683886, DIRECT, f08c47fec0942fa0",
-      200,
-      {"Content-Type": "text/plain"},
-  )
+    return (
+        "google.com, pub-6514818403683886, DIRECT, f08c47fec0942fa0",
+        200,
+        {"Content-Type": "text/plain"},
+    )
 
 
 @app.route("/manifest.json")
 def manifest():
-  return jsonify({
-      "short_name": "Bharat AI",
-      "name": "Bharat AI Search Engine",
-      "icons": [{
-          "src": "https://cdn-icons-png.flaticon.com/512/1006/1006771.png",
-          "type": "image/png",
-          "sizes": "512x512",
-      }],
-      "start_url": "/",
-      "background_color": "#ffffff",
-      "theme_color": "#FF9933",
-      "display": "standalone",
-  })
+    return jsonify({
+        "short_name": "Bharat AI",
+        "name": "Bharat AI Search Engine",
+        "icons": [{
+            "src": "https://cdn-icons-png.flaticon.com/512/1006/1006771.png",
+            "type": "image/png",
+            "sizes": "512x512",
+        }],
+        "start_url": "/",
+        "background_color": "#ffffff",
+        "theme_color": "#FF9933",
+        "display": "standalone",
+    })
 
 
 @app.route("/sw.js")
 def service_worker():
-  js = """
+    js = """
     self.addEventListener('install', (e) => {
       self.skipWaiting();
     });
@@ -486,50 +502,49 @@ def service_worker():
       event.respondWith(fetch(event.request));
     });
     """
-  return js, 200, {"Content-Type": "application/javascript"}
+    return js, 200, {"Content-Type": "application/javascript"}
 
 
 @app.route("/suggest")
 def suggest():
-  query = request.args.get("q", "").strip()
-  if not query or len(query) < 2:
-    return jsonify([])
+    query = request.args.get("q", "").strip()
+    if not query or len(query) < 2:
+        return jsonify([])
 
-  conn = sqlite3.connect(DB_PATH)
-  cursor = conn.cursor()
-  cursor.execute(
-      "SELECT DISTINCT title FROM local_search_index WHERE title LIKE ? LIMIT"
-      " 5",
-      (f"%{query}%",),
-  )
-  results = cursor.fetchall()
-  conn.close()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT DISTINCT title FROM local_search_index WHERE title LIKE ? LIMIT 5",
+        (f"%{query}%",),
+    )
+    results = cursor.fetchall()
+    conn.close()
 
-  suggestions = [row[0] for row in results]
-  return jsonify(suggestions)
+    suggestions = [row[0] for row in results]
+    return jsonify(suggestions)
 
 
 @app.route("/new_chat")
 def new_chat():
-  session.pop("ai_history", None)
-  return redirect("/search?q=Hello&cat=ai")
+    session.pop("ai_history", None)
+    return redirect("/search?q=Hello&cat=ai")
 
 
 @app.route("/")
 def home():
-  user_logged = session.get("user_logged")
-  owner_logged = session.get("owner_logged")
-  username = session.get("username", "")
+    user_logged = session.get("user_logged")
+    owner_logged = session.get("owner_logged")
+    username = session.get("username", "")
 
-  account_url = "/account" if (user_logged or owner_logged) else "/user_login"
-  user_info = (
-      f'<div class="px-3 py-2 mb-2 text-primary bg-light rounded-3 small">👤'
-      f" <b>{username}</b></div>"
-      if user_logged
-      else ""
-  )
+    account_url = "/account" if (user_logged or owner_logged) else "/user_login"
+    user_info = (
+        f'<div class="px-3 py-2 mb-2 text-primary bg-light rounded-3 small">👤'
+        f" <b>{username}</b></div>"
+        if user_logged
+        else ""
+    )
 
-  top_bar = f"""
+    top_bar = f"""
     <div class="top-bar-chrome">
         <div class="creator-badge">🚀 Created by <b>Aman Giri</b></div>
         <div class="top-right-actions">
@@ -557,7 +572,7 @@ def home():
     </div>
     """
 
-  trending_html = """
+    trending_html = """
     <div class="mt-4">
         <p class="text-muted small mb-2"><i class="bi bi-graph-up-arrow text-danger me-1"></i> Trending in India 🇮🇳</p>
         <div class="trending-container">
@@ -570,7 +585,7 @@ def home():
     </div>
     """
 
-  news_feed_html = """
+    news_feed_html = """
     <div class="news-feed-container">
         <h6 class="fw-bold mb-3 d-flex align-items-center gap-2" style="color: #d95100;">
             <i class="bi bi-newspaper"></i> Bharat Discover & News
@@ -596,9 +611,9 @@ def home():
     </div>
     """
 
-  return (
-      HTML_HEADER
-      + f"""
+    return (
+        HTML_HEADER
+        + f"""
     <div class="ram-mandir-bg">
         {top_bar}
         <div class="container text-center pt-2">
@@ -689,78 +704,77 @@ def home():
     }});
     </script>
     """
-      + get_footer("home")
-  )
+        + get_footer("home")
+    )
 
 
 @app.route("/search")
 def search():
-  query = request.args.get("q", "").strip()
-  category = request.args.get("cat", "all").strip().lower()
+    query = request.args.get("q", "").strip()
+    category = request.args.get("cat", "all").strip().lower()
 
-  if not query:
-    return redirect("/")
+    if not query:
+        return redirect("/")
 
-  if not is_safe_query(query):
-    return (
-        HTML_HEADER
-        + f"""
-        <div class="results-wrapper pt-5 text-center">
-            <div class="alert alert-danger p-4 shadow-sm">
-                <h5>🚫 Safe Search Active</h5>
-                <p class="small">Aapki search query Bharat Safety Policy ke khilaf hai.</p>
-                <a href="/" class="btn btn-primary btn-sm mt-3">Back to Home</a>
+    if not is_safe_query(query):
+        return (
+            HTML_HEADER
+            + f"""
+            <div class="results-wrapper pt-5 text-center">
+                <div class="alert alert-danger p-4 shadow-sm">
+                    <h5>🚫 Safe Search Active</h5>
+                    <p class="small">Aapki search query Bharat Safety Policy ke khilaf hai.</p>
+                    <a href="/" class="btn btn-primary btn-sm mt-3">Back to Home</a>
+                </div>
             </div>
-        </div>
-        """
-        + get_footer("search")
-    )
+            """
+            + get_footer("search")
+        )
 
-  if session.get("user_logged"):
-    current_user = session.get("username")
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO search_history (username, query, timestamp) VALUES (?, ?,"
-        " ?)",
-        (current_user, query, current_time),
-    )
-    conn.commit()
-    conn.close()
+    if session.get("user_logged"):
+        current_user = session.get("username")
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO search_history (username, query, timestamp) VALUES (?, ?, ?)",
+            (current_user, query, current_time),
+        )
+        conn.commit()
+        conn.close()
 
-  ai_response_html = ""
-  if category in ["all", "ai"]:
-    if ai_client:
-      try:
-        ai_history = session.get("ai_history", [])
+    ai_response_html = ""
+    if category in ["all", "ai"]:
+        if ai_client:
+            try:
+                ai_history = session.get("ai_history", [])
 
-        ai_prompt = f"""
+                ai_prompt = f"""
 Provide a crisp, accurate answer in Hinglish/Hindi. 
 Format with bullet points if needed. 
 CRITICAL REQUIREMENT: Format ALL links strictly as clickable HTML anchor tags like: <a href="https://example.com" target="_blank" class="text-primary fw-bold text-decoration-underline">Name</a>. Do NOT use markdown.
 
 Previous Chat Context:
 """
-        for msg in ai_history:
-          ai_prompt += f"User: {msg['q']}\nAI: {msg['a']}\n"
+                for msg in ai_history:
+                    ai_prompt += f"User: {msg['q']}\nAI: {msg['a']}\n"
 
-        ai_prompt += f"\nCurrent Query: {query}"
+                ai_prompt += f"\nCurrent Query: {query}"
 
-        response = ai_client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=ai_prompt,
-        )
-        ai_text = response.text if response and response.text else ""
+                response = ai_client.models.generate_content(
+                    model="gemini-1.5-flash",
+                    contents=ai_prompt,
+                )
+                ai_text = response.text if response and response.text else ""
 
-        if ai_text:
-          ai_history.append({"q": query, "a": ai_text})
-          session["ai_history"] = ai_history[-4:]
-          session.modified = True
+                if ai_text:
+                    ai_history.append({"q": query, "a": ai_text})
+                    session["ai_history"] = ai_history[-4:]
+                    session.modified = True
 
-          chat_bubbles = ""
-          for chat in ai_history:
-            chat_bubbles += f"""
+                    chat_bubbles = ""
+                    for chat in ai_history:
+                        chat_bubbles += f"""
                         <div class="d-flex justify-content-end mb-3">
                             <div class="bg-primary text-white px-3 py-2 shadow-sm" style="border-radius: 18px 18px 0 18px; max-width: 85%; font-size: 15px;">
                                 {chat['q']}
@@ -773,7 +787,7 @@ Previous Chat Context:
                         </div>
                         """
 
-          ai_response_html = f"""
+                    ai_response_html = f"""
                     <div class="card p-0 mb-4 rounded-4 shadow-sm border border-primary overflow-hidden">
                         <div class="bg-white px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center gap-2">
@@ -802,21 +816,21 @@ Previous Chat Context:
                         if(chatArea) {{ chatArea.scrollTop = chatArea.scrollHeight; }}
                     </script>
                     """
-      except Exception as e:
-        print(f"AI Generation Error: {e}")
-        ai_response_html = """
+            except Exception as e:
+                print(f"AI Generation Error: {e}")
+                ai_response_html = """
                 <div class="p-3 mb-3 rounded-4 bg-light border border-warning shadow-sm">
                     <p class="small mb-0 text-muted">⚠️ <b>AI Search Update:</b> AI Limit Poori Ho Gayi Hai Ya API Offline Hai.</p>
                 </div>
                 """
-    else:
-      ai_response_html = """
+        else:
+            ai_response_html = """
             <div class="p-3 mb-3 rounded-4 bg-light border border-warning shadow-sm">
                 <p class="small mb-0 text-muted">💡 <b>AI Answer Feature:</b> Render Environment Variables mein <code>GEMINI_API_KEY</code> set karne ke baad automatic AI answers start ho jayenge.</p>
             </div>
             """
 
-  chips = f"""
+    chips = f"""
     <div class="search-filters">
         <a href="/search?q={query}&cat=all" class="filter-chip {'active' if category == 'all' else ''}"><i class="bi bi-search"></i> All</a>
         <a href="/search?q={query}&cat=ai" class="filter-chip {'active' if category == 'ai' else ''}"><i class="bi bi-stars"></i> AI Mode</a>
@@ -827,7 +841,7 @@ Previous Chat Context:
     </div>
     """
 
-  header_search = f"""
+    header_search = f"""
     <div class="bg-white border-bottom p-3 mb-3">
         <div class="d-flex align-items-center gap-2">
             <a href="/" class="bharat-logo text-decoration-none my-0 me-2" style="font-size: 26px;">
@@ -847,11 +861,11 @@ Previous Chat Context:
         {ai_response_html if category in ['all', 'ai'] else ''}
     """
 
-  body_results = ""
+    body_results = ""
 
-  if category == "images":
-    encoded_q = quote_plus(query)
-    body_results += f"""
+    if category == "images":
+        encoded_q = quote_plus(query)
+        body_results += f"""
         <div class="row g-2">
             <div class="col-6 col-md-4">
                 <a href="https://www.google.com/search?tbm=isch&q={encoded_q}" target="_blank" class="card text-decoration-none shadow-sm border-0">
@@ -868,9 +882,9 @@ Previous Chat Context:
         </div>
         """
 
-  elif category == "videos":
-    encoded_q = quote_plus(query)
-    body_results += f"""
+    elif category == "videos":
+        encoded_q = quote_plus(query)
+        body_results += f"""
         <div class="d-flex flex-column gap-3">
             <div class="p-3 border rounded-3 bg-light d-flex align-items-center gap-3">
                 <i class="bi bi-youtube text-danger display-6"></i>
@@ -882,43 +896,43 @@ Previous Chat Context:
         </div>
         """
 
-  else:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    if category == "all":
-      cursor.execute(
-          "SELECT title, url, snippet, category, logo_url FROM"
-          " local_search_index WHERE title LIKE ? OR snippet LIKE ?",
-          (f"%{query}%", f"%{query}%"),
-      )
     else:
-      cursor.execute(
-          "SELECT title, url, snippet, category, logo_url FROM"
-          " local_search_index WHERE category = ? AND (title LIKE ? OR snippet"
-          " LIKE ?)",
-          (category, f"%{query}%", f"%{query}%"),
-      )
-    rows = cursor.fetchall()
-    conn.close()
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        if category == "all":
+            cursor.execute(
+                "SELECT title, url, snippet, category, logo_url FROM"
+                " local_search_index WHERE title LIKE ? OR snippet LIKE ?",
+                (f"%{query}%", f"%{query}%"),
+            )
+        else:
+            cursor.execute(
+                "SELECT title, url, snippet, category, logo_url FROM"
+                " local_search_index WHERE category = ? AND (title LIKE ? OR snippet"
+                " LIKE ?)",
+                (category, f"%{query}%", f"%{query}%"),
+            )
+        rows = cursor.fetchall()
+        conn.close()
 
-    if rows:
-      for row in rows:
-        title, url, snippet, cat, logo_url = (
-            row[0],
-            row[1],
-            row[2],
-            row[3].upper(),
-            row[4],
-        )
-        parsed = urlparse(url)
-        domain_name = parsed.netloc if parsed.netloc else url
+        if rows:
+            for row in rows:
+                title, url, snippet, cat, logo_url = (
+                    row[0],
+                    row[1],
+                    row[2],
+                    row[3].upper(),
+                    row[4],
+                )
+                parsed = urlparse(url)
+                domain_name = parsed.netloc if parsed.netloc else url
 
-        if not logo_url:
-          logo_url = (
-              f"https://www.google.com/s2/favicons?domain={domain_name}&sz=64"
-          )
+                if not logo_url:
+                    logo_url = (
+                        f"https://www.google.com/s2/favicons?domain={domain_name}&sz=64"
+                    )
 
-        body_results += f"""
+                body_results += f"""
                 <div class="result-card mb-4 pb-2 border-bottom">
                     <div class="d-flex align-items-center gap-2 mb-1">
                         <div class="bg-light rounded-circle d-flex align-items-center justify-content-center border" style="width:28px; height:28px; overflow:hidden;">
@@ -940,14 +954,14 @@ Previous Chat Context:
                     </div>
                 </div>
                 """
-    else:
-      ai_web_url = f"https://www.google.com/search?q={quote_plus(query)}"
-      ai_web_domain = "google.com"
-      ai_web_logo = (
-          f"https://www.google.com/s2/favicons?domain={ai_web_domain}&sz=64"
-      )
+        else:
+            ai_web_url = f"https://www.google.com/search?q={quote_plus(query)}"
+            ai_web_domain = "google.com"
+            ai_web_logo = (
+                f"https://www.google.com/s2/favicons?domain={ai_web_domain}&sz=64"
+            )
 
-      body_results += f"""
+            body_results += f"""
             <div class="alert alert-light border rounded-4 p-3 mb-4 shadow-sm">
                 <span class="badge bg-primary mb-2">🤖 AI Smart Result</span>
                 <p class="small text-muted mb-0">Yeh result Bharat AI dawra live search karke generate kiya gaya hai:</p>
@@ -974,25 +988,25 @@ Previous Chat Context:
             </div>
             """
 
-  body_results += "</div>"
-  return HTML_HEADER + header_search + body_results + get_footer("search")
+    body_results += "</div>"
+    return HTML_HEADER + header_search + body_results + get_footer("search")
 
 
 @app.route("/account")
 def account():
-  user_logged = session.get("user_logged")
-  owner_logged = session.get("owner_logged")
-  username = session.get("username", "")
+    user_logged = session.get("user_logged")
+    owner_logged = session.get("owner_logged")
+    username = session.get("username", "")
 
-  if not user_logged and not owner_logged:
-    return redirect("/user_login")
+    if not user_logged and not owner_logged:
+        return redirect("/user_login")
 
-  role_title = "👑 Owner" if owner_logged else "👤 User"
-  display_name = OWNER_USERNAME if owner_logged else username
+    role_title = "👑 Owner" if owner_logged else "👤 User"
+    display_name = OWNER_USERNAME if owner_logged else username
 
-  return (
-      HTML_HEADER
-      + f"""
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-4 mb-5" style="max-width: 500px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
             <div class="display-4 mb-2">👤</div>
@@ -1007,15 +1021,15 @@ def account():
         </div>
     </div>
     """
-      + get_footer("home")
-  )
+        + get_footer("home")
+    )
 
 
 @app.route("/games")
 def games():
-  return (
-      HTML_HEADER
-      + """
+    return (
+        HTML_HEADER
+        + """
     <div class="container text-center mt-3" style="max-width: 500px;">
         <h4 class="mb-1 text-primary fw-bold">🏃 Milkha Singh: Flying Sikh Run</h4>
         <p class="text-muted small mb-2">Hurdles (🧱) se bachein aur Energy Milk (🥛) collect karein!</p>
@@ -1103,32 +1117,32 @@ def games():
         loop();
     </script>
     """
-      + get_footer("games")
-  )
+        + get_footer("games")
+    )
 
 
 @app.route("/my_history")
 def my_history():
-  if not session.get("user_logged"):
-    return redirect("/user_login")
-  current_user = session.get("username")
-  conn = sqlite3.connect(DB_PATH)
-  cursor = conn.cursor()
-  cursor.execute(
-      "SELECT query, timestamp FROM search_history WHERE username = ? ORDER BY"
-      " id DESC",
-      (current_user,),
-  )
-  history_list = cursor.fetchall()
-  conn.close()
+    if not session.get("user_logged"):
+        return redirect("/user_login")
+    current_user = session.get("username")
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT query, timestamp FROM search_history WHERE username = ? ORDER BY"
+        " id DESC",
+        (current_user,),
+    )
+    history_list = cursor.fetchall()
+    conn.close()
 
-  history_rows = ""
-  for h in history_list:
-    history_rows += f'<li class="list-group-item d-flex justify-content-between align-items-center"><span>🔍 <b>{h[0]}</b></span><span class="text-muted small">{h[1]}</span></li>'
+    history_rows = ""
+    for h in history_list:
+        history_rows += f'<li class="list-group-item d-flex justify-content-between align-items-center"><span>🔍 <b>{h[0]}</b></span><span class="text-muted small">{h[1]}</span></li>'
 
-  return (
-      HTML_HEADER
-      + f"""
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-4 mb-5" style="max-width: 600px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center">📜 Search History ({current_user})</h4>
@@ -1137,38 +1151,38 @@ def my_history():
         </div>
     </div>
     """
-      + get_footer("history")
-  )
+        + get_footer("history")
+    )
 
 
 @app.route("/confirm_logout", methods=["GET", "POST"])
 def confirm_logout():
-  account_type = request.args.get("type", "user")
-  error = ""
-  if request.method == "POST":
-    entered_password = request.form.get("password")
-    if account_type == "owner" and entered_password == OWNER_PASSWORD:
-      session.pop("owner_logged", None)
-      return redirect("/")
-    elif account_type == "user":
-      current_user = session.get("username")
-      conn = sqlite3.connect(DB_PATH)
-      cursor = conn.cursor()
-      cursor.execute(
-          "SELECT * FROM users WHERE username = ? AND password = ?",
-          (current_user, entered_password),
-      )
-      user = cursor.fetchone()
-      conn.close()
-      if user:
-        session.pop("user_logged", None)
-        session.pop("username", None)
-        return redirect("/")
-    error = "Incorrect Password!"
+    account_type = request.args.get("type", "user")
+    error = ""
+    if request.method == "POST":
+        entered_password = request.form.get("password")
+        if account_type == "owner" and entered_password == OWNER_PASSWORD:
+            session.pop("owner_logged", None)
+            return redirect("/")
+        elif account_type == "user":
+            current_user = session.get("username")
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM users WHERE username = ? AND password = ?",
+                (current_user, entered_password),
+            )
+            user = cursor.fetchone()
+            conn.close()
+            if user:
+                session.pop("user_logged", None)
+                session.pop("username", None)
+                return redirect("/")
+        error = "Incorrect Password!"
 
-  return (
-      HTML_HEADER
-      + f"""
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center text-danger">🔒 Security Check</h4>
@@ -1179,26 +1193,26 @@ def confirm_logout():
         </form>
     </div>
     """
-      + get_footer("home")
-  )
+        + get_footer("home")
+    )
 
 
 @app.route("/owner_login", methods=["GET", "POST"])
 def owner_login():
-  error = ""
-  if request.method == "POST":
-    if (
-        request.form.get("username") == OWNER_USERNAME
-        and request.form.get("password") == OWNER_PASSWORD
-    ):
-      session.permanent = True
-      session["owner_logged"] = True
-      return redirect("/owner_dashboard")
-    else:
-      error = "Invalid Owner Credentials!"
-  return (
-      HTML_HEADER
-      + f"""
+    error = ""
+    if request.method == "POST":
+        if (
+            request.form.get("username") == OWNER_USERNAME
+            and request.form.get("password") == OWNER_PASSWORD
+        ):
+            session.permanent = True
+            session["owner_logged"] = True
+            return redirect("/owner_dashboard")
+        else:
+            error = "Invalid Owner Credentials!"
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center text-warning">👑 Owner Login</h4>
@@ -1209,63 +1223,63 @@ def owner_login():
         </form>
     </div>
     """
-      + get_footer("home")
-  )
+        + get_footer("home")
+    )
 
 
 @app.route("/owner_dashboard", methods=["GET", "POST"])
 def owner_dashboard():
-  if not session.get("owner_logged"):
-    return redirect("/owner_login")
+    if not session.get("owner_logged"):
+        return redirect("/owner_login")
 
-  message = ""
-  if request.method == "POST":
-    form_type = request.form.get("form_type")
-    if form_type == "add_index":
-      url = request.form.get("url", "").strip()
-      title = request.form.get("title", "").strip()
-      snippet = request.form.get("snippet", "").strip()
-      category = request.form.get("category", "web").strip()
-      custom_logo = request.form.get("logo_url", "").strip()
+    message = ""
+    if request.method == "POST":
+        form_type = request.form.get("form_type")
+        if form_type == "add_index":
+            url = request.form.get("url", "").strip()
+            title = request.form.get("title", "").strip()
+            snippet = request.form.get("snippet", "").strip()
+            category = request.form.get("category", "web").strip()
+            custom_logo = request.form.get("logo_url", "").strip()
 
-      if url:
-        c_title, c_snippet, c_logo = crawl_website_metadata(url)
-        final_title = title if title else c_title
-        final_snippet = snippet if snippet else c_snippet
-        final_logo = custom_logo if custom_logo else c_logo
+            if url:
+                c_title, c_snippet, c_logo = crawl_website_metadata(url)
+                final_title = title if title else c_title
+                final_snippet = snippet if snippet else c_snippet
+                final_logo = custom_logo if custom_logo else c_logo
 
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO local_search_index (title, url, snippet, category,"
-            " logo_url) VALUES (?, ?, ?, ?, ?)",
-            (final_title, url, final_snippet, category, final_logo),
-        )
-        conn.commit()
-        conn.close()
-        message = f"✅ Crawled & Added '{final_title}' successfully!"
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO local_search_index (title, url, snippet, category,"
+                    " logo_url) VALUES (?, ?, ?, ?, ?)",
+                    (final_title, url, final_snippet, category, final_logo),
+                )
+                conn.commit()
+                conn.close()
+                message = f"✅ Crawled & Added '{final_title}' successfully!"
 
-    elif form_type == "add_user":
-      new_user = request.form.get("username", "").strip()
-      new_pass = request.form.get("password", "").strip()
-      new_role = request.form.get("role", "user")
-      if new_user and new_pass:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        try:
-          cursor.execute(
-              "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-              (new_user, new_pass, new_role),
-          )
-          conn.commit()
-          message = f"✅ Added user: {new_user}"
-        except sqlite3.IntegrityError:
-          message = "⚠️ Username already exists!"
-        conn.close()
+        elif form_type == "add_user":
+            new_user = request.form.get("username", "").strip()
+            new_pass = request.form.get("password", "").strip()
+            new_role = request.form.get("role", "user")
+            if new_user and new_pass:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                try:
+                    cursor.execute(
+                        "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+                        (new_user, new_pass, new_role),
+                    )
+                    conn.commit()
+                    message = f"✅ Added user: {new_user}"
+                except sqlite3.IntegrityError:
+                    message = "⚠️ Username already exists!"
+                conn.close()
 
-  return (
-      HTML_HEADER
-      + f"""
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-4 mb-5" style="max-width: 750px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center">👑 Owner Control Center</h4>
@@ -1304,36 +1318,36 @@ def owner_dashboard():
         </div>
     </div>
     """
-      + get_footer("home")
-  )
+        + get_footer("home")
+    )
 
 
 @app.route("/user_login", methods=["GET", "POST"])
 def user_login():
-  if session.get("user_logged"):
-    return redirect("/account")
-  error = ""
-  if request.method == "POST":
-    username = request.form.get("username")
-    password = request.form.get("password")
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT * FROM users WHERE username = ? AND password = ?",
-        (username, password),
-    )
-    user = cursor.fetchone()
-    conn.close()
-    if user:
-      session.permanent = True
-      session["user_logged"] = True
-      session["username"] = username
-      return redirect("/account")
-    else:
-      error = "Invalid Credentials!"
-  return (
-      HTML_HEADER
-      + f"""
+    if session.get("user_logged"):
+        return redirect("/account")
+    error = ""
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM users WHERE username = ? AND password = ?",
+            (username, password),
+        )
+        user = cursor.fetchone()
+        conn.close()
+        if user:
+            session.permanent = True
+            session["user_logged"] = True
+            session["username"] = username
+            return redirect("/account")
+        else:
+            error = "Invalid Credentials!"
+    return (
+        HTML_HEADER
+        + f"""
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center">User Login</h4>
@@ -1344,9 +1358,9 @@ def user_login():
         </form>
     </div>
     """
-      + get_footer("home")
-  )
+        + get_footer("home")
+    )
 
 
 if __name__ == "__main__":
-  app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000)
