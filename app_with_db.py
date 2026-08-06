@@ -142,6 +142,7 @@ def init_db():
 
     all_user_items = [
         "Google", "Google India", "YouTube", "Facebook", "Instagram", "X (Twitter)", "Wikipedia", "Reddit", "Amazon", "Netflix", "LinkedIn", "Yahoo", "Bing", "Microsoft", "Apple", "OpenAI", "WhatsApp Web", "Gmail", "Google Maps", "Google Drive", "Google Translate", "Canva", "Pinterest", "Quora", "TikTok", "Discord", "Twitch", "IMDb", "Stack Overflow", "GitHub", "Medium", "WordPress", "Blogger", "Tumblr", "eBay", "AliExpress", "Flipkart", "Myntra", "Snapdeal", "Spotify", "SoundCloud", "VLC", "Adobe", "Figma", "Notion", "Zoom", "Telegram Web", "Dropbox", "OneDrive", "Mega", "DuckDuckGo", "Brave Search", "Yandex", "Baidu", "Naver", "BBC", "CNN", "The New York Times", "The Guardian", "Reuters", "ESPN", "Cricbuzz", "NDTV", "India Today", "Times of India", "Hindustan Times", "The Hindu", "Threads", "Snapchat", "Skype", "Waze", "Google Earth", "Files by Google", "Google Photos", "Google Lens", "Google Keep", "Google Calendar", "Google Tasks", "YouTube Music", "YouTube Studio", "Disney+", "JioHotstar", "Sony LIV", "ZEE5", "MX Player", "Amazon Music", "Gaana", "JioSaavn", "Wynk Music", "Shazam",
+        "12 Jyotirlinga Darshan", "Ayodhya Ram Mandir Official", "Shree Krishna Janmabhoomi Mathura", "Kashi Vishwanath Temple", "Mahakaleshwar Ujjain", "Kedarnath Temple", "Badrinath Dham", "Somnath Temple", "Rameswaram Temple", "Trimbakeshwar Temple",
         "ChatGPT", "Gemini", "Claude", "Perplexity AI", "Microsoft Copilot", "Grok AI", "Meta AI", "DeepSeek AI", "Character.AI", "Poe AI", "Pi AI", "You.com AI", "Phind", "Hugging Face", "OpenRouter", "OpenAI API Platform", "Anthropic Console", "Google AI Studio", "Vertex AI", "Azure AI Foundry", "Amazon Bedrock", "Cohere", "Mistral AI", "Stability AI", "Together AI", "Fireworks AI", "Replicate", "GroqCloud", "Cerebras AI", "ElevenLabs", "Murf AI", "PlayHT", "Speechify", "LOVO AI", "Resemble AI", "WellSaid Labs", "Descript", "Otter.ai", "AssemblyAI", "Deepgram", "Rev AI", "Whisper API", "Suno AI", "Udio", "AIVA", "Soundraw", "Boomy", "Beatoven AI", "Ecrett Music", "Loudly AI", "Midjourney", "DALL·E", "Adobe Firefly", "Leonardo AI", "Ideogram", "Recraft AI", "Playground AI", "DreamStudio", "Flux AI", "Craiyon", "NightCafe", "Artbreeder", "BlueWillow", "Krea AI", "Mage.Space", "Runway", "Pika", "Luma AI", "Kling AI", "Hailuo AI", "PixVerse AI", "InVideo AI", "Synthesia", "HeyGen", "VEED AI", "Kapwing AI", "Canva AI", "Clipchamp AI", "Filmora AI", "FlexClip AI", "Gamma", "Tome", "Notion AI", "Coda AI", "ClickUp AI", "Grammarly AI", "QuillBot AI", "Wordtune", "Jasper AI", "Copy.ai", "Writesonic", "Rytr", "Sudowrite", "HyperWrite", "Frase", "Surfer AI", "Scalenut", "Anyword", "TextCortex", "Jenni AI", "Zapier AI", "Make AI", "n8n AI", "Bardeen AI", "Taskade AI", "Rewind AI", "Mem AI", "NotebookLM", "Elicit", "Consensus AI", "SciSpace", "Research Rabbit", "Semantic Scholar AI", "Litmaps", "Explainpaper", "Humata AI", "ChatPDF", "AskYourPDF", "PDF.ai", "LightPDF AI", "Documind AI", "Unriddle AI", "Glean AI", "Beautiful.ai", "SlidesAI", "Presentations.AI", "Decktopus AI", "Plus AI", "Pitch AI", "Canva Magic Studio", "Microsoft Designer", "Figma AI", "Uizard", "Galileo AI", "Visily AI", "Relume AI", "Framer AI", "Durable AI", "Hostinger AI Website Builder", "Wix AI", "Squarespace AI", "Shopify Magic", "Remove.bg", "Clipdrop", "Cleanup.pictures", "Remini AI", "Cursor AI", "Windsurf Editor", "Tabnine", "Codeium", "Replit AI", "Blackbox AI", "Bolt.new", "Lovable", "v0 by Vercel", "Claude Code",
         "Google Wallet", "Samsung Wallet", "BHIM UPI", "Google Pay", "PhonePe", "Paytm", "Amazon Pay", "PayPal", "Wise", "Payoneer", "Western Union", "Skrill", "Revolut", "Binance", "Coinbase", "CoinDCX", "CoinSwitch Kuber", "WazirX", "TradingView", "Investing.com", "Moneycontrol", "Groww", "Zerodha Kite", "Upstox", "Angel One", "INDmoney", "ET Money", "Tickertape", "Yahoo Finance", "Bloomberg", "CNBC", "Screener.in", "Trendlyne", "Value Research Online", "Policybazaar", "Paisabazaar", "CreditMantri", "Dhan", "5paisa", "Kotak Securities", "Motilal Oswal", "Sharekhan", "Paytm Money", "Stripe", "Razorpay", "MobiKwik", "Freecharge", "SBI Yono", "State Bank of India", "HDFC Bank NetBanking", "ICICI Bank iMobile", "Axis Bank", "Kotak Mahindra Bank", "Punjab National Bank", "Bank of Baroda", "Canara Bank", "Union Bank of India", "Indian Bank", "IDFC FIRST Bank", "IndusInd Bank", "Yes Bank", "AU Small Finance Bank", "Federal Bank", "NSE India", "BSE India",
         "Aavas Financiers Home Loan", "Navi Instant Loan", "KreditBee", "MoneyView Loans", "mPokket", "Cashe Loan", "SmartCoin Personal Loan", "RupeeRedee", "Branch Personal Loan", "RING Instant Credit", "Fibe Instant Personal Loan", "TrueBalance Loan", "Kissht Personal Loan", "PaySense", "Faircent Peer to Peer Lending", "Lendingkart Business Loan", "JanSamarth Govt Loan Portal", "PM SVANidhi Loan", "Mudra Loan Govt Portal", "Vidya Lakshmi Education Loan", "Stand-Up India Govt Loan", "Bajaj Finserv Personal Loan", "Tata Capital Loan", "L&T Finance Loan", "Aditya Birla Capital Loan", "Hero FinCorp Loan", "Muthoot Finance Gold Loan", "Manappuram Gold Loan", "BankBazaar Free Loan Check", "CIBIL Free Credit Score", "Experian Credit Score India", "CRIF High Mark Credit Score", "Wishfin Loans",
@@ -574,13 +575,13 @@ def home():
 
     trending_html = """
     <div class="mt-4">
-        <p class="text-muted small mb-2"><i class="bi bi-graph-up-arrow text-danger me-1"></i> Trending in India 🇮🇳</p>
+        <p class="text-muted small mb-2"><i class="bi bi-graph-up-arrow text-danger me-1"></i> Trending Pilgrimage & News 🇮🇳</p>
         <div class="trending-container">
-            <a href="/search?q=ChatGPT" class="trending-chip">🔥 ChatGPT</a>
-            <a href="/search?q=Cricket+News" class="trending-chip">🏏 Cricket Scores</a>
-            <a href="/search?q=Aavas+Home+Loan" class="trending-chip">🏠 Aavas Home Loan</a>
+            <a href="/search?q=12+Jyotirlinga+Darshan" class="trending-chip">🔱 12 Jyotirlinga</a>
+            <a href="/search?q=Ayodhya+Ram+Mandir" class="trending-chip">🚩 Shree Ram Mandir</a>
+            <a href="/search?q=Shree+Krishna+Janmabhoomi+Mathura" class="trending-chip">🪈 Krishna Janmabhoomi</a>
+            <a href="/search?q=India+News+Today" class="trending-chip">📰 Live News Today</a>
             <a href="/search?q=Google+Gemini" class="trending-chip">🤖 Gemini AI</a>
-            <a href="/search?q=Latest+Movies" class="trending-chip">🎬 New Movies</a>
         </div>
     </div>
     """
@@ -588,24 +589,36 @@ def home():
     news_feed_html = """
     <div class="news-feed-container">
         <h6 class="fw-bold mb-3 d-flex align-items-center gap-2" style="color: #d95100;">
-            <i class="bi bi-newspaper"></i> Bharat Discover & News
+            <i class="bi bi-newspaper"></i> Bharat Discover & Daily Updates
         </h6>
 
-        <div class="news-card">
-            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop" class="news-img" alt="AI Technology">
-            <div class="p-3">
-                <a href="/search?q=AI+Technology+in+India" class="news-title">भारत में एआई (AI) क्रांति: जानिए नए अवसर</a>
-                <p class="news-desc">भारतीय टेक सेक्टर में आर्टिफिशियल इंटेलिजेंस तेजी से आगे बढ़ रहा है...</p>
-                <span class="badge bg-warning text-dark">Artificial Intelligence</span>
-            </div>
-        </div>
-
+        <!-- Card 1: Ram Mandir -->
         <div class="news-card">
             <img src="https://images.unsplash.com/photo-1532375810709-75b1da00537c?w=600&auto=format&fit=crop" class="news-img" alt="Ayodhya Ram Mandir">
             <div class="p-3">
-                <a href="/search?q=Ayodhya+Ram+Mandir" class="news-title">श्री राम जन्मभूमि अयोध्या: दर्शन और अपडेट्स</a>
-                <p class="news-desc">अयोध्या में राम मंदिर दर्शन से जुड़ी ताज़ा जानकारी और प्रमुख बातें यहाँ देखें।</p>
-                <span class="badge bg-danger">Spiritual</span>
+                <a href="/search?q=Ayodhya+Ram+Mandir" class="news-title">श्री राम जन्मभूमि अयोध्या: भव्य मंदिर दर्शन और ताज़ा समाचार</a>
+                <p class="news-desc">अयोध्या धाम में प्रभु श्री राम के दर्शन, आरती का समय और श्रद्धालुओं के लिए ताज़ा अपडेट्स।</p>
+                <span class="badge bg-danger">Spiritual • Live</span>
+            </div>
+        </div>
+
+        <!-- Card 2: 12 Jyotirlinga -->
+        <div class="news-card">
+            <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop" class="news-img" alt="12 Jyotirlinga">
+            <div class="p-3">
+                <a href="/search?q=12+Jyotirlinga+Darshan" class="news-title">भारत के 12 ज्योतिर्लिंग दर्शन: स्थान, महत्व और यात्रा गाइड</a>
+                <p class="news-desc">सोमनाथ, महाकालेश्वर, काशी विश्वनाथ से लेकर केदारनाथ तक संपूर्ण 12 ज्योतिर्लिंग जानकारी।</p>
+                <span class="badge bg-warning text-dark">Dham Darshan</span>
+            </div>
+        </div>
+
+        <!-- Card 3: Krishna Janmabhoomi -->
+        <div class="news-card">
+            <img src="https://images.unsplash.com/photo-1567157577867-05ccb1388e66?w=600&auto=format&fit=crop" class="news-img" alt="Shree Krishna Janmabhoomi">
+            <div class="p-3">
+                <a href="/search?q=Shree+Krishna+Janmabhoomi+Mathura" class="news-title">श्री कृष्ण जन्मभूमि मथुरा और वृंदावन: भव्य दर्शन समाचार</a>
+                <p class="news-desc">मथुरा जन्मभूमि मंदिर और बांके बिहारी वृंदावन के ताज़ा दर्शन व धार्मिक आयोजनों की ख़बरें।</p>
+                <span class="badge bg-success">Mathura Vrindavan</span>
             </div>
         </div>
     </div>
@@ -834,6 +847,7 @@ Previous Chat Context:
     <div class="search-filters">
         <a href="/search?q={query}&cat=all" class="filter-chip {'active' if category == 'all' else ''}"><i class="bi bi-search"></i> All</a>
         <a href="/search?q={query}&cat=ai" class="filter-chip {'active' if category == 'ai' else ''}"><i class="bi bi-stars"></i> AI Mode</a>
+        <a href="/search?q={query}&cat=maps" class="filter-chip {'active' if category == 'maps' else ''}"><i class="bi bi-geo-alt-fill text-danger"></i> Maps</a>
         <a href="/search?q={query}&cat=images" class="filter-chip {'active' if category == 'images' else ''}"><i class="bi bi-image"></i> Images</a>
         <a href="/search?q={query}&cat=videos" class="filter-chip {'active' if category == 'videos' else ''}"><i class="bi bi-play-btn"></i> Videos</a>
         <a href="/search?q={query}&cat=apps" class="filter-chip {'active' if category == 'apps' else ''}"><i class="bi bi-phone"></i> Apps</a>
@@ -863,7 +877,27 @@ Previous Chat Context:
 
     body_results = ""
 
-    if category == "images":
+    # 🗺️ MAPS CATEGORY HANDLER (Google Maps Embed)
+    if category == "maps":
+        encoded_q = quote_plus(query)
+        map_embed_url = f"https://www.google.com/maps?q={encoded_q}&output=embed"
+        body_results += f"""
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div class="card-header bg-danger text-white fw-bold d-flex align-items-center gap-2">
+                <i class="bi bi-geo-alt-fill"></i> Bharat Maps Live View: {query}
+            </div>
+            <div class="card-body p-0">
+                <iframe src="{map_embed_url}" width="100%" height="380" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+            </div>
+            <div class="p-3 bg-light text-center">
+                <a href="https://www.google.com/maps/search/?api=1&query={encoded_q}" target="_blank" class="btn btn-outline-danger btn-sm rounded-pill fw-bold">
+                    <i class="bi bi-box-arrow-up-right"></i> Open in Google Maps
+                </a>
+            </div>
+        </div>
+        """
+
+    elif category == "images":
         encoded_q = quote_plus(query)
         body_results += f"""
         <div class="row g-2">
