@@ -506,6 +506,102 @@ def service_worker():
     return js, 200, {"Content-Type": "application/javascript"}
 
 
+# 🔄 API for Infinite Scroll News Feed
+@app.route("/api/feed")
+def news_feed_api():
+    page = request.args.get("page", 1, type=int)
+    
+    # Infinite feed content database
+    all_news_items = [
+        {
+            "img": "https://images.unsplash.com/photo-1532375810709-75b1da00537c?w=600&auto=format&fit=crop",
+            "query": "Ayodhya Ram Mandir",
+            "title": "श्री राम जन्मभूमि अयोध्या: भव्य मंदिर दर्शन और ताज़ा समाचार",
+            "desc": "अयोध्या धाम में प्रभु श्री राम के दर्शन, आरती का समय और श्रद्धालुओं के लिए ताज़ा अपडेट्स।",
+            "badge_cls": "bg-danger",
+            "badge_text": "Spiritual • Live"
+        },
+        {
+            "img": "https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop",
+            "query": "12 Jyotirlinga Darshan",
+            "title": "भारत के 12 ज्योतिर्लिंग दर्शन: स्थान, महत्व और यात्रा गाइड",
+            "desc": "सोमनाथ, महाकालेश्वर, काशी विश्वनाथ से लेकर केदारनाथ तक संपूर्ण 12 ज्योतिर्लिंग जानकारी।",
+            "badge_cls": "bg-warning text-dark",
+            "badge_text": "Dham Darshan"
+        },
+        {
+            "img": "https://images.unsplash.com/photo-1567157577867-05ccb1388e66?w=600&auto=format&fit=crop",
+            "query": "Shree Krishna Janmabhoomi Mathura",
+            "title": "श्री कृष्ण जन्मभूमि मथुरा और वृंदावन: भव्य दर्शन समाचार",
+            "desc": "मथुरा जन्मभूमि मंदिर और बांके बिहारी वृंदावन के ताज़ा दर्शन व धार्मिक आयोजनों की ख़बरें।",
+            "badge_cls": "bg-success",
+            "badge_text": "Mathura Vrindavan"
+        },
+        {
+            "img": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=600&auto=format&fit=crop",
+            "query": "Kashi Vishwanath Temple Varanasi",
+            "title": "काशी विश्वनाथ मंदिर वाराणसी: बाबा विश्वनाथ के लाइव दर्शन",
+            "desc": "वाराणसी में माँ गंगा और बाबा विश्वनाथ के दिव्य दर्शन, सुगम दर्शन पास एवं ताज़ा अपडेट।",
+            "badge_cls": "bg-primary",
+            "badge_text": "Varanasi Dham"
+        },
+        {
+            "img": "https://images.unsplash.com/photo-1609946727517-f36804434237?w=600&auto=format&fit=crop",
+            "query": "Mahakaleshwar Ujjain Bhasma Aarti",
+            "title": "महाकालेश्वर उज्जैन: भस्म आरती बुकिंग व लाइव अपडेट्स",
+            "desc": "उज्जैन के महाकाल लोक और बाबा महाकाल की भस्म आरती से जुड़े सभी दिशा-निर्देश।",
+            "badge_cls": "bg-danger",
+            "badge_text": "Ujjain Mahakal"
+        },
+        {
+            "img": "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=600&auto=format&fit=crop",
+            "query": "Kedarnath Yatra Live",
+            "title": "केदारनाथ धाम यात्रा: मौसम अलर्ट और हेलीकॉप्टर बुकिंग न्यूज़",
+            "desc": "उत्तराखंड के केदारनाथ धाम की ताज़ा यात्रा स्थिति, मौसम पूर्वानुमान एवं दर्शन अपडेट।",
+            "badge_cls": "bg-info text-dark",
+            "badge_text": "Himalaya Yatra"
+        },
+        {
+            "img": "https://images.unsplash.com/photo-1590059301984-d652a122e2c5?w=600&auto=format&fit=crop",
+            "query": "India Today Headlines",
+            "title": "भारत आज की बड़ी ख़बरें: देश-विदेश की ताज़ा राजनीति व खेल समाचार",
+            "desc": "आज की बड़ी सुर्खियाँ, व्यापारिक अपडेट्स और खेल जगत से जुड़ी तमाम ताज़ा ख़बरें।",
+            "badge_cls": "bg-secondary",
+            "badge_text": "Daily News"
+        },
+        {
+            "img": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop",
+            "query": "AI Tech News India",
+            "title": "भारत में AI क्रांति: टेक जगत की नई खोजें और ऑटोमेशन",
+            "desc": "कृत्रिम बुद्धिमत्ता (AI) के क्षेत्र में भारत की नई ऊँचाइयाँ और स्टार्टअप्स की अपडेट्स।",
+            "badge_cls": "bg-dark",
+            "badge_text": "Tech & AI"
+        }
+    ]
+
+    per_page = 3
+    start = (page - 1) * per_page
+    end = start + per_page
+    items = all_news_items[start:end]
+
+    # Generate html string for dynamically requested page
+    cards_html = ""
+    for item in items:
+        cards_html += f"""
+        <div class="news-card">
+            <img src="{item['img']}" class="news-img" alt="{item['query']}">
+            <div class="p-3">
+                <a href="/search?q={quote_plus(item['query'])}" class="news-title">{item['title']}</a>
+                <p class="news-desc">{item['desc']}</p>
+                <span class="badge {item['badge_cls']}">{item['badge_text']}</span>
+            </div>
+        </div>
+        """
+
+    has_more = end < len(all_news_items)
+    return jsonify({"html": cards_html, "has_more": has_more})
+
+
 @app.route("/suggest")
 def suggest():
     query = request.args.get("q", "").strip()
@@ -589,37 +685,18 @@ def home():
     news_feed_html = """
     <div class="news-feed-container">
         <h6 class="fw-bold mb-3 d-flex align-items-center gap-2" style="color: #d95100;">
-            <i class="bi bi-newspaper"></i> Bharat Discover & Daily Updates
+            <i class="bi bi-newspaper"></i> Bharat Discover & Infinite Daily Feed
         </h6>
 
-        <!-- Card 1: Ram Mandir -->
-        <div class="news-card">
-            <img src="https://images.unsplash.com/photo-1532375810709-75b1da00537c?w=600&auto=format&fit=crop" class="news-img" alt="Ayodhya Ram Mandir">
-            <div class="p-3">
-                <a href="/search?q=Ayodhya+Ram+Mandir" class="news-title">श्री राम जन्मभूमि अयोध्या: भव्य मंदिर दर्शन और ताज़ा समाचार</a>
-                <p class="news-desc">अयोध्या धाम में प्रभु श्री राम के दर्शन, आरती का समय और श्रद्धालुओं के लिए ताज़ा अपडेट्स।</p>
-                <span class="badge bg-danger">Spiritual • Live</span>
-            </div>
-        </div>
+        <!-- Infinite News List Container -->
+        <div id="infiniteNewsFeed"></div>
 
-        <!-- Card 2: 12 Jyotirlinga -->
-        <div class="news-card">
-            <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop" class="news-img" alt="12 Jyotirlinga">
-            <div class="p-3">
-                <a href="/search?q=12+Jyotirlinga+Darshan" class="news-title">भारत के 12 ज्योतिर्लिंग दर्शन: स्थान, महत्व और यात्रा गाइड</a>
-                <p class="news-desc">सोमनाथ, महाकालेश्वर, काशी विश्वनाथ से लेकर केदारनाथ तक संपूर्ण 12 ज्योतिर्लिंग जानकारी।</p>
-                <span class="badge bg-warning text-dark">Dham Darshan</span>
+        <!-- Scroll Loader Indicator -->
+        <div id="feedLoader" class="text-center my-4">
+            <div class="spinner-border text-warning" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
-        </div>
-
-        <!-- Card 3: Krishna Janmabhoomi -->
-        <div class="news-card">
-            <img src="https://images.unsplash.com/photo-1567157577867-05ccb1388e66?w=600&auto=format&fit=crop" class="news-img" alt="Shree Krishna Janmabhoomi">
-            <div class="p-3">
-                <a href="/search?q=Shree+Krishna+Janmabhoomi+Mathura" class="news-title">श्री कृष्ण जन्मभूमि मथुरा और वृंदावन: भव्य दर्शन समाचार</a>
-                <p class="news-desc">मथुरा जन्मभूमि मंदिर और बांके बिहारी वृंदावन के ताज़ा दर्शन व धार्मिक आयोजनों की ख़बरें।</p>
-                <span class="badge bg-success">Mathura Vrindavan</span>
-            </div>
+            <div class="small text-muted mt-2">Loading more stories...</div>
         </div>
     </div>
     """
@@ -713,6 +790,47 @@ def home():
                     document.getElementById('pwaBanner').style.display = 'none';
                 }}
             }});
+        }}
+    }});
+
+    // ♾️ Infinite Scroll Logic for Discover Feed
+    let currentPage = 1;
+    let isLoading = false;
+    let hasMoreNews = true;
+
+    async function loadMoreNews() {{
+        if (isLoading || !hasMoreNews) return;
+        isLoading = true;
+        document.getElementById('feedLoader').style.display = 'block';
+
+        try {{
+            const res = await fetch(`/api/feed?page=${{currentPage}}`);
+            const data = await res.json();
+
+            if (data.html) {{
+                document.getElementById('infiniteNewsFeed').insertAdjacentHTML('beforeend', data.html);
+                currentPage++;
+                hasMoreNews = data.has_more;
+            }} else {{
+                hasMoreNews = false;
+            }}
+        }} catch (e) {{
+            console.error("Error loading feed:", e);
+        }} finally {{
+            isLoading = false;
+            if (!hasMoreNews) {{
+                document.getElementById('feedLoader').innerHTML = '<div class="small text-muted mb-4">✨ You are all caught up!</div>';
+            }}
+        }}
+    }}
+
+    // Initial feed load
+    loadMoreNews();
+
+    // Scroll listener for Infinite Loading
+    window.addEventListener('scroll', () => {{
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {{
+            loadMoreNews();
         }}
     }});
     </script>
