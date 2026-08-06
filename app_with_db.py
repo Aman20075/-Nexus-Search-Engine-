@@ -24,12 +24,7 @@ interaction = client.interactions.create(
 print(interaction.output_text)
       else None
   )
-except ImportError:
-  ai_client = None
-  print(
-      "⚠️ Warning: google-genai module not installed. Run: pip install"
-      " google-genai"
-  )
+
 
 app = Flask(__name__)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60
