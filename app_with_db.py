@@ -572,7 +572,7 @@ def search():
                 Format it nicely with bullet points if explaining steps.
                 """
         response = ai_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             contents=ai_prompt,
         )
         ai_text = response.text if response and response.text else ""
