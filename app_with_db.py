@@ -203,26 +203,51 @@ HTML_HEADER = """<!DOCTYPE html>
     <link rel="manifest" href="/manifest.json">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <meta name="theme-color" content="#1a73e8">
+    <meta name="theme-color" content="#FF9933">
     <style>
         :root {
-            --bg-color: #ffffff;
+            --bg-color: #fff9f2;
             --text-color: #202124;
-            --card-bg: #f8f9fa;
-            --border-color: #dfe1e5;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --border-color: #f1d3b3;
         }
 
         body.dark-mode {
             --bg-color: #121212;
             --text-color: #e8eaed;
-            --card-bg: #1e1e1e;
+            --card-bg: rgba(30, 30, 30, 0.95);
             --border-color: #3c4043;
         }
 
-        html, body { height: 100%; margin: 0; background: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; touch-action: manipulation; transition: background 0.3s, color 0.3s; }
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            touch-action: manipulation; 
+            transition: background 0.3s, color 0.3s; 
+        }
         body { padding-bottom: 75px; }
-        .top-bar-chrome { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: var(--bg-color); }
-        .creator-badge { font-size: 13px; font-weight: 600; color: #5f6368; }
+
+        /* 🛕 भगवा और श्री राम मंदिर बैकग्राउंड स्टाइल */
+        .ram-mandir-bg {
+            background-image: linear-gradient(to bottom, rgba(255, 243, 230, 0.88), rgba(255, 230, 204, 0.95)), 
+                              url('https://upload.wikimedia.org/wikipedia/commons/e/e0/Ram_Mandir_Ayodhya.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            min-height: 100vh;
+        }
+
+        body.dark-mode .ram-mandir-bg {
+            background-image: linear-gradient(to bottom, rgba(18, 18, 18, 0.90), rgba(20, 20, 20, 0.96)), 
+                              url('https://upload.wikimedia.org/wikipedia/commons/e/e0/Ram_Mandir_Ayodhya.jpg');
+        }
+
+        .top-bar-chrome { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: transparent; }
+        .creator-badge { font-size: 13px; font-weight: 600; color: #d96b00; }
+        body.dark-mode .creator-badge { color: #ff9933; }
         .top-right-actions { display: flex; align-items: center; gap: 8px; }
         .dots-btn, .account-btn, .theme-btn { background: none; border: none; font-size: 20px; color: #444746; cursor: pointer; padding: 4px 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; }
         .dots-btn:hover, .account-btn:hover, .theme-btn:hover { background: var(--card-bg); color: #1a73e8; }
@@ -233,24 +258,40 @@ HTML_HEADER = """<!DOCTYPE html>
         .chrome-menu-item i { font-size: 18px; color: #444746; }
         .chrome-divider { height: 1px; background: var(--border-color); margin: 8px 0; }
         
-        .bharat-logo { font-size: 52px; font-weight: 700; letter-spacing: -1.5px; margin-top: 20px; }
+        .bharat-logo { font-size: 52px; font-weight: 700; letter-spacing: -1.5px; margin-top: 15px; }
         .google-search-container { max-width: 580px; width: 92%; margin: 24px auto 16px auto; position: relative; }
-        .google-input { height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 52px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); box-shadow: 0 1px 6px rgba(32,33,36,0.12); font-size: 16px; }
-        .google-input:focus { outline: none; border-color: #4285f4; box-shadow: 0 2px 8px rgba(32,33,36,0.2); background: var(--bg-color); color: var(--text-color); }
-        .search-left-icon { position: absolute; left: 18px; top: 17px; color: #9aa0a6; font-size: 18px; }
-        .mic-btn { position: absolute; right: 18px; top: 15px; background: none; border: none; color: #4285f4; font-size: 20px; cursor: pointer; }
+        
+        /* 📸 Search Input + Mic & Camera Icons */
+        .google-input { height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 90px; border: 2px solid #ffaa44; background: var(--card-bg); color: var(--text-color); box-shadow: 0 4px 12px rgba(255, 153, 51, 0.2); font-size: 16px; backdrop-filter: blur(5px); }
+        .google-input:focus { outline: none; border-color: #ff7700; box-shadow: 0 4px 16px rgba(255, 119, 0, 0.35); background: var(--card-bg); color: var(--text-color); }
+        .search-left-icon { position: absolute; left: 18px; top: 17px; color: #e67300; font-size: 18px; }
+        .right-icons-wrapper { position: absolute; right: 15px; top: 12px; display: flex; align-items: center; gap: 8px; }
+        .mic-btn, .camera-btn { background: none; border: none; color: #ff7700; font-size: 20px; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; }
+        .mic-btn:hover, .camera-btn:hover { color: #d95100; transform: scale(1.1); }
         
         /* Trending Chips */
         .trending-container { max-width: 580px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-        .trending-chip { background: var(--card-bg); border: 1px solid var(--border-color); padding: 6px 14px; border-radius: 20px; font-size: 13px; color: var(--text-color); text-decoration: none; font-weight: 500; transition: 0.2s; }
-        .trending-chip:hover { background: #e8f0fe; color: #1a73e8; border-color: #d2e3fc; }
+        .trending-chip { background: var(--card-bg); border: 1px solid #ffcc99; padding: 6px 14px; border-radius: 20px; font-size: 13px; color: var(--text-color); text-decoration: none; font-weight: 500; transition: 0.2s; backdrop-filter: blur(4px); }
+        .trending-chip:hover { background: #ffaa44; color: #ffffff; border-color: #ffaa44; }
+
+        /* 📰 News & Images Feed Section */
+        .news-feed-container { max-width: 580px; margin: 30px auto 0 auto; padding: 0 10px; text-align: left; }
+        .news-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .news-card:hover { transform: translateY(-3px); }
+        .news-img { width: 100%; height: 180px; object-fit: cover; }
+        .news-title { font-size: 16px; font-weight: 700; color: var(--text-color); text-decoration: none; margin-bottom: 6px; display: block; }
+        .news-desc { font-size: 13px; color: #666; margin-bottom: 8px; }
+
+        /* Camera Modal Overlay */
+        #cameraModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; align-items: center; justify-content: center; flex-direction: column; }
+        #cameraVideo { width: 90%; max-width: 450px; border-radius: 16px; border: 2px solid #ff9933; }
 
         /* PWA Install Banner */
-        .pwa-banner { position: fixed; bottom: 70px; left: 5%; right: 5%; background: #1a73e8; color: white; border-radius: 16px; padding: 12px 18px; display: none; align-items: center; justify-content: space-between; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .pwa-banner { position: fixed; bottom: 70px; left: 5%; right: 5%; background: #ff7700; color: white; border-radius: 16px; padding: 12px 18px; display: none; align-items: center; justify-content: space-between; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 
         .search-filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; }
         .filter-chip { padding: 6px 16px; border-radius: 20px; background: var(--card-bg); color: var(--text-color); text-decoration: none; font-size: 14px; white-space: nowrap; font-weight: 500; display: flex; align-items: center; gap: 6px; }
-        .filter-chip.active { background: #e8f0fe; color: #1967d2; border: 1px solid #d2e3fc; }
+        .filter-chip.active { background: #ffe6cc; color: #d96b00; border: 1px solid #ffb366; }
         
         .results-wrapper { max-width: 650px; margin: 0 auto; padding: 0 15px; }
         .result-card { margin-bottom: 24px; }
@@ -288,11 +329,21 @@ HTML_HEADER = """<!DOCTYPE html>
         .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-color); border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; padding: 8px 0; z-index: 9998; }
         .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
-        .nav-link-item.active { color: #1a73e8; font-weight: 600; }
+        .nav-link-item.active { color: #ff7700; font-weight: 600; }
         .nav-hidden { display: none !important; opacity: 0; visibility: hidden; }
     </style>
 </head>
 <body>
+
+<!-- Camera View Modal -->
+<div id="cameraModal">
+    <div class="text-white mb-2 fw-bold">📷 Bharat Lens / Camera Search</div>
+    <video id="cameraVideo" autoplay playsinline></video>
+    <div class="mt-3 d-flex gap-2">
+        <button onclick="captureCamera()" class="btn btn-warning rounded-pill px-4 fw-bold">Capture & Search</button>
+        <button onclick="closeCamera()" class="btn btn-light rounded-pill px-4">Close</button>
+    </div>
+</div>
 
 <!-- PWA Install Banner -->
 <div id="pwaBanner" class="pwa-banner">
@@ -420,7 +471,7 @@ def manifest():
       }],
       "start_url": "/",
       "background_color": "#ffffff",
-      "theme_color": "#1a73e8",
+      "theme_color": "#FF9933",
       "display": "standalone",
   })
 
@@ -458,6 +509,12 @@ def suggest():
   return jsonify(suggestions)
 
 
+@app.route("/new_chat")
+def new_chat():
+  session.pop("ai_history", None)
+  return redirect("/search?q=Hello&cat=ai")
+
+
 @app.route("/")
 def home():
   user_logged = session.get("user_logged")
@@ -480,7 +537,7 @@ def home():
                 <i class="bi bi-moon-stars" id="themeIcon"></i>
             </button>
             <a href="{account_url}" class="account-btn" title="Account">
-                <i class="bi bi-person-circle" style="color: {'#1a73e8' if (user_logged or owner_logged) else '#444746'};"></i>
+                <i class="bi bi-person-circle" style="color: {'#ff7700' if (user_logged or owner_logged) else '#444746'};"></i>
             </a>
             <button class="dots-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#chromeMenu">
                 <i class="bi bi-three-dots-vertical"></i>
@@ -513,27 +570,94 @@ def home():
     </div>
     """
 
+  news_feed_html = """
+    <div class="news-feed-container">
+        <h6 class="fw-bold mb-3 d-flex align-items-center gap-2" style="color: #d95100;">
+            <i class="bi bi-newspaper"></i> Bharat Discover & News
+        </h6>
+
+        <div class="news-card">
+            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop" class="news-img" alt="AI Technology">
+            <div class="p-3">
+                <a href="/search?q=AI+Technology+in+India" class="news-title">भारत में एआई (AI) क्रांति: जानिए नए अवसर</a>
+                <p class="news-desc">भारतीय टेक सेक्टर में आर्टिफिशियल इंटेलिजेंस तेजी से आगे बढ़ रहा है...</p>
+                <span class="badge bg-warning text-dark">Artificial Intelligence</span>
+            </div>
+        </div>
+
+        <div class="news-card">
+            <img src="https://images.unsplash.com/photo-1532375810709-75b1da00537c?w=600&auto=format&fit=crop" class="news-img" alt="Ayodhya Ram Mandir">
+            <div class="p-3">
+                <a href="/search?q=Ayodhya+Ram+Mandir" class="news-title">श्री राम जन्मभूमि अयोध्या: दर्शन और अपडेट्स</a>
+                <p class="news-desc">अयोध्या में राम मंदिर दर्शन से जुड़ी ताज़ा जानकारी और प्रमुख बातें यहाँ देखें।</p>
+                <span class="badge bg-danger">Spiritual</span>
+            </div>
+        </div>
+    </div>
+    """
+
   return (
       HTML_HEADER
-      + top_bar
       + f"""
-    <div class="container text-center">
-        <div class="bharat-logo mb-1">
-            <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
+    <div class="ram-mandir-bg">
+        {top_bar}
+        <div class="container text-center pt-2">
+            <!-- 🚩 तिरंगा "Bharat" लोगो + श्री राम मंदिर स्मारक 🛕 -->
+            <div class="bharat-logo mb-1 d-flex align-items-center justify-content-center gap-2">
+                <div>
+                    <span style="color:#FF9933">B</span><span style="color:#FF9933">h</span><span style="color:#000080">a</span><span style="color:#138808">r</span><span style="color:#138808">a</span><span style="color:#138808">t</span>
+                </div>
+                <span style="font-size: 42px;" title="जय श्री राम 🛕">🛕</span>
+            </div>
+            <p class="fw-medium small mb-3" style="color: #d95100;">India's Automatic AI Search Engine 🇮🇳</p>
+
+            <form action="/search" method="GET" id="searchForm" class="google-search-container">
+                <i class="bi bi-search search-left-icon"></i>
+                <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Poochhein AI se ya search karein web..." required autocomplete="off">
+                <div class="right-icons-wrapper">
+                    <button type="button" onclick="startVoiceSearch()" class="mic-btn" title="Search by Voice"><i class="bi bi-mic-fill"></i></button>
+                    <button type="button" onclick="openCamera()" class="camera-btn" title="Camera Search"><i class="bi bi-camera-fill"></i></button>
+                </div>
+                <div id="suggestionsBox" class="suggestions-dropdown"></div>
+            </form>
+
+            {trending_html}
+            {news_feed_html}
         </div>
-        <p class="text-muted small mb-3">India's Automatic AI Search Engine 🇮🇳</p>
-
-        <form action="/search" method="GET" id="searchForm" class="google-search-container">
-            <i class="bi bi-search search-left-icon"></i>
-            <input type="text" name="q" id="searchInput" class="form-control google-input" placeholder="Poochhein AI se ya search karein web..." required autocomplete="off">
-            <button type="button" onclick="startVoiceSearch()" class="mic-btn" title="Search by Voice"><i class="bi bi-mic-fill"></i></button>
-            <div id="suggestionsBox" class="suggestions-dropdown"></div>
-        </form>
-
-        {trending_html}
     </div>
 
     <script>
+    let cameraStream = null;
+
+    async function openCamera() {{
+        const modal = document.getElementById('cameraModal');
+        const video = document.getElementById('cameraVideo');
+        modal.style.display = 'flex';
+
+        try {{
+            cameraStream = await navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: "environment" }} }});
+            video.srcObject = cameraStream;
+        }} catch (err) {{
+            alert("Camera access permission zaroori hai!");
+            closeCamera();
+        }}
+    }}
+
+    function closeCamera() {{
+        const modal = document.getElementById('cameraModal');
+        modal.style.display = 'none';
+        if (cameraStream) {{
+            cameraStream.getTracks().forEach(track => track.stop());
+        }}
+    }}
+
+    function captureCamera() {{
+        alert("Photo captured! Searching web...");
+        closeCamera();
+        document.getElementById('searchInput').value = "Google Lens Search";
+        document.getElementById('searchForm').submit();
+    }}
+
     function toggleDarkMode() {{
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
@@ -609,53 +733,80 @@ def search():
   if category in ["all", "ai"]:
     if ai_client:
       try:
+        ai_history = session.get("ai_history", [])
+
         ai_prompt = f"""
-User Question/Query: "{query}"
-Provide a crisp, accurate, and easy-to-read answer in short (Hinglish/Hindi). 
-Format it nicely with bullet points if explaining steps.
-Also, include 2-3 relevant and clickable website links or references related to this topic, formatted properly so they can be clicked.
+Provide a crisp, accurate answer in Hinglish/Hindi. 
+Format with bullet points if needed. 
+CRITICAL REQUIREMENT: Format ALL links strictly as clickable HTML anchor tags like: <a href="https://example.com" target="_blank" class="text-primary fw-bold text-decoration-underline">Name</a>. Do NOT use markdown.
+
+Previous Chat Context:
 """
+        for msg in ai_history:
+          ai_prompt += f"User: {msg['q']}\nAI: {msg['a']}\n"
+
+        ai_prompt += f"\nCurrent Query: {query}"
+
         response = ai_client.models.generate_content(
-            model="gemini-3.6-flash",
+            model="gemini-1.5-flash",
             contents=ai_prompt,
         )
         ai_text = response.text if response and response.text else ""
 
         if ai_text:
+          ai_history.append({"q": query, "a": ai_text})
+          session["ai_history"] = ai_history[-4:]
+          session.modified = True
+
+          chat_bubbles = ""
+          for chat in ai_history:
+            chat_bubbles += f"""
+                        <div class="d-flex justify-content-end mb-3">
+                            <div class="bg-primary text-white px-3 py-2 shadow-sm" style="border-radius: 18px 18px 0 18px; max-width: 85%; font-size: 15px;">
+                                {chat['q']}
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-start mb-4">
+                            <div class="bg-white border px-3 py-3 shadow-sm" style="border-radius: 18px 18px 18px 0; max-width: 95%; font-size: 15px; line-height: 1.6;">
+                                {chat['a']}
+                            </div>
+                        </div>
+                        """
+
           ai_response_html = f"""
-                    <div class="card p-3 mb-4 rounded-4 shadow-sm border-0 bg-light">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-stars text-primary me-2 fs-5"></i>
-                            <h6 class="text-primary mb-0 fw-bold">Bharat AI Overview</h6>
+                    <div class="card p-0 mb-4 rounded-4 shadow-sm border border-primary overflow-hidden">
+                        <div class="bg-white px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-robot text-primary fs-4"></i>
+                                <strong class="text-primary" style="font-size: 16px;">Bharat AI Chat</strong>
+                            </div>
+                            <a href="/new_chat" class="btn btn-sm btn-danger rounded-pill fw-bold shadow-sm d-flex align-items-center gap-1">
+                                <i class="bi bi-plus-circle"></i> New Chat
+                            </a>
                         </div>
-                        <div class="text-dark small lh-base mb-3" style="white-space: pre-line;">
-                            {ai_text}
+                        
+                        <div class="p-3" style="max-height: 500px; overflow-y: auto; background-color: #f0f2f5;" id="chatArea">
+                            {chat_bubbles}
                         </div>
-                        <hr class="my-2 text-muted">
-                        <div class="mt-2">
-                            <p class="text-muted small mb-2"><i class="bi bi-chat-dots me-1"></i> Ask follow-up question to AI:</p>
-                            <form action="/search" method="GET" class="d-flex gap-2">
+                        
+                        <div class="p-2 bg-white border-top">
+                            <form action="/search" method="GET" class="d-flex gap-2 mb-0">
                                 <input type="hidden" name="cat" value="ai">
-                                <div class="input-group">
-                                    <span class="input-group-text bg-white border-end-0 rounded-start-4">
-                                        <i class="bi bi-robot text-primary"></i>
-                                    </span>
-                                    <input type="text" name="q" class="form-control border-start-0 rounded-end-4" 
-                                           placeholder="Poochhein AI se koi bhi sawal..." required>
-                                </div>
-                                <button type="submit" class="btn btn-primary rounded-4 px-3 d-flex align-items-center gap-1">
-                                    <i class="bi bi-send-fill"></i>
-                                    <span>Ask</span>
-                                </button>
+                                <input type="text" name="q" class="form-control rounded-pill bg-light border-0 px-3" placeholder="Poochhein AI se koi aur sawal..." required autocomplete="off">
+                                <button type="submit" class="btn btn-primary rounded-pill px-3 shadow-sm"><i class="bi bi-send-fill"></i></button>
                             </form>
                         </div>
                     </div>
+                    <script>
+                        var chatArea = document.getElementById("chatArea");
+                        if(chatArea) {{ chatArea.scrollTop = chatArea.scrollHeight; }}
+                    </script>
                     """
       except Exception as e:
         print(f"AI Generation Error: {e}")
         ai_response_html = """
                 <div class="p-3 mb-3 rounded-4 bg-light border border-warning shadow-sm">
-                    <p class="small mb-0 text-muted">⚠️ <b>AI Search Update:</b> AI Limit Poori Ho Gayi Hai Ya API Offline Hai. Please Thodi Der Baad Try Karein.</p>
+                    <p class="small mb-0 text-muted">⚠️ <b>AI Search Update:</b> AI Limit Poori Ho Gayi Hai Ya API Offline Hai.</p>
                 </div>
                 """
     else:
@@ -789,11 +940,37 @@ Also, include 2-3 relevant and clickable website links or references related to 
                     </div>
                 </div>
                 """
-    elif category != "ai":
+    else:
+      ai_web_url = f"https://www.google.com/search?q={quote_plus(query)}"
+      ai_web_domain = "google.com"
+      ai_web_logo = (
+          f"https://www.google.com/s2/favicons?domain={ai_web_domain}&sz=64"
+      )
+
       body_results += f"""
-            <div class="text-center text-muted p-4 bg-light rounded-4 border">
-                <h6>No indexed pages found for "{query}".</h6>
-                <p class="small text-muted mb-0">Owner Dashboard se link add karein!</p>
+            <div class="alert alert-light border rounded-4 p-3 mb-4 shadow-sm">
+                <span class="badge bg-primary mb-2">🤖 AI Smart Result</span>
+                <p class="small text-muted mb-0">Yeh result Bharat AI dawra live search karke generate kiya gaya hai:</p>
+            </div>
+
+            <div class="result-card mb-4 pb-2 border-bottom">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center border" style="width:28px; height:28px; overflow:hidden;">
+                        <img src="{ai_web_logo}" class="site-logo" alt="Logo">
+                    </div>
+                    <div class="d-flex flex-column" style="line-height: 1.2;">
+                        <span class="fw-medium text-dark" style="font-size: 14px;">{ai_web_domain}</span>
+                        <span class="text-muted" style="font-size: 12px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{ai_web_url}</span>
+                    </div>
+                </div>
+
+                <a href="{ai_web_url}" target="_blank" class="result-title">
+                    Explore live web search & results for "{query}"
+                </a>
+
+                <div class="result-snippet mt-1">
+                    Bharat AI dawra dhundha gaya official link. Yahan click karke "{query}" ke baare mein vistar se jaanein aur official websites browse karein.
+                </div>
             </div>
             """
 
