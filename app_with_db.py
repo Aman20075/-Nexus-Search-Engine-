@@ -140,24 +140,12 @@ def init_db():
         )
     """)
 
-  # 📌 आपकी भेजी गई सभी 1000+ लिंक्स, ऐप्स और आवास हाउसिंग फाइनेंस का इंडेक्स
   all_user_items = [
-      # Search, Big Tech & Social Media
       "Google", "Google India", "YouTube", "Facebook", "Instagram", "X (Twitter)", "Wikipedia", "Reddit", "Amazon", "Netflix", "LinkedIn", "Yahoo", "Bing", "Microsoft", "Apple", "OpenAI", "WhatsApp Web", "Gmail", "Google Maps", "Google Drive", "Google Translate", "Canva", "Pinterest", "Quora", "TikTok", "Discord", "Twitch", "IMDb", "Stack Overflow", "GitHub", "Medium", "WordPress", "Blogger", "Tumblr", "eBay", "AliExpress", "Flipkart", "Myntra", "Snapdeal", "Spotify", "SoundCloud", "VLC", "Adobe", "Figma", "Notion", "Zoom", "Telegram Web", "Dropbox", "OneDrive", "Mega", "DuckDuckGo", "Brave Search", "Yandex", "Baidu", "Naver", "BBC", "CNN", "The New York Times", "The Guardian", "Reuters", "ESPN", "Cricbuzz", "NDTV", "India Today", "Times of India", "Hindustan Times", "The Hindu", "Threads", "Snapchat", "Skype", "Waze", "Google Earth", "Files by Google", "Google Photos", "Google Lens", "Google Keep", "Google Calendar", "Google Tasks", "YouTube Music", "YouTube Studio", "Disney+", "JioHotstar", "Sony LIV", "ZEE5", "MX Player", "Amazon Music", "Gaana", "JioSaavn", "Wynk Music", "Shazam",
-
-      # AI Websites, Models & Developer AI Tools
       "ChatGPT", "Gemini", "Claude", "Perplexity AI", "Microsoft Copilot", "Grok AI", "Meta AI", "DeepSeek AI", "Character.AI", "Poe AI", "Pi AI", "You.com AI", "Phind", "Hugging Face", "OpenRouter", "OpenAI API Platform", "Anthropic Console", "Google AI Studio", "Vertex AI", "Azure AI Foundry", "Amazon Bedrock", "Cohere", "Mistral AI", "Stability AI", "Together AI", "Fireworks AI", "Replicate", "GroqCloud", "Cerebras AI", "ElevenLabs", "Murf AI", "PlayHT", "Speechify", "LOVO AI", "Resemble AI", "WellSaid Labs", "Descript", "Otter.ai", "AssemblyAI", "Deepgram", "Rev AI", "Whisper API", "Suno AI", "Udio", "AIVA", "Soundraw", "Boomy", "Beatoven AI", "Ecrett Music", "Loudly AI", "Midjourney", "DALL·E", "Adobe Firefly", "Leonardo AI", "Ideogram", "Recraft AI", "Playground AI", "DreamStudio", "Flux AI", "Craiyon", "NightCafe", "Artbreeder", "BlueWillow", "Krea AI", "Mage.Space", "Runway", "Pika", "Luma AI", "Kling AI", "Hailuo AI", "PixVerse AI", "InVideo AI", "Synthesia", "HeyGen", "VEED AI", "Kapwing AI", "Canva AI", "Clipchamp AI", "Filmora AI", "FlexClip AI", "Gamma", "Tome", "Notion AI", "Coda AI", "ClickUp AI", "Grammarly AI", "QuillBot AI", "Wordtune", "Jasper AI", "Copy.ai", "Writesonic", "Rytr", "Sudowrite", "HyperWrite", "Frase", "Surfer AI", "Scalenut", "Anyword", "TextCortex", "Jenni AI", "Zapier AI", "Make AI", "n8n AI", "Bardeen AI", "Taskade AI", "Rewind AI", "Mem AI", "NotebookLM", "Elicit", "Consensus AI", "SciSpace", "Research Rabbit", "Semantic Scholar AI", "Litmaps", "Explainpaper", "Humata AI", "ChatPDF", "AskYourPDF", "PDF.ai", "LightPDF AI", "Documind AI", "Unriddle AI", "Glean AI", "Beautiful.ai", "SlidesAI", "Presentations.AI", "Decktopus AI", "Plus AI", "Pitch AI", "Canva Magic Studio", "Microsoft Designer", "Figma AI", "Uizard", "Galileo AI", "Visily AI", "Relume AI", "Framer AI", "Durable AI", "Hostinger AI Website Builder", "Wix AI", "Squarespace AI", "Shopify Magic", "Remove.bg", "Clipdrop", "Cleanup.pictures", "Remini AI", "Cursor AI", "Windsurf Editor", "Tabnine", "Codeium", "Replit AI", "Blackbox AI", "Bolt.new", "Lovable", "v0 by Vercel", "Claude Code",
-
-      # Finance, Banking, Stock Brokers & Payment Apps
       "Google Wallet", "Samsung Wallet", "BHIM UPI", "Google Pay", "PhonePe", "Paytm", "Amazon Pay", "PayPal", "Wise", "Payoneer", "Western Union", "Skrill", "Revolut", "Binance", "Coinbase", "CoinDCX", "CoinSwitch Kuber", "WazirX", "TradingView", "Investing.com", "Moneycontrol", "Groww", "Zerodha Kite", "Upstox", "Angel One", "INDmoney", "ET Money", "Tickertape", "Yahoo Finance", "Bloomberg", "CNBC", "Screener.in", "Trendlyne", "Value Research Online", "Policybazaar", "Paisabazaar", "CreditMantri", "Dhan", "5paisa", "Kotak Securities", "Motilal Oswal", "Sharekhan", "Paytm Money", "Stripe", "Razorpay", "MobiKwik", "Freecharge", "SBI Yono", "State Bank of India", "HDFC Bank NetBanking", "ICICI Bank iMobile", "Axis Bank", "Kotak Mahindra Bank", "Punjab National Bank", "Bank of Baroda", "Canara Bank", "Union Bank of India", "Indian Bank", "IDFC FIRST Bank", "IndusInd Bank", "Yes Bank", "AU Small Finance Bank", "Federal Bank", "NSE India", "BSE India",
-
-      # 💰 Instant Loans, Housing Finance & Credit Platforms
       "Aavas Financiers Home Loan", "Navi Instant Loan", "KreditBee", "MoneyView Loans", "mPokket", "Cashe Loan", "SmartCoin Personal Loan", "RupeeRedee", "Branch Personal Loan", "RING Instant Credit", "Fibe Instant Personal Loan", "TrueBalance Loan", "Kissht Personal Loan", "PaySense", "Faircent Peer to Peer Lending", "Lendingkart Business Loan", "JanSamarth Govt Loan Portal", "PM SVANidhi Loan", "Mudra Loan Govt Portal", "Vidya Lakshmi Education Loan", "Stand-Up India Govt Loan", "Bajaj Finserv Personal Loan", "Tata Capital Loan", "L&T Finance Loan", "Aditya Birla Capital Loan", "Hero FinCorp Loan", "Muthoot Finance Gold Loan", "Manappuram Gold Loan", "BankBazaar Free Loan Check", "CIBIL Free Credit Score", "Experian Credit Score India", "CRIF High Mark Credit Score", "Wishfin Loans",
-
-      # Free E-Books, Educational & Academic Repositories
       "Project Gutenberg", "Internet Archive", "Open Library", "Google Books", "Standard Ebooks", "ManyBooks", "PDF Drive", "Anna's Archive", "Wikisource", "DOAB Books", "Directory of Open Access Books", "Bookboon", "Free-eBooks.net", "Smashwords", "Feedbooks", "Planet eBook", "Open Textbook Library", "LibreTexts", "MIT OpenCourseWare", "National Digital Library of India", "NCERT ePathshala", "eGyankosh IGNOU", "Saylor Academy", "OpenStax", "CK-12 Foundation", "Khan Academy", "Coursera", "Udemy", "edX", "W3Schools", "GeeksforGeeks", "MDN Web Docs", "freeCodeCamp", "Codecademy", "HackerRank", "LeetCode", "Codeforces", "CodeChef", "Duolingo", "Physics Wallah", "BYJU'S", "Vedantu", "Testbook", "Adda247", "Embibe", "Doubtnut", "Photomath", "Microsoft Math Solver", "WolframAlpha", "GeoGebra", "Brainly", "Sololearn",
-
-      # Gaming (PC & Mobile Games, Gaming Stores)
       "Minecraft", "Roblox", "PUBG MOBILE", "BGMI", "Free Fire MAX", "Call of Duty: Mobile", "Call of Duty: Warzone", "Fortnite", "Apex Legends", "Valorant", "Counter-Strike 2", "Dota 2", "League of Legends", "League of Legends: Wild Rift", "Mobile Legends: Bang Bang", "Arena of Valor", "Honor of Kings", "Genshin Impact", "Honkai: Star Rail", "Zenless Zone Zero", "Wuthering Waves", "Clash of Clans", "Clash Royale", "Brawl Stars", "Hay Day", "Boom Beach", "Candy Crush Saga", "Candy Crush Soda Saga", "Royal Match", "Gardenscapes", "Homescapes", "Subway Surfers", "Temple Run 2", "Hill Climb Racing 2", "Asphalt 9: Legends", "Asphalt 8: Airborne", "Real Racing 3", "Need for Speed: No Limits", "CarX Drift Racing 2", "CSR Racing 2", "EA SPORTS FC Mobile", "eFootball™", "Dream League Soccer", "8 Ball Pool", "Ludo King", "Chess.com", "Lichess", "Stumble Guys", "Among Us", "Fall Guys", "Terraria", "Stardew Valley", "Monument Valley", "LIMBO", "Dead Cells", "Shadow Fight 2", "Shadow Fight 3", "Shadow Fight 4: Arena", "Mortal Kombat Mobile", "Dragon Ball Legends", "Brawlhalla", "Pokémon GO", "Pokémon Unite", "Steam", "Epic Games Store", "PlayStation App", "Xbox Game Pass", "Nintendo Switch Online", "Grand Theft Auto V", "Red Dead Redemption 2", "Cyberpunk 2077", "Elden Ring", "The Witcher 3: Wild Hunt"
   ]
 
@@ -177,8 +165,7 @@ def init_db():
         .replace("™", "")
         + ".com"
     )
-    
-    # 🏠 Aavas Financiers के लिए स्पेशल हैन्डलिंग
+
     if "aavas" in clean_name.lower():
       url = "https://www.aavas.in"
       logo_url = "https://www.google.com/s2/favicons?domain=aavas.in&sz=64"
@@ -218,27 +205,51 @@ HTML_HEADER = """<!DOCTYPE html>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <meta name="theme-color" content="#1a73e8">
     <style>
-        html, body { height: 100%; margin: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; touch-action: manipulation; }
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #202124;
+            --card-bg: #f8f9fa;
+            --border-color: #dfe1e5;
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-color: #e8eaed;
+            --card-bg: #1e1e1e;
+            --border-color: #3c4043;
+        }
+
+        html, body { height: 100%; margin: 0; background: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; touch-action: manipulation; transition: background 0.3s, color 0.3s; }
         body { padding-bottom: 75px; }
-        .top-bar-chrome { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #ffffff; }
+        .top-bar-chrome { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: var(--bg-color); }
         .creator-badge { font-size: 13px; font-weight: 600; color: #5f6368; }
         .top-right-actions { display: flex; align-items: center; gap: 8px; }
-        .dots-btn, .account-btn { background: none; border: none; font-size: 22px; color: #444746; cursor: pointer; padding: 4px 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; }
-        .dots-btn:hover, .account-btn:hover { background: #f1f3f4; color: #1a73e8; }
-        .chrome-menu { border-radius: 20px 0 0 20px; width: 280px !important; }
-        .chrome-menu-item { display: flex; align-items: center; gap: 16px; padding: 12px 16px; font-size: 15px; color: #1f1f1f; text-decoration: none; border-radius: 12px; font-weight: 400; }
-        .chrome-menu-item:hover { background: #f0f4f9; }
+        .dots-btn, .account-btn, .theme-btn { background: none; border: none; font-size: 20px; color: #444746; cursor: pointer; padding: 4px 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+        .dots-btn:hover, .account-btn:hover, .theme-btn:hover { background: var(--card-bg); color: #1a73e8; }
+        
+        .chrome-menu { border-radius: 20px 0 0 20px; width: 280px !important; background: var(--bg-color); color: var(--text-color); }
+        .chrome-menu-item { display: flex; align-items: center; gap: 16px; padding: 12px 16px; font-size: 15px; color: var(--text-color); text-decoration: none; border-radius: 12px; font-weight: 400; }
+        .chrome-menu-item:hover { background: var(--card-bg); }
         .chrome-menu-item i { font-size: 18px; color: #444746; }
-        .chrome-divider { height: 1px; background: #e0e4e9; margin: 8px 0; }
+        .chrome-divider { height: 1px; background: var(--border-color); margin: 8px 0; }
+        
         .bharat-logo { font-size: 52px; font-weight: 700; letter-spacing: -1.5px; margin-top: 20px; }
         .google-search-container { max-width: 580px; width: 92%; margin: 24px auto 16px auto; position: relative; }
-        .google-input { height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 52px; border: 1px solid #dfe1e5; background: #ffffff; box-shadow: 0 1px 6px rgba(32,33,36,0.12); font-size: 16px; }
-        .google-input:focus { outline: none; border-color: #4285f4; box-shadow: 0 2px 8px rgba(32,33,36,0.2); }
+        .google-input { height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 52px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); box-shadow: 0 1px 6px rgba(32,33,36,0.12); font-size: 16px; }
+        .google-input:focus { outline: none; border-color: #4285f4; box-shadow: 0 2px 8px rgba(32,33,36,0.2); background: var(--bg-color); color: var(--text-color); }
         .search-left-icon { position: absolute; left: 18px; top: 17px; color: #9aa0a6; font-size: 18px; }
         .mic-btn { position: absolute; right: 18px; top: 15px; background: none; border: none; color: #4285f4; font-size: 20px; cursor: pointer; }
         
-        .search-filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid #e0e0e0; margin-bottom: 16px; }
-        .filter-chip { padding: 6px 16px; border-radius: 20px; background: #f1f3f4; color: #3c4043; text-decoration: none; font-size: 14px; white-space: nowrap; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+        /* Trending Chips */
+        .trending-container { max-width: 580px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .trending-chip { background: var(--card-bg); border: 1px solid var(--border-color); padding: 6px 14px; border-radius: 20px; font-size: 13px; color: var(--text-color); text-decoration: none; font-weight: 500; transition: 0.2s; }
+        .trending-chip:hover { background: #e8f0fe; color: #1a73e8; border-color: #d2e3fc; }
+
+        /* PWA Install Banner */
+        .pwa-banner { position: fixed; bottom: 70px; left: 5%; right: 5%; background: #1a73e8; color: white; border-radius: 16px; padding: 12px 18px; display: none; align-items: center; justify-content: space-between; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+
+        .search-filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; }
+        .filter-chip { padding: 6px 16px; border-radius: 20px; background: var(--card-bg); color: var(--text-color); text-decoration: none; font-size: 14px; white-space: nowrap; font-weight: 500; display: flex; align-items: center; gap: 6px; }
         .filter-chip.active { background: #e8f0fe; color: #1967d2; border: 1px solid #d2e3fc; }
         
         .results-wrapper { max-width: 650px; margin: 0 auto; padding: 0 15px; }
@@ -253,8 +264,8 @@ HTML_HEADER = """<!DOCTYPE html>
             top: 100%;
             left: 0;
             right: 0;
-            background: #ffffff;
-            border: 1px solid #dfe1e5;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
             border-radius: 0 0 24px 24px;
             box-shadow: 0 4px 6px rgba(32,33,36,0.28);
             z-index: 1000;
@@ -266,15 +277,15 @@ HTML_HEADER = """<!DOCTYPE html>
             padding: 10px 20px;
             cursor: pointer;
             font-size: 14px;
-            color: #212529;
+            color: var(--text-color);
             text-align: left;
             display: flex;
             align-items: center;
             gap: 12px;
         }
-        .suggestion-item:hover { background-color: #f8f9fa; }
+        .suggestion-item:hover { background-color: var(--card-bg); }
 
-        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #dadce0; display: flex; justify-content: space-around; padding: 8px 0; z-index: 9999; transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out; }
+        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-color); border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; padding: 8px 0; z-index: 9998; }
         .nav-link-item { text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }
         .nav-link-item i { font-size: 20px; margin-bottom: 2px; }
         .nav-link-item.active { color: #1a73e8; font-weight: 600; }
@@ -282,6 +293,18 @@ HTML_HEADER = """<!DOCTYPE html>
     </style>
 </head>
 <body>
+
+<!-- PWA Install Banner -->
+<div id="pwaBanner" class="pwa-banner">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-download fs-4"></i>
+        <div>
+            <strong style="font-size: 14px;">Install Bharat App</strong>
+            <div style="font-size: 11px; opacity: 0.9;">Fast AI Search on your phone</div>
+        </div>
+    </div>
+    <button id="installPwaBtn" class="btn btn-light btn-sm fw-bold rounded-pill px-3">Install</button>
+</div>
 """
 
 
@@ -376,7 +399,6 @@ if ('serviceWorker' in navigator) {{
 """
 
 
-# 💰 AdSense ads.txt Route
 @app.route("/ads.txt")
 def ads_txt():
   return (
@@ -392,9 +414,7 @@ def manifest():
       "short_name": "Bharat AI",
       "name": "Bharat AI Search Engine",
       "icons": [{
-          "src": (
-              "https://cdn-icons-png.flaticon.com/512/1006/1006771.png"
-          ),
+          "src": "https://cdn-icons-png.flaticon.com/512/1006/1006771.png",
           "type": "image/png",
           "sizes": "512x512",
       }],
@@ -451,37 +471,14 @@ def home():
       if user_logged
       else ""
   )
-  login_logout = (
-      '<a href="/confirm_logout?type=user" class="chrome-menu-item'
-      ' text-danger"><i class="bi bi-box-arrow-right"></i>Logout</a>'
-      if user_logged
-      else (
-          '<a href="/user_login" class="chrome-menu-item"><i class="bi'
-          ' bi-box-arrow-in-right"></i>User Login</a>'
-      )
-  )
-
-  role_options = ""
-  if owner_logged:
-    role_options += (
-        '<a href="/owner_dashboard" class="chrome-menu-item text-warning"><i'
-        ' class="bi bi-crown-fill"></i> Owner Dashboard</a>'
-    )
-    role_options += (
-        '<a href="/confirm_logout?type=owner" class="chrome-menu-item'
-        ' text-danger"><i class="bi bi-box-arrow-left"></i> Owner Logout</a>'
-    )
-  else:
-    if not user_logged:
-      role_options += (
-          '<a href="/owner_login" class="chrome-menu-item"><i class="bi'
-          ' bi-shield-lock-fill"></i> Owner Login</a>'
-      )
 
   top_bar = f"""
     <div class="top-bar-chrome">
         <div class="creator-badge">🚀 Created by <b>Aman Giri</b></div>
         <div class="top-right-actions">
+            <button class="theme-btn" onclick="toggleDarkMode()" title="Toggle Dark/Light Mode">
+                <i class="bi bi-moon-stars" id="themeIcon"></i>
+            </button>
             <a href="{account_url}" class="account-btn" title="Account">
                 <i class="bi bi-person-circle" style="color: {'#1a73e8' if (user_logged or owner_logged) else '#444746'};"></i>
             </a>
@@ -498,8 +495,20 @@ def home():
             <a href="/games" class="chrome-menu-item"><i class="bi bi-controller"></i> Play Milkha Runner</a>
             <a href="/my_history" class="chrome-menu-item"><i class="bi bi-clock-history"></i> History</a>
             <div class="chrome-divider"></div>
-            {login_logout}
-            {role_options}
+            <a href="/user_login" class="chrome-menu-item"><i class="bi bi-box-arrow-in-right"></i> Login</a>
+        </div>
+    </div>
+    """
+
+  trending_html = """
+    <div class="mt-4">
+        <p class="text-muted small mb-2"><i class="bi bi-graph-up-arrow text-danger me-1"></i> Trending in India 🇮🇳</p>
+        <div class="trending-container">
+            <a href="/search?q=ChatGPT" class="trending-chip">🔥 ChatGPT</a>
+            <a href="/search?q=Cricket+News" class="trending-chip">🏏 Cricket Scores</a>
+            <a href="/search?q=Aavas+Home+Loan" class="trending-chip">🏠 Aavas Home Loan</a>
+            <a href="/search?q=Google+Gemini" class="trending-chip">🤖 Gemini AI</a>
+            <a href="/search?q=Latest+Movies" class="trending-chip">🎬 New Movies</a>
         </div>
     </div>
     """
@@ -520,7 +529,41 @@ def home():
             <button type="button" onclick="startVoiceSearch()" class="mic-btn" title="Search by Voice"><i class="bi bi-mic-fill"></i></button>
             <div id="suggestionsBox" class="suggestions-dropdown"></div>
         </form>
+
+        {trending_html}
     </div>
+
+    <script>
+    function toggleDarkMode() {{
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        document.getElementById('themeIcon').className = isDark ? 'bi bi-sun-fill' : 'bi bi-moon-stars';
+    }}
+
+    if (localStorage.getItem('theme') === 'dark') {{
+        document.body.classList.add('dark-mode');
+        document.getElementById('themeIcon').className = 'bi bi-sun-fill';
+    }}
+
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {{
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('pwaBanner').style.display = 'flex';
+    }});
+
+    document.getElementById('installPwaBtn')?.addEventListener('click', () => {{
+        if (deferredPrompt) {{
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {{
+                if (choiceResult.outcome === 'accepted') {{
+                    document.getElementById('pwaBanner').style.display = 'none';
+                }}
+            }});
+        }}
+    }});
+    </script>
     """
       + get_footer("home")
   )
@@ -555,7 +598,8 @@ def search():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO search_history (username, query, timestamp) VALUES (?, ?, ?)",
+        "INSERT INTO search_history (username, query, timestamp) VALUES (?, ?,"
+        " ?)",
         (current_user, query, current_time),
     )
     conn.commit()
@@ -572,49 +616,54 @@ Format it nicely with bullet points if explaining steps.
 Also, include 2-3 relevant and clickable website links or references related to this topic, formatted properly so they can be clicked.
 """
         response = ai_client.models.generate_content(
-            model="gemini-3.6-flash",
+            model="gemini-1.5-flash",
             contents=ai_prompt,
         )
         ai_text = response.text if response and response.text else ""
 
         if ai_text:
           ai_response_html = f"""
-          <div class="card p-3 mb-4 rounded-4 shadow-sm border-0 bg-light">
-              <div class="d-flex align-items-center mb-2">
-                  <i class="bi bi-stars text-primary me-2 fs-5"></i>
-                  <h6 class="text-primary mb-0 fw-bold">Bharat AI Overview</h6>
-              </div>
-              <div class="text-dark small lh-base mb-3" style="white-space: pre-line;">
-                  {ai_text}
-              </div>
-              <hr class="my-2 text-muted">
-              <div class="mt-2">
-                  <p class="text-muted small mb-2"><i class="bi bi-chat-dots me-1"></i> Ask follow-up question to AI:</p>
-                  <form action="/search" method="GET" class="d-flex gap-2">
-                      <input type="hidden" name="cat" value="ai">
-                      <div class="input-group">
-                          <span class="input-group-text bg-white border-end-0 rounded-start-4">
-                              <i class="bi bi-robot text-primary"></i>
-                          </span>
-                          <input type="text" name="q" class="form-control border-start-0 rounded-end-4" 
-                                 placeholder="Poochhein AI se koi bhi sawal..." required>
-                      </div>
-                      <button type="submit" class="btn btn-primary rounded-4 px-3 d-flex align-items-center gap-1">
-                          <i class="bi bi-send-fill"></i>
-                          <span>Ask</span>
-                      </button>
-                  </form>
-              </div>
-          </div>
-          """
+                    <div class="card p-3 mb-4 rounded-4 shadow-sm border-0 bg-light">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-stars text-primary me-2 fs-5"></i>
+                            <h6 class="text-primary mb-0 fw-bold">Bharat AI Overview</h6>
+                        </div>
+                        <div class="text-dark small lh-base mb-3" style="white-space: pre-line;">
+                            {ai_text}
+                        </div>
+                        <hr class="my-2 text-muted">
+                        <div class="mt-2">
+                            <p class="text-muted small mb-2"><i class="bi bi-chat-dots me-1"></i> Ask follow-up question to AI:</p>
+                            <form action="/search" method="GET" class="d-flex gap-2">
+                                <input type="hidden" name="cat" value="ai">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0 rounded-start-4">
+                                        <i class="bi bi-robot text-primary"></i>
+                                    </span>
+                                    <input type="text" name="q" class="form-control border-start-0 rounded-end-4" 
+                                           placeholder="Poochhein AI se koi bhi sawal..." required>
+                                </div>
+                                <button type="submit" class="btn btn-primary rounded-4 px-3 d-flex align-items-center gap-1">
+                                    <i class="bi bi-send-fill"></i>
+                                    <span>Ask</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    """
       except Exception as e:
         print(f"AI Generation Error: {e}")
+        ai_response_html = """
+                <div class="p-3 mb-3 rounded-4 bg-light border border-warning shadow-sm">
+                    <p class="small mb-0 text-muted">⚠️ <b>AI Search Update:</b> AI Limit Poori Ho Gayi Hai Ya API Offline Hai. Please Thodi Der Baad Try Karein.</p>
+                </div>
+                """
     else:
       ai_response_html = """
-      <div class="p-3 mb-3 rounded-4 bg-light border border-warning shadow-sm">
-          <p class="small mb-0 text-muted">💡 <b>AI Answer Feature:</b> Render Environment Variables mein <code>GEMINI_API_KEY</code> set karne ke baad automatic AI answers start ho jayenge.</p>
-      </div>
-      """
+            <div class="p-3 mb-3 rounded-4 bg-light border border-warning shadow-sm">
+                <p class="small mb-0 text-muted">💡 <b>AI Answer Feature:</b> Render Environment Variables mein <code>GEMINI_API_KEY</code> set karne ke baad automatic AI answers start ho jayenge.</p>
+            </div>
+            """
 
   chips = f"""
     <div class="search-filters">
