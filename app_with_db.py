@@ -555,68 +555,66 @@ def search():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO search_history (username, query, timestamp) VALUES (?,"
-        " ?, ?)",
+        "INSERT INTO search_history (username, query, timestamp) VALUES (?, ?, ?)",
         (current_user, query, current_time),
     )
     conn.commit()
     conn.close()
 
-      ai_response_html = ""
-    if category in ["all", "ai"]:
-        if ai_client:
-            try:
-                ai_prompt = f"""
+  ai_response_html = ""
+  if category in ["all", "ai"]:
+    if ai_client:
+      try:
+        ai_prompt = f"""
 User Question/Query: "{query}"
 Provide a crisp, accurate, and easy-to-read answer in short (Hinglish/Hindi). 
 Format it nicely with bullet points if explaining steps.
 Also, include 2-3 relevant and clickable website links or references related to this topic, formatted properly so they can be clicked.
 """
-                response = ai_client.models.generate_content(
-                    model="gemini-3.6-flash",
-                    contents=ai_prompt,
-                )
-                ai_text = response.text if response and response.text else ""
+        response = ai_client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=ai_prompt,
+        )
+        ai_text = response.text if response and response.text else ""
 
-                if ai_text:
-                    ai_response_html = f"""
-                    <div class="card p-3 mb-4 rounded-4 shadow-sm border-0 bg-light">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-stars text-primary me-2 fs-5"></i>
-                            <h6 class="text-primary mb-0 fw-bold">Bharat AI Overview</h6>
-                        </div>
-                        <div class="text-dark small lh-base mb-3" style="white-space: pre-line;">
-                            {ai_text}
-                        </div>
-                        <hr class="my-2 text-muted">
-                        <div class="mt-2">
-                            <p class="text-muted small mb-2"><i class="bi bi-chat-dots me-1"></i> Ask follow-up question to AI:</p>
-                            <form action="/search" method="GET" class="d-flex gap-2">
-                                <input type="hidden" name="cat" value="ai">
-                                <div class="input-group">
-                                    <span class="input-group-text bg-white border-end-0 rounded-start-4">
-                                        <i class="bi bi-robot text-primary"></i>
-                                    </span>
-                                    <input type="text" name="q" class="form-control border-start-0 rounded-end-4" 
-                                           placeholder="Poochhein AI se koi bhi sawal..." required>
-                                </div>
-                                <button type="submit" class="btn btn-primary rounded-4 px-3 d-flex align-items-center gap-1">
-                                    <i class="bi bi-send-fill"></i>
-                                    <span>Ask</span>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    """
-            except Exception as e:
-                print(f"AI Generation Error: {e}")
-        else:
-            ai_response_html = """
-            <div class="p-3 mb-3 rounded-4 bg-light border border-warning shadow-sm">
-                <p class="small mb-0 text-muted">💡 <b>AI Answer Feature:</b> Render Environment Variables mein <code>GEMINI_API_KEY</code> set karne ke baad automatic AI answers start ho jayenge.</p>
-            </div>
-            """
-
+        if ai_text:
+          ai_response_html = f"""
+          <div class="card p-3 mb-4 rounded-4 shadow-sm border-0 bg-light">
+              <div class="d-flex align-items-center mb-2">
+                  <i class="bi bi-stars text-primary me-2 fs-5"></i>
+                  <h6 class="text-primary mb-0 fw-bold">Bharat AI Overview</h6>
+              </div>
+              <div class="text-dark small lh-base mb-3" style="white-space: pre-line;">
+                  {ai_text}
+              </div>
+              <hr class="my-2 text-muted">
+              <div class="mt-2">
+                  <p class="text-muted small mb-2"><i class="bi bi-chat-dots me-1"></i> Ask follow-up question to AI:</p>
+                  <form action="/search" method="GET" class="d-flex gap-2">
+                      <input type="hidden" name="cat" value="ai">
+                      <div class="input-group">
+                          <span class="input-group-text bg-white border-end-0 rounded-start-4">
+                              <i class="bi bi-robot text-primary"></i>
+                          </span>
+                          <input type="text" name="q" class="form-control border-start-0 rounded-end-4" 
+                                 placeholder="Poochhein AI se koi bhi sawal..." required>
+                      </div>
+                      <button type="submit" class="btn btn-primary rounded-4 px-3 d-flex align-items-center gap-1">
+                          <i class="bi bi-send-fill"></i>
+                          <span>Ask</span>
+                      </button>
+                  </form>
+              </div>
+          </div>
+          """
+      except Exception as e:
+        print(f"AI Generation Error: {e}")
+    else:
+      ai_response_html = """
+      <div class="p-3 mb-3 rounded-4 bg-light border border-warning shadow-sm">
+          <p class="small mb-0 text-muted">💡 <b>AI Answer Feature:</b> Render Environment Variables mein <code>GEMINI_API_KEY</code> set karne ke baad automatic AI answers start ho jayenge.</p>
+      </div>
+      """
 
   chips = f"""
     <div class="search-filters">
