@@ -15,9 +15,13 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 try:
   from google import genai
 
-  ai_client = (
-      genai.Client(api_key=GEMINI_API_KEY)
-      if GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE"
+client = genai.Client(api_key="YOUR_API_KEY")
+
+interaction = client.interactions.create(
+    model="gemini-3.6-flash",
+    input="Explain how AI works in a few words"
+)
+print(interaction.output_text)
       else None
   )
 except ImportError:
