@@ -616,7 +616,7 @@ Format it nicely with bullet points if explaining steps.
 Also, include 2-3 relevant and clickable website links or references related to this topic, formatted properly so they can be clicked.
 """
         response = ai_client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-3.6-flash",
             contents=ai_prompt,
         )
         ai_text = response.text if response and response.text else ""
