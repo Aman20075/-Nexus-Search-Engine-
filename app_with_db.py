@@ -8,23 +8,24 @@ from flask import Flask, jsonify, redirect, request, session, url_for
 import requests
 
 # -------------------------------------------------------------
-# 🔑 GEMINI API KEY SETUP
+# 🔑 GEMINI API KEY SETUP & CLIENT INITIALIZATION
 # -------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 
 try:
   from google import genai
 
-client = genai.Client(api_key="YOUR_API_KEY")
-
-interaction = client.interactions.create(
-    model="gemini-2.5-flash",
-    input="Explain how AI works in a few words"
-)
-print(interaction.output_text)
+  ai_client = (
+      genai.Client(api_key=GEMINI_API_KEY)
+      if GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE"
       else None
   )
-
+except ImportError:
+  ai_client = None
+  print(
+      "⚠️ Warning: google-genai module not installed. Run: pip install"
+      " google-genai"
+  )
 
 app = Flask(__name__)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60
@@ -139,7 +140,7 @@ def init_db():
         )
     """)
 
-  # 📌 आपकी भेजी गई सभी 1000+ लिंक्स और ऐप्स का कम्प्लीट इंडेक्स
+  # 📌 आपकी भेजी गई सभी 1000+ लिंक्स, ऐप्स और आवास हाउसिंग फाइनेंस का इंडेक्स
   all_user_items = [
       # Search, Big Tech & Social Media
       "Google", "Google India", "YouTube", "Facebook", "Instagram", "X (Twitter)", "Wikipedia", "Reddit", "Amazon", "Netflix", "LinkedIn", "Yahoo", "Bing", "Microsoft", "Apple", "OpenAI", "WhatsApp Web", "Gmail", "Google Maps", "Google Drive", "Google Translate", "Canva", "Pinterest", "Quora", "TikTok", "Discord", "Twitch", "IMDb", "Stack Overflow", "GitHub", "Medium", "WordPress", "Blogger", "Tumblr", "eBay", "AliExpress", "Flipkart", "Myntra", "Snapdeal", "Spotify", "SoundCloud", "VLC", "Adobe", "Figma", "Notion", "Zoom", "Telegram Web", "Dropbox", "OneDrive", "Mega", "DuckDuckGo", "Brave Search", "Yandex", "Baidu", "Naver", "BBC", "CNN", "The New York Times", "The Guardian", "Reuters", "ESPN", "Cricbuzz", "NDTV", "India Today", "Times of India", "Hindustan Times", "The Hindu", "Threads", "Snapchat", "Skype", "Waze", "Google Earth", "Files by Google", "Google Photos", "Google Lens", "Google Keep", "Google Calendar", "Google Tasks", "YouTube Music", "YouTube Studio", "Disney+", "JioHotstar", "Sony LIV", "ZEE5", "MX Player", "Amazon Music", "Gaana", "JioSaavn", "Wynk Music", "Shazam",
@@ -149,6 +150,9 @@ def init_db():
 
       # Finance, Banking, Stock Brokers & Payment Apps
       "Google Wallet", "Samsung Wallet", "BHIM UPI", "Google Pay", "PhonePe", "Paytm", "Amazon Pay", "PayPal", "Wise", "Payoneer", "Western Union", "Skrill", "Revolut", "Binance", "Coinbase", "CoinDCX", "CoinSwitch Kuber", "WazirX", "TradingView", "Investing.com", "Moneycontrol", "Groww", "Zerodha Kite", "Upstox", "Angel One", "INDmoney", "ET Money", "Tickertape", "Yahoo Finance", "Bloomberg", "CNBC", "Screener.in", "Trendlyne", "Value Research Online", "Policybazaar", "Paisabazaar", "CreditMantri", "Dhan", "5paisa", "Kotak Securities", "Motilal Oswal", "Sharekhan", "Paytm Money", "Stripe", "Razorpay", "MobiKwik", "Freecharge", "SBI Yono", "State Bank of India", "HDFC Bank NetBanking", "ICICI Bank iMobile", "Axis Bank", "Kotak Mahindra Bank", "Punjab National Bank", "Bank of Baroda", "Canara Bank", "Union Bank of India", "Indian Bank", "IDFC FIRST Bank", "IndusInd Bank", "Yes Bank", "AU Small Finance Bank", "Federal Bank", "NSE India", "BSE India",
+
+      # 💰 Instant Loans, Housing Finance & Credit Platforms
+      "Aavas Financiers Home Loan", "Navi Instant Loan", "KreditBee", "MoneyView Loans", "mPokket", "Cashe Loan", "SmartCoin Personal Loan", "RupeeRedee", "Branch Personal Loan", "RING Instant Credit", "Fibe Instant Personal Loan", "TrueBalance Loan", "Kissht Personal Loan", "PaySense", "Faircent Peer to Peer Lending", "Lendingkart Business Loan", "JanSamarth Govt Loan Portal", "PM SVANidhi Loan", "Mudra Loan Govt Portal", "Vidya Lakshmi Education Loan", "Stand-Up India Govt Loan", "Bajaj Finserv Personal Loan", "Tata Capital Loan", "L&T Finance Loan", "Aditya Birla Capital Loan", "Hero FinCorp Loan", "Muthoot Finance Gold Loan", "Manappuram Gold Loan", "BankBazaar Free Loan Check", "CIBIL Free Credit Score", "Experian Credit Score India", "CRIF High Mark Credit Score", "Wishfin Loans",
 
       # Free E-Books, Educational & Academic Repositories
       "Project Gutenberg", "Internet Archive", "Open Library", "Google Books", "Standard Ebooks", "ManyBooks", "PDF Drive", "Anna's Archive", "Wikisource", "DOAB Books", "Directory of Open Access Books", "Bookboon", "Free-eBooks.net", "Smashwords", "Feedbooks", "Planet eBook", "Open Textbook Library", "LibreTexts", "MIT OpenCourseWare", "National Digital Library of India", "NCERT ePathshala", "eGyankosh IGNOU", "Saylor Academy", "OpenStax", "CK-12 Foundation", "Khan Academy", "Coursera", "Udemy", "edX", "W3Schools", "GeeksforGeeks", "MDN Web Docs", "freeCodeCamp", "Codecademy", "HackerRank", "LeetCode", "Codeforces", "CodeChef", "Duolingo", "Physics Wallah", "BYJU'S", "Vedantu", "Testbook", "Adda247", "Embibe", "Doubtnut", "Photomath", "Microsoft Math Solver", "WolframAlpha", "GeoGebra", "Brainly", "Sololearn",
@@ -173,12 +177,19 @@ def init_db():
         .replace("™", "")
         + ".com"
     )
-    url = f"https://www.{domain_name}"
+    
+    # 🏠 Aavas Financiers के लिए स्पेशल हैन्डलिंग
+    if "aavas" in clean_name.lower():
+      url = "https://www.aavas.in"
+      logo_url = "https://www.google.com/s2/favicons?domain=aavas.in&sz=64"
+    else:
+      url = f"https://www.{domain_name}"
+      logo_url = f"https://www.google.com/s2/favicons?domain={domain_name}&sz=64"
+
     snippet = (
         f"Explore official links, apps, details and updates for {clean_name}"
         " on Bharat Search."
     )
-    logo_url = f"https://www.google.com/s2/favicons?domain={domain_name}&sz=64"
 
     cursor.execute(
         "INSERT OR IGNORE INTO local_search_index (title, url, snippet,"
@@ -198,6 +209,10 @@ HTML_HEADER = """<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bharat AI Search Engine</title>
+    
+    <!-- Google AdSense Integration -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6514818403683886" crossorigin="anonymous"></script>
+    
     <link rel="manifest" href="/manifest.json">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
@@ -359,6 +374,16 @@ if ('serviceWorker' in navigator) {{
 </body>
 </html>
 """
+
+
+# 💰 AdSense ads.txt Route
+@app.route("/ads.txt")
+def ads_txt():
+  return (
+      "google.com, pub-6514818403683886, DIRECT, f08c47fec0942fa0",
+      200,
+      {"Content-Type": "text/plain"},
+  )
 
 
 @app.route("/manifest.json")
