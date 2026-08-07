@@ -8,7 +8,6 @@ from urllib.parse import quote_plus, urlparse
 from bs4 import BeautifulSoup
 from flask import Flask, jsonify, redirect, request, send_file, session, url_for
 
-# Image Library Safe Import (Render Deploy Friendly)
 try:
     from PIL import Image
 except ImportError:
@@ -21,7 +20,6 @@ import requests
 # -------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 
-# 💳 आपकी UPI ID और ₹49 (90 दिन) का VIP प्लान
 YOUR_UPI_ID = os.environ.get("YOUR_UPI_ID", "giriji5626@okaxis")
 YOUR_UPI_NAME = os.environ.get("YOUR_UPI_NAME", "Sandesh Giri")
 VIP_PRICE = 49
@@ -59,7 +57,7 @@ def is_safe_query(query):
     return True
 
 # -------------------------------------------------------------
-# 🗄️ DATABASE INITIALIZATION & AUTOMATIC 1000+ APPS SEEDER
+# 🗄️ DATABASE INITIALIZATION
 # -------------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -119,51 +117,17 @@ def init_db():
 
     conn.commit()
     conn.close()
-    
-    # 🚀 डेटाबेस में 1000+ Master Apps व 180+ Finance Links भरें
     auto_seed_master_data()
 
 def auto_seed_master_data():
     master_links = [
-        # 1. AI Tools
         ("ChatGPT", "https://chatgpt.com/", "AI chatbot for writing, coding, and answers.", "AI Tools"),
         ("Google Gemini", "https://gemini.google.com/", "Google's advanced multimodal AI assistant.", "AI Tools"),
-        ("Microsoft Copilot", "https://copilot.microsoft.com/", "AI assistant integrated with Bing.", "AI Tools"),
-        ("Claude", "https://claude.ai/", "Anthropic AI for long-context analysis.", "AI Tools"),
-        ("Perplexity", "https://www.perplexity.ai/", "AI-powered search engine with live sources.", "AI Tools"),
-        ("Canva", "https://www.canva.com/", "AI-powered graphics, presentations & image editing.", "AI Tools"),
-        ("NotebookLM", "https://notebooklm.google.com/", "Google's AI note-taking & PDF podcast generator.", "AI Tools"),
-        ("Suno", "https://suno.com/", "Create full songs and music with AI.", "AI Tools"),
-        ("ElevenLabs", "https://elevenlabs.io/", "Realistic AI text-to-speech & voice cloning.", "AI Tools"),
-        
-        # 2. Education & Study
-        ("Khan Academy", "https://www.khanacademy.org/", "Free online courses, lessons, and practice.", "Education"),
-        ("Coursera", "https://www.coursera.org/", "Learn from top universities like Stanford & Google.", "Education"),
-        ("freeCodeCamp", "https://www.freecodecamp.org/", "Learn to code for free and get certified.", "Education"),
-        ("Duolingo", "https://www.duolingo.com/", "Learn 30+ languages for free.", "Education"),
-        ("National Digital Library of India", "https://ndl.iitkgp.ac.in/", "Virtual repository of learning resources for Indian students.", "Education/Library"),
-        ("Sanskrit Documents", "https://sanskritdocuments.org/", "Vedas, Upanishads, Gita, and ancient Sanskrit scriptures.", "Vedic/Scriptures"),
-        
-        # 3. Games & Media
-        ("Steam", "https://store.steampowered.com/", "The ultimate PC gaming platform & store.", "Games"),
-        ("Roblox", "https://www.roblox.com/", "Immersive user-created games and virtual universe.", "Games"),
-        ("CrazyGames", "https://www.crazygames.com/", "Play thousands of free browser games.", "Games"),
-        ("YouTube", "https://www.youtube.com/", "Watch videos, shorts, and live streams.", "Social Media"),
-        ("Spotify", "https://www.spotify.com/", "Digital music, podcast, and video service.", "Music"),
-
-        # 4. Indian Banks, NBFCs & Housing Finance
         ("Piramal Finance", "https://www.piramalfinance.com/", "Home, business, LAP, and personal loans provider.", "Loans/NBFC"),
         ("Aavas Financiers", "https://www.aavas.in/", "Affordable housing loans and LAP in rural/semi-urban India.", "Housing Finance"),
-        ("Bajaj Finance", "https://www.bajajfinserv.in/", "Consumer finance, personal loans, and wealth management.", "Loans/NBFC"),
-        ("Tata Capital", "https://www.tatacapital.com/", "Personal, home, vehicle, and business loan services.", "Loans/NBFC"),
-        ("Shriram Finance", "https://www.shriramfinance.in/", "Commercial vehicle, MSME, and personal finance.", "Loans/NBFC"),
-        ("Muthoot Finance", "https://www.muthootfinance.com/", "India's largest gold loan NBFC.", "Gold Loan"),
-        ("Aadhar Housing Finance", "https://www.aadharhousing.com/", "Affordable home loans for low and middle-income groups.", "Housing Finance"),
+        ("Khan Academy", "https://www.khanacademy.org/", "Free online courses, lessons, and practice.", "Education"),
         ("State Bank of India (SBI)", "https://sbi.co.in/", "India's largest public sector bank.", "Bank"),
-        ("HDFC Bank", "https://www.hdfcbank.com/", "Leading private sector bank for personal & home loans.", "Bank"),
-        ("ICICI Bank", "https://www.icicibank.com/", "Comprehensive digital banking and loan products.", "Bank"),
-        ("Bank of Baroda", "https://www.bankofbaroda.in/", "Public sector bank offering home and auto loans.", "Bank"),
-        ("Punjab National Bank", "https://www.pnbindia.in/", "Major public sector bank providing government loans.", "Bank")
+        ("HDFC Bank", "https://www.hdfcbank.com/", "Leading private sector bank for personal & home loans.", "Bank")
     ]
 
     try:
@@ -183,7 +147,6 @@ def auto_seed_master_data():
 
 init_db()
 
-# VIP STATUS & 90-DAY EXPIRY CHECK
 def is_user_premium():
     if session.get("owner_logged"):
         return True
@@ -217,7 +180,30 @@ def is_user_premium():
     return True
 
 # -------------------------------------------------------------
-# 📰 UNLIMITED MULTI-CATEGORY NEWS FEED
+# 🔍 SEARCH SUGGESTIONS API
+# -------------------------------------------------------------
+@app.route("/api/suggestions")
+def suggestions():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify([])
+
+    results = []
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        search_kw = f"%{q}%"
+        cursor.execute("SELECT DISTINCT title FROM local_search_index WHERE title LIKE ? LIMIT 6", (search_kw,))
+        rows = cursor.fetchall()
+        results = [r[0] for r in rows]
+        conn.close()
+    except Exception:
+        pass
+
+    return jsonify(results)
+
+# -------------------------------------------------------------
+# 📰 UNLIMITED NEWS FEED
 # -------------------------------------------------------------
 NEWS_CATEGORIES = {
     "top": "https://news.google.com/rss?hl=hi&gl=IN&ceid=IN:hi",
@@ -266,7 +252,7 @@ def fetch_unlimited_news(category="top"):
     return news_items
 
 # -------------------------------------------------------------
-# 🎨 HEADER & NAVIGATION MENUS (PROFILE + CHROME 3-DOTS)
+# 🎨 HEADER & NAVIGATION MENUS (KEYBOARD FIX ADDED)
 # -------------------------------------------------------------
 def get_html_header():
     premium = is_user_premium()
@@ -303,15 +289,27 @@ def get_html_header():
         .top-actions {{ display: flex; align-items: center; gap: 10px; }}
         .icon-btn {{ background: none; border: none; font-size: 22px; color: #d96b00; cursor: pointer; text-decoration: none; padding: 4px; }}
         .bharat-logo {{ font-size: 52px; font-weight: 700; letter-spacing: -1.5px; margin-top: 10px; }}
+        
+        /* 🔍 SEARCH CONTAINER & SUGGESTIONS BOX */
         .google-search-container {{ max-width: 580px; width: 92%; margin: 20px auto 16px auto; position: relative; }}
-        .google-input {{ height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 90px; border: 2px solid #ffaa44; background: var(--card-bg); color: var(--text-color); box-shadow: 0 4px 12px rgba(255, 153, 51, 0.2); font-size: 16px; }}
-        .search-left-icon {{ position: absolute; left: 18px; top: 17px; color: #e67300; font-size: 18px; }}
-        .news-card {{ background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; transition: transform 0.2s; }}
-        .bottom-nav-bar {{ position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-color); border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; padding: 8px 0; z-index: 9998; }}
+        .google-input {{ height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 20px; border: 2px solid #ffaa44; background: var(--card-bg); color: var(--text-color); box-shadow: 0 4px 12px rgba(255, 153, 51, 0.2); font-size: 16px; }}
+        .search-left-icon {{ position: absolute; left: 18px; top: 17px; color: #e67300; font-size: 18px; z-index: 10; }}
+        .suggestions-box {{ position: absolute; top: 58px; left: 0; right: 0; background: #fff; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid #ffe0b2; z-index: 9999; display: none; text-align: left; overflow: hidden; }}
+        .suggestion-item {{ padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #fff3e0; display: flex; align-items: center; gap: 10px; color: #333; }}
+        .suggestion-item:hover {{ background: #fff8e1; }}
+
+        /* 📱 BOTTOM NAV KEYBOARD HIDE FIX */
+        .bottom-nav-bar {{ position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-color); border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; padding: 8px 0; z-index: 9998; transition: transform 0.2s ease-in-out; }}
+        
+        /* जब कीबोर्ड खुलेगा तब स्क्रीन हाइट छोटी होने पर नेविगेशन बार छुप जाएगा */
+        @media (max-height: 500px) {{
+            .bottom-nav-bar {{ display: none !important; }}
+            body {{ padding-bottom: 0px !important; }}
+        }}
+        .hide-nav {{ transform: translateY(100%); }}
+        .news-card {{ background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; }}
         .nav-link-item {{ text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }}
         .nav-link-item.active {{ color: #ff7700; font-weight: 600; }}
-        .no-scrollbar::-webkit-scrollbar {{ display: none; }}
-        .no-scrollbar {{ -ms-overflow-style: none; scrollbar-width: none; }}
     </style>
 </head>
 <body>
@@ -324,38 +322,21 @@ def get_html_header():
             <i class="bi bi-chat-dots-fill text-primary"></i>
         </a>
 
-        <!-- CHROME 3-DOTS MENU -->
         <div class="dropdown">
-            <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Chrome Options">
-                <i class="bi bi-three-dots-vertical"></i>
-            </button>
+            <button class="icon-btn" type="button" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
             <ul class="dropdown-menu dropdown-menu-end p-2 shadow-lg" style="width: 230px; border-radius: 16px;">
                 <li><a class="dropdown-item rounded-3 py-2" href="/"><i class="bi bi-plus-lg me-2 text-primary"></i> New Tab</a></li>
                 <li><a class="dropdown-item rounded-3 py-2" href="/my_history"><i class="bi bi-clock-history me-2 text-success"></i> History</a></li>
                 <li><a class="dropdown-item rounded-3 py-2" href="/games"><i class="bi bi-controller me-2 text-danger"></i> Games Arcade</a></li>
                 <li><a class="dropdown-item rounded-3 py-2" href="/converters"><i class="bi bi-gear-wide-connected me-2 text-warning"></i> VIP Tools</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li>
-                    <button class="dropdown-item rounded-3 py-2" onclick="toggleDarkMode()">
-                        <i class="bi bi-moon-stars me-2 text-info"></i> Dark Mode Toggle
-                    </button>
-                </li>
-                <li>
-                    <button class="dropdown-item rounded-3 py-2" onclick="alert('Use Chrome menu: Add to Home Screen to Install!')">
-                        <i class="bi bi-download me-2 text-danger"></i> Install App (PWA)
-                    </button>
-                </li>
+                <li><button class="dropdown-item rounded-3 py-2" onclick="toggleDarkMode()"><i class="bi bi-moon-stars me-2 text-info"></i> Dark Mode Toggle</button></li>
                 <li><a class="dropdown-item rounded-3 py-2" href="/remove_ads"><i class="bi bi-gem me-2 text-warning"></i> VIP Club (₹49)</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item rounded-3 py-2 small text-muted" href="/about"><i class="bi bi-info-circle me-2"></i> About Bharat AI</a></li>
             </ul>
         </div>
 
-        <!-- GOOGLE PROFILE POPUP MENU -->
         <div class="dropdown">
-            <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Account Options">
-                <i class="bi bi-person-circle fs-3 text-warning"></i>
-            </button>
+            <button class="icon-btn" type="button" data-bs-toggle="dropdown"><i class="bi bi-person-circle fs-3 text-warning"></i></button>
             <div class="dropdown-menu dropdown-menu-end p-3 shadow-lg" style="width: 280px; border-radius: 20px;">
                 <div class="text-center pb-2 border-bottom mb-2">
                     <div class="fs-1 text-primary"><i class="bi bi-person-bounding-box"></i></div>
@@ -363,15 +344,8 @@ def get_html_header():
                     <span class="badge {badge_class} rounded-pill mt-1" style="font-size:10px;">{badge_label}</span>
                 </div>
                 <div class="list-group list-group-flush small">
-                    <a href="/remove_ads" class="list-group-item list-group-item-action border-0 py-2 rounded-3 text-warning fw-bold">
-                        <i class="bi bi-crown me-2"></i> VIP Membership Status
-                    </a>
-                    <a href="/my_history" class="list-group-item list-group-item-action border-0 py-2 rounded-3">
-                        <i class="bi bi-search me-2 text-secondary"></i> My Search Activity
-                    </a>
-                    <a href="/converters" class="list-group-item list-group-item-action border-0 py-2 rounded-3">
-                        <i class="bi bi-tools me-2 text-primary"></i> VIP Converter Tools
-                    </a>
+                    <a href="/remove_ads" class="list-group-item list-group-item-action border-0 py-2 rounded-3 text-warning fw-bold"><i class="bi bi-crown me-2"></i> VIP Membership Status</a>
+                    <a href="/my_history" class="list-group-item list-group-item-action border-0 py-2 rounded-3"><i class="bi bi-search me-2 text-secondary"></i> My Search Activity</a>
                     {f'<a href="/owner_dashboard" class="list-group-item list-group-item-action border-0 py-2 rounded-3 text-danger fw-bold"><i class="bi bi-speedometer2 me-2"></i> Owner Dashboard</a>' if is_owner else ''}
                     <hr class="my-2">
                     {f'<a href="/logout" class="list-group-item list-group-item-action border-0 py-2 rounded-3 text-danger"><i class="bi bi-box-arrow-right me-2"></i> Sign Out</a>' if (session.get('user_logged') or is_owner) else '<a href="/user_login" class="list-group-item list-group-item-action border-0 py-2 rounded-3 text-success fw-bold"><i class="bi bi-box-arrow-in-right me-2"></i> Sign In / Register</a>'}
@@ -384,39 +358,73 @@ def get_html_header():
 
 def get_footer(active_tab="home"):
     return f"""
-<div class="bottom-nav-bar">
+<div class="bottom-nav-bar" id="bottomNavBar">
     <a href="/" class="nav-link-item {'active' if active_tab == 'home' else ''}"><i class="bi bi-house-door-fill fs-5 d-block"></i>Home</a>
     <a href="/converters" class="nav-link-item {'active' if active_tab == 'converters' else ''}"><i class="bi bi-gear-wide-connected fs-5 d-block text-warning"></i>VIP Tools</a>
     <a href="/chats" class="nav-link-item {'active' if active_tab == 'chats' else ''}"><i class="bi bi-chat-dots-fill fs-5 d-block text-primary"></i>Chats</a>
     <a href="/games" class="nav-link-item {'active' if active_tab == 'games' else ''}"><i class="bi bi-controller fs-5 d-block text-success"></i>Games</a>
     <a href="/remove_ads" class="nav-link-item {'active' if active_tab == 'noads' else ''}"><i class="bi bi-gem fs-5 d-block text-danger"></i>VIP Club</a>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     function toggleDarkMode() {{
         document.body.classList.toggle('dark-mode');
-        const isDark = document.body.classList.contains('dark-mode');
-        localStorage.setItem('bharat_dark_mode', isDark ? 'enabled' : 'disabled');
+        localStorage.setItem('bharat_dark_mode', document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled');
     }}
     if (localStorage.getItem('bharat_dark_mode') === 'enabled') {{
         document.body.classList.add('dark-mode');
     }}
-    
-    function focusKeyboard() {{
-        const el = document.getElementById("searchInput");
-        if (el) {{ el.focus(); el.click(); }}
+
+    // ⚡ SEARCH SUGGESTIONS SCRIPT
+    const searchInput = document.getElementById("searchInput");
+    const suggestionsBox = document.getElementById("suggestionsBox");
+
+    if (searchInput) {{
+        searchInput.addEventListener("input", async function() {{
+            const query = this.value.trim();
+            if (query.length < 2) {{
+                suggestionsBox.style.display = "none";
+                return;
+            }}
+            try {{
+                const res = await fetch('/api/suggestions?q=' + encodeURIComponent(query));
+                const data = await res.json();
+                if (data.length > 0) {{
+                    suggestionsBox.innerHTML = data.map(item => 
+                        `<div class="suggestion-item" onclick="selectSuggestion('${{item}}')"><i class="bi bi-search text-muted"></i> ${{item}}</div>`
+                    ).join('');
+                    suggestionsBox.style.display = "block";
+                }} else {{
+                    suggestionsBox.style.display = "none";
+                }}
+            }} catch(e) {{}}
+        }});
+
+        // 📱 KEYBOARD FOCUS HIDE BOTTOM NAV LOGIC
+        searchInput.addEventListener("focus", function() {{
+            document.getElementById("bottomNavBar").classList.add("hide-nav");
+        }});
+        searchInput.addEventListener("blur", function() {{
+            setTimeout(() => {{
+                document.getElementById("bottomNavBar").classList.remove("hide-nav");
+                suggestionsBox.style.display = "none";
+            }}, 200);
+        }});
     }}
-    window.addEventListener('DOMContentLoaded', () => {{
-        const el = document.getElementById("searchInput");
-        if (el) {{ el.focus(); }}
-    }});
+
+    function selectSuggestion(text) {{
+        searchInput.value = text;
+        suggestionsBox.style.display = "none";
+        searchInput.form.submit();
+    }}
 </script>
 </body>
 </html>
 """
 
 # -------------------------------------------------------------
-# 🏠 HOME ROUTE (AUTO-KEYBOARD & UNLIMITED NEWS FEED)
+# 🏠 HOME ROUTE WITH AUTO-KEYBOARD & SUGGESTIONS
 # -------------------------------------------------------------
 @app.route("/")
 def home():
@@ -459,15 +467,17 @@ def home():
             <div class="bharat-logo mb-1">
                 <span style="color:#FF9933">B</span><span style="color:#000080">h</span><span style="color:#138808">arat</span> 🛕
             </div>
-            <p class="fw-medium small mb-3" style="color: #d95100;">Universal Search & Unlimited Knowledge Engine 🇮🇳</p>
+            <p class="fw-medium small mb-3" style="color: #d95100;">Universal Search Engine 🇮🇳</p>
 
-            <!-- SEARCH BAR WITH KEYBOARD AUTO FOCUS -->
+            <!-- SEARCH BAR WITH REALTIME SUGGESTIONS -->
             <form action="/search" method="GET" class="google-search-container">
-                <i class="bi bi-search search-left-icon" style="cursor: pointer;" onclick="focusKeyboard()"></i>
-                <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="Search apps, loans, boards, science or AI..." required autofocus>
+                <i class="bi bi-search search-left-icon"></i>
+                <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="Search apps, loans, boards, science or AI..." autocomplete="off" required autofocus>
+                <!-- 💡 SUGGESTIONS BOX -->
+                <div id="suggestionsBox" class="suggestions-box"></div>
             </form>
 
-            <!-- UNIVERSAL KNOWLEDGE GRID -->
+            <!-- KNOWLEDGE CATEGORIES -->
             <div class="container my-3" style="max-width: 680px;">
                 <div class="row g-2 text-start">
                     <div class="col-6 col-md-3">
@@ -500,7 +510,7 @@ def home():
             <!-- UNLIMITED DISCOVER FEED -->
             <div class="container text-start mt-2 mb-5" style="max-width: 720px;">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <h6 class="fw-bold text-muted mb-0"><i class="bi bi-newspaper text-warning me-2"></i>Discover & Unlimited Media Feed</h6>
+                    <h6 class="fw-bold text-muted mb-0"><i class="bi bi-newspaper text-warning me-2"></i>Discover Feed</h6>
                     <span class="badge bg-danger rounded-pill">LIVE</span>
                 </div>
                 
@@ -515,7 +525,7 @@ def home():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 🔍 UNIVERSAL SEARCH ENGINE (LOCAL INDEX + AI FUSION)
+# 🔍 SEARCH ENGINE ROUTE
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -523,7 +533,6 @@ def search():
     if not query or not is_safe_query(query):
         return redirect("/")
 
-    # Search History
     if session.get("username"):
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -535,7 +544,6 @@ def search():
         except Exception:
             pass
 
-    # 🗄️ 1000+ Master Database Search First
     local_results = []
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -570,7 +578,6 @@ def search():
             </div>
             """
 
-    # AI Summary Generation
     ai_answer = ""
     if ai_client:
         try:
@@ -588,7 +595,8 @@ def search():
     <div class="container mt-4 mb-5" style="max-width: 720px;">
         <form action="/search" method="GET" class="google-search-container mb-4">
             <i class="bi bi-search search-left-icon"></i>
-            <input type="text" id="searchInput" name="q" value="{query}" class="form-control google-input" required>
+            <input type="text" id="searchInput" name="q" value="{query}" class="form-control google-input" autocomplete="off" required>
+            <div id="suggestionsBox" class="suggestions-box"></div>
         </form>
 
         {local_html}
@@ -599,7 +607,7 @@ def search():
                 <h6 class="fw-bold text-primary mb-0">Bharat AI Summary</h6>
             </div>
             <div style="line-height: 1.6; font-size: 14px; color: #333;">
-                {ai_answer.replace('\n', '<br>') if ai_answer else f"'{query}' के लिए ऊपर दिए गए परिणाम और लिंक्स देखें।"}
+                {ai_answer.replace('\n', '<br>') if ai_answer else f"'{query}' के लिए ऊपर दिए गए परिणाम देखें।"}
             </div>
         </div>
 
@@ -610,14 +618,12 @@ def search():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 💬 REAL-TIME CHAT & MESSAGING HUB
+# 💬 CHAT, GAMES, CONVERTERS & AUTH ROUTES
 # -------------------------------------------------------------
 @app.route("/chats", methods=["GET", "POST"])
 def chats():
     username = session.get("username", "")
-    if not username:
-        return redirect("/user_login")
-
+    if not username: return redirect("/user_login")
     message_sent = ""
     if request.method == "POST":
         receiver = request.form.get("receiver", "").strip()
@@ -626,8 +632,7 @@ def chats():
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute("INSERT INTO messages (sender, receiver, message, timestamp) VALUES (?, ?, ?, ?)",
-                           (username, receiver, msg_text, now))
+            cursor.execute("INSERT INTO messages (sender, receiver, message, timestamp) VALUES (?, ?, ?, ?)", (username, receiver, msg_text, now))
             conn.commit()
             conn.close()
             message_sent = "✅ मैसेज भेज दिया गया!"
@@ -649,7 +654,7 @@ def chats():
             <form method="POST" class="mb-4">
                 <div class="input-group mb-2">
                     <span class="input-group-text">To:</span>
-                    <input type="text" name="receiver" class="form-control" placeholder="Friend Username / Bharat AI" required>
+                    <input type="text" name="receiver" class="form-control" placeholder="Username / Bharat AI" required>
                 </div>
                 <div class="input-group">
                     <input type="text" name="message" class="form-control" placeholder="Type a message..." required>
@@ -659,15 +664,12 @@ def chats():
 
             <h6 class="fw-bold text-muted mb-2">Recent Messages</h6>
             <ul class="list-group list-group-flush rounded-3 small">
-                {chat_rows if chat_rows else '<li class="list-group-item text-center text-muted py-3">No recent chats. Start messaging now!</li>'}
+                {chat_rows if chat_rows else '<li class="list-group-item text-center text-muted py-3">No recent chats.</li>'}
             </ul>
         </div>
     </div>
     """ + get_footer("chats")
 
-# -------------------------------------------------------------
-# 🎮 VIP GAMES ARCADE
-# -------------------------------------------------------------
 @app.route("/games")
 def games():
     return get_html_header() + """
@@ -682,65 +684,31 @@ def games():
     </div>
     """ + get_footer("games")
 
-# -------------------------------------------------------------
-# 🛠️ VIP CONVERTER TOOLS HUB (₹49 EXCLUSIVE)
-# -------------------------------------------------------------
 @app.route("/converters")
 def converters_hub():
     premium = is_user_premium()
-    
     return get_html_header() + f"""
     <div class="container mt-4 mb-5" style="max-width: 700px;">
         <div class="text-center mb-4">
             <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold">👑 VIP TOOLKIT SUITE</span>
             <h3 class="fw-bold mt-2">All-In-One File Converter</h3>
-            <p class="text-muted small">JPG, PDF, PNG, WEBP फ़ाइलों को 1-क्लिन में बदलें</p>
         </div>
-
-        {'' if premium else '''
-        <div class="alert alert-warning border-warning d-flex align-items-center gap-3 rounded-4 p-3 mb-4 shadow-sm">
-            <div class="fs-1">👑</div>
-            <div>
-                <h6 class="fw-bold mb-1">VIP मेम्बरशिप अनलॉक करें!</h6>
-                <small class="text-muted d-block mb-2">ये सभी कन्वर्टर टूल्स केवल VIP सदस्यों के लिए हैं।</small>
-                <a href="/remove_ads" class="btn btn-warning btn-sm fw-bold rounded-pill">मात्र ₹49 (90 दिन) में VIP बनें</a>
-            </div>
-        </div>
-        '''}
-
         <div class="row g-3">
             <div class="col-12 col-md-6">
-                <div class="card p-3 h-100 shadow-sm rounded-4 border bg-white">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="fs-2 text-danger"><i class="bi bi-file-earmark-pdf-fill"></i></div>
-                        <div>
-                            <h6 class="fw-bold mb-0">JPG to PDF Converter</h6>
-                            <small class="text-muted" style="font-size:11px;">इमेज को तुरंत PDF बनाएं</small>
-                        </div>
-                    </div>
-                    <form action="/convert_jpg_to_pdf" method="POST" enctype="multipart/form-data" class="mt-3">
+                <div class="card p-3 shadow-sm rounded-4 border bg-white">
+                    <h6>JPG to PDF Converter</h6>
+                    <form action="/convert_jpg_to_pdf" method="POST" enctype="multipart/form-data">
                         <input type="file" name="image_file" accept="image/*" class="form-control form-control-sm mb-2" required {'disabled' if not premium else ''}>
-                        <button type="submit" class="btn btn-primary btn-sm w-100 rounded-pill" {'disabled' if not premium else ''}>
-                            { '🚀 Convert to PDF' if premium else '🔒 VIP Locked' }
-                        </button>
+                        <button type="submit" class="btn btn-primary btn-sm w-100 rounded-pill" {'disabled' if not premium else ''}>Convert to PDF</button>
                     </form>
                 </div>
             </div>
-
             <div class="col-12 col-md-6">
-                <div class="card p-3 h-100 shadow-sm rounded-4 border bg-white">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="fs-2 text-primary"><i class="bi bi-file-earmark-image-fill"></i></div>
-                        <div>
-                            <h6 class="fw-bold mb-0">PNG / WEBP to JPG</h6>
-                            <small class="text-muted" style="font-size:11px;">इमेज का फॉर्मेट तुरंत बदलें</small>
-                        </div>
-                    </div>
-                    <form action="/convert_image_format" method="POST" enctype="multipart/form-data" class="mt-3">
+                <div class="card p-3 shadow-sm rounded-4 border bg-white">
+                    <h6>PNG / WEBP to JPG</h6>
+                    <form action="/convert_image_format" method="POST" enctype="multipart/form-data">
                         <input type="file" name="image_file" accept="image/*" class="form-control form-control-sm mb-2" required {'disabled' if not premium else ''}>
-                        <button type="submit" class="btn btn-primary btn-sm w-100 rounded-pill" {'disabled' if not premium else ''}>
-                            { '🚀 Convert Format' if premium else '🔒 VIP Locked' }
-                        </button>
+                        <button type="submit" class="btn btn-primary btn-sm w-100 rounded-pill" {'disabled' if not premium else ''}>Convert Format</button>
                     </form>
                 </div>
             </div>
@@ -751,7 +719,7 @@ def converters_hub():
 @app.route("/convert_jpg_to_pdf", methods=["POST"])
 def convert_jpg_to_pdf():
     if not is_user_premium(): return redirect("/remove_ads")
-    if not Image: return "Image processing library (Pillow) missing on server."
+    if not Image: return "Image library missing."
     file = request.files.get('image_file')
     if not file: return redirect("/converters")
     try:
@@ -767,7 +735,7 @@ def convert_jpg_to_pdf():
 @app.route("/convert_image_format", methods=["POST"])
 def convert_image_format():
     if not is_user_premium(): return redirect("/remove_ads")
-    if not Image: return "Image processing library (Pillow) missing on server."
+    if not Image: return "Image library missing."
     file = request.files.get('image_file')
     if not file: return redirect("/converters")
     try:
@@ -780,9 +748,6 @@ def convert_image_format():
     except Exception as e:
         return f"Error: {str(e)}"
 
-# -------------------------------------------------------------
-# 👑 VIP CLUB PAGE (₹49 / 90 DAYS PLAN)
-# -------------------------------------------------------------
 @app.route("/remove_ads", methods=["GET", "POST"])
 def remove_ads():
     is_owner = session.get("owner_logged", False)
@@ -797,101 +762,49 @@ def remove_ads():
             cursor = conn.cursor()
             try:
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                cursor.execute(
-                    "INSERT INTO payment_requests (username, utr_number, status, timestamp) VALUES (?, ?, 'pending', ?)",
-                    (username, utr_no, now)
-                )
+                cursor.execute("INSERT INTO payment_requests (username, utr_number, status, timestamp) VALUES (?, ?, 'pending', ?)", (username, utr_no, now))
                 conn.commit()
-                msg = "✅ आपकी UTR सबमिट हो गई है! Owner वेरिफिकेशन के बाद तुरंत VIP सक्रिय होगा।"
+                msg = "✅ UTR सबमिट हो गई है! Owner वेरिफिकेशन के बाद एक्टिवेट होगा।"
             except sqlite3.IntegrityError:
                 msg = "⚠️ यह UTR पहले ही सबमिट किया जा चुका है!"
             conn.close()
-        else:
-            msg = "⚠️ कृपया सही 12-अंकों का UTR / Transaction No. भरें!"
 
     upi_qr_url = f"https://chart.googleapis.com/chart?cht=qr&chs=250x250&chl=upi://pay?pa={YOUR_UPI_ID}&pn={quote_plus(YOUR_UPI_NAME)}&am={VIP_PRICE}&cu=INR"
 
     return get_html_header() + f"""
     <div class="container mt-4 mb-5" style="max-width: 500px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
-            <div class="display-4 mb-2">👑</div>
-            <h3 class="fw-bold text-dark">Bharat AI VIP Club</h3>
-            <p class="text-muted small">90 Days Ad-Free Access & VIP Toolkit</p>
-            <hr>
-
-            {f'''
-            <div class="card bg-warning bg-opacity-10 border-warning p-4 rounded-4 my-4">
-                <div class="display-6 mb-2">👑</div>
-                <h4 class="fw-bold text-dark">VIP MEMBER ACTIVE</h4>
-                <p class="text-muted small mb-0">🎉 बधाई हो <b>{username}</b>! आप Bharat AI के <b>VIP सदस्य</b> हैं।</p>
-                <div class="mt-3">
-                    <span class="badge bg-success px-3 py-2">✓ 90 Days VIP Unlocked</span>
-                    <span class="badge bg-dark px-3 py-2 ms-1">✓ No Ads</span>
-                </div>
-            </div>
-            ''' if premium else f'''
-            {f'<div class="alert alert-info small">{msg}</div>' if msg else ''}
-
+            <h3 class="fw-bold">Bharat AI VIP Club</h3>
             <div class="card p-3 my-3 bg-light border-warning">
-                <span class="badge bg-warning text-dark align-self-center mb-2 px-3 py-2 fw-bold">SPECIAL OFFER: 90 DAYS ACCESS</span>
                 <div class="display-5 fw-bold text-danger mb-1">₹{VIP_PRICE}</div>
-                <div class="text-muted small mb-3">वैधता: <b>90 दिन (3 महीने)</b></div>
-
-                <div class="bg-white p-2 rounded border d-inline-block mx-auto mb-3">
-                    <img src="{upi_qr_url}" alt="UPI QR Code" style="width: 200px; height: 200px;">
-                </div>
-
-                <div class="small fw-bold text-dark mb-1">UPI ID: <span class="text-primary">{YOUR_UPI_ID}</span></div>
-                <div class="text-muted small mb-3">GPay, PhonePe या Paytm से QR स्कैन करके केवल <b>₹{VIP_PRICE}</b> भेजें।</div>
-
-                <form method="POST" class="mt-2">
-                    <div class="mb-3">
-                        <input type="text" name="utr_number" class="form-control text-center rounded-pill" placeholder="Enter 12-digit UTR / Ref No." required>
-                    </div>
-                    <button type="submit" class="btn btn-warning btn-lg fw-bold w-100 rounded-pill shadow-sm">
-                        🚀 Submit UTR to Activate VIP
-                    </button>
+                <small class="text-muted mb-3">वैधता: <b>90 दिन</b></small>
+                <img src="{upi_qr_url}" alt="UPI QR" class="mx-auto my-2" style="width:180px;">
+                <form method="POST">
+                    <input type="text" name="utr_number" class="form-control text-center rounded-pill my-2" placeholder="Enter 12-digit UTR No." required>
+                    <button type="submit" class="btn btn-warning w-100 rounded-pill fw-bold">Submit UTR</button>
                 </form>
-            </div>
-            '''}
-
-            <div class="mt-3">
-                <a href="/" class="btn btn-outline-secondary btn-sm rounded-pill">Back to Home</a>
             </div>
         </div>
     </div>
     """ + get_footer("noads")
 
-# -------------------------------------------------------------
-# 👑 OWNER DASHBOARD
-# -------------------------------------------------------------
 @app.route("/owner_dashboard", methods=["GET", "POST"])
 def owner_dashboard():
-    if not session.get("owner_logged"):
-        return redirect("/owner_login")
-
-    message = ""
+    if not session.get("owner_logged"): return redirect("/owner_login")
     if request.method == "POST":
         action = request.form.get("action")
         target_user = request.form.get("username")
         req_id = request.form.get("req_id")
-
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
         if action == "approve":
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
             expiry_date = (datetime.now() + timedelta(days=VIP_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
             cursor.execute("UPDATE users SET is_premium = 1, vip_expires_at = ? WHERE username = ?", (expiry_date, target_user))
             cursor.execute("UPDATE payment_requests SET status = 'approved' WHERE id = ?", (req_id,))
-            conn.commit()
-            conn.close()
-            message = f"✅ Approved {target_user}! VIP active for 90 days."
         elif action == "reject":
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
             cursor.execute("UPDATE payment_requests SET status = 'rejected' WHERE id = ?", (req_id,))
-            conn.commit()
-            conn.close()
-            message = f"❌ Rejected payment request for {target_user}."
+        conn.commit()
+        conn.close()
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -899,141 +812,73 @@ def owner_dashboard():
     requests_list = cursor.fetchall()
     conn.close()
 
-    req_rows = ""
-    for r in requests_list:
-        status_badge = "bg-warning" if r[3] == "pending" else ("bg-success" if r[3] == "approved" else "bg-danger")
-        req_rows += f"""
-        <tr>
-            <td><b>{r[1]}</b></td>
-            <td><code>{r[2]}</code></td>
-            <td><span class="badge {status_badge}">{r[3]}</span></td>
-            <td><small>{r[4]}</small></td>
-            <td>
-                {f'''
-                <form method="POST" class="d-inline">
-                    <input type="hidden" name="req_id" value="{r[0]}">
-                    <input type="hidden" name="username" value="{r[1]}">
-                    <button type="submit" name="action" value="approve" class="btn btn-sm btn-success py-0">Approve 90 Days</button>
-                    <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger py-0">Reject</button>
-                </form>
-                ''' if r[3] == 'pending' else 'Done'}
-            </td>
-        </tr>
-        """
+    req_rows = "".join([f'<tr><td>{r[1]}</td><td><code>{r[2]}</code></td><td>{r[3]}</td><td><form method="POST" class="d-inline"><input type="hidden" name="req_id" value="{r[0]}"><input type="hidden" name="username" value="{r[1]}"><button name="action" value="approve" class="btn btn-sm btn-success py-0">Approve</button></form></td></tr>' for r in requests_list])
 
     return get_html_header() + f"""
     <div class="container mt-4 mb-5" style="max-width: 800px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border">
-            <h4 class="mb-3 text-center">👑 Owner Control Center</h4>
-            {f'<div class="alert alert-info">{message}</div>' if message else ''}
-
-            <h5 class="text-primary mt-4 mb-3">💸 Pending VIP Payments (₹{VIP_PRICE} / 90 Days)</h5>
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle small">
-                    <thead class="table-light">
-                        <tr>
-                            <th>User</th>
-                            <th>UTR Number</th>
-                            <th>Status</th>
-                            <th>Time</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {req_rows if req_rows else '<tr><td colspan="5" class="text-center text-muted">No payment requests found.</td></tr>'}
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="text-center mt-4"><a href="/" class="btn btn-outline-secondary btn-sm rounded-pill">Back to Home</a></div>
+            <h4 class="mb-3">👑 Owner Dashboard</h4>
+            <table class="table table-bordered small"><thead><tr><th>User</th><th>UTR</th><th>Status</th><th>Action</th></tr></thead><tbody>{req_rows}</tbody></table>
         </div>
     </div>
     """ + get_footer("home")
 
-# -------------------------------------------------------------
-# 📜 HISTORY & AUTHENTICATION ROUTES
-# -------------------------------------------------------------
 @app.route("/my_history")
 def my_history():
     username = session.get("username", "")
     if not username: return redirect("/user_login")
-
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT query, timestamp FROM search_history WHERE username = ? ORDER BY id DESC LIMIT 20", (username,))
     rows = cursor.fetchall()
     conn.close()
-
-    history_html = "".join([f'<li class="list-group-item d-flex justify-content-between align-items-center"><span><i class="bi bi-clock-history me-2 text-warning"></i>{r[0]}</span><small class="text-muted">{r[1]}</small></li>' for r in rows])
-
-    return get_html_header() + f"""
-    <div class="container mt-4 mb-5" style="max-width: 600px;">
-        <h4 class="fw-bold mb-3"><i class="bi bi-clock-history text-warning me-2"></i>My Search History</h4>
-        <ul class="list-group rounded-4 shadow-sm">
-            {history_html if history_html else '<li class="list-group-item text-center text-muted py-4">No search history found.</li>'}
-        </ul>
-    </div>
-    """ + get_footer("history")
+    history_html = "".join([f'<li class="list-group-item d-flex justify-content-between"><span>{r[0]}</span><small class="text-muted">{r[1]}</small></li>' for r in rows])
+    return get_html_header() + f'<div class="container mt-4 mb-5" style="max-width: 600px;"><ul class="list-group shadow-sm">{history_html}</ul></div>' + get_footer("history")
 
 @app.route("/user_login", methods=["GET", "POST"])
 def user_login():
-    error = ""
     if request.method == "POST":
         username, password = request.form.get("username"), request.form.get("password")
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
         user = cursor.fetchone()
-        
         if not user:
             try:
                 cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
                 conn.commit()
-                session.permanent = True
-                session["user_logged"] = True
-                session["username"] = username
-                conn.close()
-                return redirect("/")
-            except sqlite3.IntegrityError:
-                error = "गलत पासवर्ड!"
-                conn.close()
-        else:
-            session.permanent = True
-            session["user_logged"] = True
-            session["username"] = username
-            conn.close()
-            return redirect("/")
+            except Exception: pass
+        session.permanent = True
+        session["user_logged"] = True
+        session["username"] = username
+        conn.close()
+        return redirect("/")
 
-    return get_html_header() + f"""
+    return get_html_header() + """
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center fw-bold text-primary">User Sign In / Register</h4>
-            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
             <input type="text" name="username" class="form-control mb-3" placeholder="Username" required>
             <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
-            <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold">Login or Create Account</button>
+            <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold">Login</button>
         </form>
     </div>
     """ + get_footer("home")
 
 @app.route("/owner_login", methods=["GET", "POST"])
 def owner_login():
-    error = ""
     if request.method == "POST":
-        username, password = request.form.get("username"), request.form.get("password")
-        if username == OWNER_USERNAME and password == OWNER_PASSWORD:
+        if request.form.get("username") == OWNER_USERNAME and request.form.get("password") == OWNER_PASSWORD:
             session.permanent = True
             session["owner_logged"] = True
             return redirect("/owner_dashboard")
-        error = "गलत Owner क्रेडेंशियल!"
-    return get_html_header() + f"""
+    return get_html_header() + """
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center text-danger fw-bold">👑 Owner Login</h4>
-            {f'<div class="alert alert-danger small">{error}</div>' if error else ''}
-            <input type="text" name="username" class="form-control mb-3" placeholder="Owner Username" required>
-            <input type="password" name="password" class="form-control mb-3" placeholder="Owner Password" required>
-            <button type="submit" class="btn btn-danger w-100 rounded-pill fw-bold">Login to Dashboard</button>
+            <input type="text" name="username" class="form-control mb-3" placeholder="Username" required>
+            <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
+            <button type="submit" class="btn btn-danger w-100 rounded-pill fw-bold">Login</button>
         </form>
     </div>
     """ + get_footer("home")
@@ -1045,17 +890,7 @@ def logout():
 
 @app.route("/about")
 def about():
-    return get_html_header() + """
-    <div class="container mt-5 text-center mb-5" style="max-width: 500px;">
-        <div class="bg-white p-4 rounded-4 border shadow-sm">
-            <div class="display-4 mb-2">🛕</div>
-            <h4 class="fw-bold text-primary">Bharat AI Search Engine</h4>
-            <p class="text-muted small">Created with ❤️ by <b>Aman Giri</b></p>
-            <p class="small">An all-in-one universal knowledge engine combining Global Education, Science, Vedic Knowledge, Loans & Finance, and VIP Utility Tools.</p>
-            <a href="/" class="btn btn-outline-primary btn-sm rounded-pill">Back to Home</a>
-        </div>
-    </div>
-    """ + get_footer("home")
+    return get_html_header() + '<div class="container mt-5 text-center mb-5"><div class="bg-white p-4 rounded-4 border shadow-sm"><h4>Bharat AI Engine</h4><p>Created by <b>Aman Giri</b></p></div></div>' + get_footer("home")
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
