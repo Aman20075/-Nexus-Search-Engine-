@@ -4,3 +4,4 @@ gevent
 requests
 beautifulsoup4
 google-genai
+pillow
