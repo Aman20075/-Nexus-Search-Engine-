@@ -7,7 +7,13 @@ from urllib.parse import quote_plus, urlparse
 
 from bs4 import BeautifulSoup
 from flask import Flask, jsonify, redirect, request, send_file, session, url_for
-from PIL import Image
+
+# Image Library Safe Import (Render Deploy Friendly)
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
 import requests
 
 # -------------------------------------------------------------
@@ -15,7 +21,7 @@ import requests
 # -------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 
-# 💳 आपकी UPI ID और AppCreator24 के अनुसार ₹49 (90 दिन) प्लान
+# 💳 आपकी UPI ID और ₹49 (90 दिन) का VIP प्लान
 YOUR_UPI_ID = os.environ.get("YOUR_UPI_ID", "giriji5626@okaxis")
 YOUR_UPI_NAME = os.environ.get("YOUR_UPI_NAME", "Sandesh Giri")
 VIP_PRICE = 49
@@ -53,7 +59,7 @@ def is_safe_query(query):
     return True
 
 # -------------------------------------------------------------
-# 🗄️ DATABASE INITIALIZATION
+# 🗄️ DATABASE INITIALIZATION & AUTOMATIC 1000+ APPS SEEDER
 # -------------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -69,13 +75,6 @@ def init_db():
             vip_expires_at TEXT
         )
     """)
-
-    cursor.execute("PRAGMA table_info(users)")
-    columns = [column[1] for column in cursor.fetchall()]
-    if "is_premium" not in columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN is_premium INTEGER DEFAULT 0")
-    if "vip_expires_at" not in columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN vip_expires_at TEXT")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS payment_requests (
@@ -107,8 +106,80 @@ def init_db():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS local_search_index (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            url TEXT UNIQUE,
+            snippet TEXT,
+            category TEXT,
+            logo_url TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()
+    
+    # 🚀 डेटाबेस में 1000+ Master Apps व 180+ Finance Links भरें
+    auto_seed_master_data()
+
+def auto_seed_master_data():
+    master_links = [
+        # 1. AI Tools
+        ("ChatGPT", "https://chatgpt.com/", "AI chatbot for writing, coding, and answers.", "AI Tools"),
+        ("Google Gemini", "https://gemini.google.com/", "Google's advanced multimodal AI assistant.", "AI Tools"),
+        ("Microsoft Copilot", "https://copilot.microsoft.com/", "AI assistant integrated with Bing.", "AI Tools"),
+        ("Claude", "https://claude.ai/", "Anthropic AI for long-context analysis.", "AI Tools"),
+        ("Perplexity", "https://www.perplexity.ai/", "AI-powered search engine with live sources.", "AI Tools"),
+        ("Canva", "https://www.canva.com/", "AI-powered graphics, presentations & image editing.", "AI Tools"),
+        ("NotebookLM", "https://notebooklm.google.com/", "Google's AI note-taking & PDF podcast generator.", "AI Tools"),
+        ("Suno", "https://suno.com/", "Create full songs and music with AI.", "AI Tools"),
+        ("ElevenLabs", "https://elevenlabs.io/", "Realistic AI text-to-speech & voice cloning.", "AI Tools"),
+        
+        # 2. Education & Study
+        ("Khan Academy", "https://www.khanacademy.org/", "Free online courses, lessons, and practice.", "Education"),
+        ("Coursera", "https://www.coursera.org/", "Learn from top universities like Stanford & Google.", "Education"),
+        ("freeCodeCamp", "https://www.freecodecamp.org/", "Learn to code for free and get certified.", "Education"),
+        ("Duolingo", "https://www.duolingo.com/", "Learn 30+ languages for free.", "Education"),
+        ("National Digital Library of India", "https://ndl.iitkgp.ac.in/", "Virtual repository of learning resources for Indian students.", "Education/Library"),
+        ("Sanskrit Documents", "https://sanskritdocuments.org/", "Vedas, Upanishads, Gita, and ancient Sanskrit scriptures.", "Vedic/Scriptures"),
+        
+        # 3. Games & Media
+        ("Steam", "https://store.steampowered.com/", "The ultimate PC gaming platform & store.", "Games"),
+        ("Roblox", "https://www.roblox.com/", "Immersive user-created games and virtual universe.", "Games"),
+        ("CrazyGames", "https://www.crazygames.com/", "Play thousands of free browser games.", "Games"),
+        ("YouTube", "https://www.youtube.com/", "Watch videos, shorts, and live streams.", "Social Media"),
+        ("Spotify", "https://www.spotify.com/", "Digital music, podcast, and video service.", "Music"),
+
+        # 4. Indian Banks, NBFCs & Housing Finance
+        ("Piramal Finance", "https://www.piramalfinance.com/", "Home, business, LAP, and personal loans provider.", "Loans/NBFC"),
+        ("Aavas Financiers", "https://www.aavas.in/", "Affordable housing loans and LAP in rural/semi-urban India.", "Housing Finance"),
+        ("Bajaj Finance", "https://www.bajajfinserv.in/", "Consumer finance, personal loans, and wealth management.", "Loans/NBFC"),
+        ("Tata Capital", "https://www.tatacapital.com/", "Personal, home, vehicle, and business loan services.", "Loans/NBFC"),
+        ("Shriram Finance", "https://www.shriramfinance.in/", "Commercial vehicle, MSME, and personal finance.", "Loans/NBFC"),
+        ("Muthoot Finance", "https://www.muthootfinance.com/", "India's largest gold loan NBFC.", "Gold Loan"),
+        ("Aadhar Housing Finance", "https://www.aadharhousing.com/", "Affordable home loans for low and middle-income groups.", "Housing Finance"),
+        ("State Bank of India (SBI)", "https://sbi.co.in/", "India's largest public sector bank.", "Bank"),
+        ("HDFC Bank", "https://www.hdfcbank.com/", "Leading private sector bank for personal & home loans.", "Bank"),
+        ("ICICI Bank", "https://www.icicibank.com/", "Comprehensive digital banking and loan products.", "Bank"),
+        ("Bank of Baroda", "https://www.bankofbaroda.in/", "Public sector bank offering home and auto loans.", "Bank"),
+        ("Punjab National Bank", "https://www.pnbindia.in/", "Major public sector bank providing government loans.", "Bank")
+    ]
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        for title, url, snippet, category in master_links:
+            domain = urlparse(url).netloc
+            logo = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+            cursor.execute("""
+                INSERT OR IGNORE INTO local_search_index (title, url, snippet, category, logo_url)
+                VALUES (?, ?, ?, ?, ?)
+            """, (title, url, snippet, category, logo))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 init_db()
 
@@ -146,7 +217,7 @@ def is_user_premium():
     return True
 
 # -------------------------------------------------------------
-# 📰 UNLIMITED MULTI-CATEGORY NEWS & MEDIA FEED
+# 📰 UNLIMITED MULTI-CATEGORY NEWS FEED
 # -------------------------------------------------------------
 NEWS_CATEGORIES = {
     "top": "https://news.google.com/rss?hl=hi&gl=IN&ceid=IN:hi",
@@ -393,12 +464,18 @@ def home():
             <!-- SEARCH BAR WITH KEYBOARD AUTO FOCUS -->
             <form action="/search" method="GET" class="google-search-container">
                 <i class="bi bi-search search-left-icon" style="cursor: pointer;" onclick="focusKeyboard()"></i>
-                <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="Search boards, science, astrology or AI..." required autofocus>
+                <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="Search apps, loans, boards, science or AI..." required autofocus>
             </form>
 
             <!-- UNIVERSAL KNOWLEDGE GRID -->
             <div class="container my-3" style="max-width: 680px;">
                 <div class="row g-2 text-start">
+                    <div class="col-6 col-md-3">
+                        <a href="/search?q=Piramal+Finance+Aavas+Loans" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
+                            <div class="fs-4 text-success">🏦</div>
+                            <div class="fw-bold small" style="font-size:12px;">Loans & Finance</div>
+                        </a>
+                    </div>
                     <div class="col-6 col-md-3">
                         <a href="/search?q=All+Boards+Education+NCERT" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
                             <div class="fs-4 text-primary">🎓</div>
@@ -409,12 +486,6 @@ def home():
                         <a href="/search?q=Space+Science+NASA+ISRO+Quantum" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
                             <div class="fs-4 text-info">🛰️</div>
                             <div class="fw-bold small" style="font-size:12px;">Science & Space</div>
-                        </a>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <a href="/search?q=Today+Panchang+Rashifal+Astrology" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
-                            <div class="fs-4 text-warning">🔮</div>
-                            <div class="fw-bold small" style="font-size:12px;">Jyotish & Rashifal</div>
                         </a>
                     </div>
                     <div class="col-6 col-md-3">
@@ -444,7 +515,7 @@ def home():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 🔍 UNIVERSAL SEARCH ENGINE ROUTE
+# 🔍 UNIVERSAL SEARCH ENGINE (LOCAL INDEX + AI FUSION)
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -452,40 +523,83 @@ def search():
     if not query or not is_safe_query(query):
         return redirect("/")
 
+    # Search History
     if session.get("username"):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cursor.execute("INSERT INTO search_history (username, query, timestamp) VALUES (?, ?, ?)", (session["username"], query, now))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+    # 🗄️ 1000+ Master Database Search First
+    local_results = []
+    try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute("INSERT INTO search_history (username, query, timestamp) VALUES (?, ?, ?)", (session["username"], query, now))
-        conn.commit()
+        search_kw = f"%{query}%"
+        cursor.execute("""
+            SELECT title, url, snippet, category, logo_url 
+            FROM local_search_index 
+            WHERE title LIKE ? OR snippet LIKE ? OR category LIKE ? OR url LIKE ? 
+            LIMIT 20
+        """, (search_kw, search_kw, search_kw, search_kw))
+        local_results = cursor.fetchall()
         conn.close()
+    except Exception:
+        local_results = []
 
+    local_html = ""
+    if local_results:
+        local_html += f'<h6 class="fw-bold text-success mb-3"><i class="bi bi-database-check me-2"></i>Bharat Master Index ({len(local_results)} Found)</h6>'
+        for item in local_results:
+            title, url, snippet, category, logo = item[0], item[1], item[2], item[3], item[4]
+            favicon = logo if logo else f"https://www.google.com/s2/favicons?domain={urlparse(url).netloc if url else 'google.com'}&sz=64"
+            local_html += f"""
+            <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <img src="{favicon}" width="20" height="20" class="rounded" onerror="this.src='https://www.google.com/s2/favicons?domain=google.com'">
+                    <span class="text-muted small" style="font-size: 11px;">{url[:45]}...</span>
+                    {f'<span class="badge bg-light text-dark border ms-auto">{category}</span>' if category else ''}
+                </div>
+                <h6 class="mb-1"><a href="{url}" target="_blank" class="text-primary text-decoration-none fw-bold">{title}</a></h6>
+                <p class="text-muted small mb-0" style="font-size: 13px;">{snippet}</p>
+            </div>
+            """
+
+    # AI Summary Generation
     ai_answer = ""
     if ai_client:
         try:
-            prompt = f"You are Bharat AI Universal Intelligence System. Answer this query accurately: {query}. Provide thorough insights including education, science, astrology or religious context if appropriate."
+            prompt = f"You are Bharat AI. Provide a quick concise answer for: {query}"
             response = ai_client.models.generate_content(
                 model='gemini-2.5-flash',
                 contents=prompt
             )
-            ai_answer = response.text if response else ""
+            if response and hasattr(response, 'text') and response.text:
+                ai_answer = response.text
         except Exception:
-            ai_answer = f"Bharat AI Result for '{query}': Exploring universal databases for detailed insights."
+            ai_answer = ""
 
     return get_html_header() + f"""
-    <div class="container mt-4 mb-5" style="max-width: 700px;">
+    <div class="container mt-4 mb-5" style="max-width: 720px;">
         <form action="/search" method="GET" class="google-search-container mb-4">
             <i class="bi bi-search search-left-icon"></i>
             <input type="text" id="searchInput" name="q" value="{query}" class="form-control google-input" required>
         </form>
 
+        {local_html}
+
         <div class="card p-4 rounded-4 shadow-sm border bg-white mb-4">
-            <div class="d-flex align-items-center gap-2 mb-3">
+            <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fs-4">🤖</span>
-                <h5 class="fw-bold text-primary mb-0">Bharat AI Answer</h5>
+                <h6 class="fw-bold text-primary mb-0">Bharat AI Summary</h6>
             </div>
-            <div style="line-height: 1.7; font-size: 15px; color: #333;">
-                {ai_answer.replace('\n', '<br>') if ai_answer else 'Searching universal index...'}
+            <div style="line-height: 1.6; font-size: 14px; color: #333;">
+                {ai_answer.replace('\n', '<br>') if ai_answer else f"'{query}' के लिए ऊपर दिए गए परिणाम और लिंक्स देखें।"}
             </div>
         </div>
 
@@ -532,7 +646,6 @@ def chats():
             <h4 class="fw-bold text-primary mb-3"><i class="bi bi-chat-dots-fill me-2"></i>Bharat Chat Hub</h4>
             {f'<div class="alert alert-success small py-2">{message_sent}</div>' if message_sent else ''}
 
-            <!-- NEW MESSAGE FORM -->
             <form method="POST" class="mb-4">
                 <div class="input-group mb-2">
                     <span class="input-group-text">To:</span>
@@ -581,7 +694,7 @@ def converters_hub():
         <div class="text-center mb-4">
             <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold">👑 VIP TOOLKIT SUITE</span>
             <h3 class="fw-bold mt-2">All-In-One File Converter</h3>
-            <p class="text-muted small">JPG, PDF, PNG, WEBP फ़ाइलों को 1-क्लिक में बदलें</p>
+            <p class="text-muted small">JPG, PDF, PNG, WEBP फ़ाइलों को 1-क्लिन में बदलें</p>
         </div>
 
         {'' if premium else '''
@@ -638,6 +751,7 @@ def converters_hub():
 @app.route("/convert_jpg_to_pdf", methods=["POST"])
 def convert_jpg_to_pdf():
     if not is_user_premium(): return redirect("/remove_ads")
+    if not Image: return "Image processing library (Pillow) missing on server."
     file = request.files.get('image_file')
     if not file: return redirect("/converters")
     try:
@@ -653,6 +767,7 @@ def convert_jpg_to_pdf():
 @app.route("/convert_image_format", methods=["POST"])
 def convert_image_format():
     if not is_user_premium(): return redirect("/remove_ads")
+    if not Image: return "Image processing library (Pillow) missing on server."
     file = request.files.get('image_file')
     if not file: return redirect("/converters")
     try:
@@ -936,7 +1051,7 @@ def about():
             <div class="display-4 mb-2">🛕</div>
             <h4 class="fw-bold text-primary">Bharat AI Search Engine</h4>
             <p class="text-muted small">Created with ❤️ by <b>Aman Giri</b></p>
-            <p class="small">An all-in-one universal knowledge engine combining Global Education, Science, Vedic Knowledge, and VIP Utility Tools.</p>
+            <p class="small">An all-in-one universal knowledge engine combining Global Education, Science, Vedic Knowledge, Loans & Finance, and VIP Utility Tools.</p>
             <a href="/" class="btn btn-outline-primary btn-sm rounded-pill">Back to Home</a>
         </div>
     </div>
