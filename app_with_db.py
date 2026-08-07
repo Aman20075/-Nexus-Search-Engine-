@@ -583,7 +583,7 @@ def search():
         try:
             prompt = f"You are Bharat AI. Provide a quick concise answer for: {query}"
             response = ai_client.models.generate_content(
-                model='gemini-2.5-flash',1.5-flash',3.5-flash',3.6-flash',
+                model='gemini-3.6-flash',
                 contents=prompt
             )
             if response and hasattr(response, 'text') and response.text:
