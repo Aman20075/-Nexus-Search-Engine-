@@ -19,21 +19,10 @@ import requests
 # 🔑 CONFIGURATION & CONSTANTS
 # -------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
-
 YOUR_UPI_ID = os.environ.get("YOUR_UPI_ID", "giriji5626@okaxis")
 YOUR_UPI_NAME = os.environ.get("YOUR_UPI_NAME", "Sandesh Giri")
 VIP_PRICE = 49
 VIP_DAYS = 90
-
-try:
-    from google import genai
-    ai_client = (
-        genai.Client(api_key=GEMINI_API_KEY)
-        if GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE"
-        else None
-    )
-except ImportError:
-    ai_client = None
 
 app = Flask(__name__)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60
@@ -57,7 +46,7 @@ def is_safe_query(query):
     return True
 
 # -------------------------------------------------------------
-# 🗄️ DATABASE INITIALIZATION
+# 🗄️ DATABASE INITIALIZATION & MASTER SEEDER
 # -------------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -121,13 +110,14 @@ def init_db():
 
 def auto_seed_master_data():
     master_links = [
-        ("ChatGPT", "https://chatgpt.com/", "AI chatbot for writing, coding, and answers.", "AI Tools"),
-        ("Google Gemini", "https://gemini.google.com/", "Google's advanced multimodal AI assistant.", "AI Tools"),
-        ("Piramal Finance", "https://www.piramalfinance.com/", "Home, business, LAP, and personal loans provider.", "Loans/NBFC"),
-        ("Aavas Financiers", "https://www.aavas.in/", "Affordable housing loans and LAP in rural/semi-urban India.", "Housing Finance"),
-        ("Khan Academy", "https://www.khanacademy.org/", "Free online courses, lessons, and practice.", "Education"),
-        ("State Bank of India (SBI)", "https://sbi.co.in/", "India's largest public sector bank.", "Bank"),
-        ("HDFC Bank", "https://www.hdfcbank.com/", "Leading private sector bank for personal & home loans.", "Bank")
+        ("ChatGPT", "https://chatgpt.com/", "Official ChatGPT AI chatbot for writing, coding, and query resolution.", "AI Tools"),
+        ("Google Gemini", "https://gemini.google.com/", "Google's official advanced multimodal AI assistant.", "AI Tools"),
+        ("Microsoft Copilot", "https://copilot.microsoft.com/", "Official AI assistant integrated with Bing search.", "AI Tools"),
+        ("Piramal Finance", "https://www.piramalfinance.com/", "Official site for Piramal personal, home, and business loans.", "Loans/NBFC"),
+        ("Aavas Financiers", "https://www.aavas.in/", "Official site for Aavas home loans and loan against property.", "Housing Finance"),
+        ("Bajaj Finance", "https://www.bajajfinserv.in/", "Consumer durable loans, personal credit, and EMI cards.", "Loans/NBFC"),
+        ("State Bank of India (SBI)", "https://sbi.co.in/", "Official SBI Internet Banking and loan services portal.", "Bank"),
+        ("Khan Academy", "https://www.khanacademy.org/", "Free online education courses, math, and science tutorials.", "Education")
     ]
 
     try:
@@ -193,7 +183,7 @@ def suggestions():
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         search_kw = f"%{q}%"
-        cursor.execute("SELECT DISTINCT title FROM local_search_index WHERE title LIKE ? LIMIT 6", (search_kw,))
+        cursor.execute("SELECT DISTINCT title FROM local_search_index WHERE title LIKE ? OR category LIKE ? LIMIT 6", (search_kw, search_kw))
         rows = cursor.fetchall()
         results = [r[0] for r in rows]
         conn.close()
@@ -252,7 +242,7 @@ def fetch_unlimited_news(category="top"):
     return news_items
 
 # -------------------------------------------------------------
-# 🎨 HEADER & NAVIGATION MENUS (KEYBOARD FIX ADDED)
+# 🎨 HEADER & NAVIGATION MENUS
 # -------------------------------------------------------------
 def get_html_header():
     premium = is_user_premium()
@@ -290,7 +280,6 @@ def get_html_header():
         .icon-btn {{ background: none; border: none; font-size: 22px; color: #d96b00; cursor: pointer; text-decoration: none; padding: 4px; }}
         .bharat-logo {{ font-size: 52px; font-weight: 700; letter-spacing: -1.5px; margin-top: 10px; }}
         
-        /* 🔍 SEARCH CONTAINER & SUGGESTIONS BOX */
         .google-search-container {{ max-width: 580px; width: 92%; margin: 20px auto 16px auto; position: relative; }}
         .google-input {{ height: 54px; border-radius: 27px; padding-left: 52px; padding-right: 20px; border: 2px solid #ffaa44; background: var(--card-bg); color: var(--text-color); box-shadow: 0 4px 12px rgba(255, 153, 51, 0.2); font-size: 16px; }}
         .search-left-icon {{ position: absolute; left: 18px; top: 17px; color: #e67300; font-size: 18px; z-index: 10; }}
@@ -298,10 +287,8 @@ def get_html_header():
         .suggestion-item {{ padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #fff3e0; display: flex; align-items: center; gap: 10px; color: #333; }}
         .suggestion-item:hover {{ background: #fff8e1; }}
 
-        /* 📱 BOTTOM NAV KEYBOARD HIDE FIX */
         .bottom-nav-bar {{ position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-color); border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; padding: 8px 0; z-index: 9998; transition: transform 0.2s ease-in-out; }}
         
-        /* जब कीबोर्ड खुलेगा तब स्क्रीन हाइट छोटी होने पर नेविगेशन बार छुप जाएगा */
         @media (max-height: 500px) {{
             .bottom-nav-bar {{ display: none !important; }}
             body {{ padding-bottom: 0px !important; }}
@@ -310,6 +297,8 @@ def get_html_header():
         .news-card {{ background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; }}
         .nav-link-item {{ text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 1; }}
         .nav-link-item.active {{ color: #ff7700; font-weight: 600; }}
+        .ai-link-btn {{ display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #f0f7ff; color: #0d6efd; border: 1px solid #b6d4fe; border-radius: 20px; font-size: 12px; font-weight: 600; text-decoration: none; margin: 4px 4px 4px 0; transition: all 0.2s; }}
+        .ai-link-btn:hover {{ background: #0d6efd; color: #fff; }}
     </style>
 </head>
 <body>
@@ -346,7 +335,7 @@ def get_html_header():
                 <div class="list-group list-group-flush small">
                     <a href="/remove_ads" class="list-group-item list-group-item-action border-0 py-2 rounded-3 text-warning fw-bold"><i class="bi bi-crown me-2"></i> VIP Membership Status</a>
                     <a href="/my_history" class="list-group-item list-group-item-action border-0 py-2 rounded-3"><i class="bi bi-search me-2 text-secondary"></i> My Search Activity</a>
-                    {f'<a href="/owner_dashboard" class="list-group-item list-group-item-action border-0 py-2 rounded-3 text-danger fw-bold"><i class="bi bi-speedometer2 me-2"></i> Owner Dashboard</a>' if is_owner else ''}
+                    {f'<a href="/owner_dashboard" class="list-group-item list-group-item-action border-0 py-2 rounded-3 text-danger fw-bold"><i class="bi bi-speedometer2 me-2"></i> Owner Control Center</a>' if is_owner else ''}
                     <hr class="my-2">
                     {f'<a href="/logout" class="list-group-item list-group-item-action border-0 py-2 rounded-3 text-danger"><i class="bi bi-box-arrow-right me-2"></i> Sign Out</a>' if (session.get('user_logged') or is_owner) else '<a href="/user_login" class="list-group-item list-group-item-action border-0 py-2 rounded-3 text-success fw-bold"><i class="bi bi-box-arrow-in-right me-2"></i> Sign In / Register</a>'}
                 </div>
@@ -376,7 +365,6 @@ def get_footer(active_tab="home"):
         document.body.classList.add('dark-mode');
     }}
 
-    // ⚡ SEARCH SUGGESTIONS SCRIPT
     const searchInput = document.getElementById("searchInput");
     const suggestionsBox = document.getElementById("suggestionsBox");
 
@@ -401,7 +389,6 @@ def get_footer(active_tab="home"):
             }} catch(e) {{}}
         }});
 
-        // 📱 KEYBOARD FOCUS HIDE BOTTOM NAV LOGIC
         searchInput.addEventListener("focus", function() {{
             document.getElementById("bottomNavBar").classList.add("hide-nav");
         }});
@@ -424,7 +411,7 @@ def get_footer(active_tab="home"):
 """
 
 # -------------------------------------------------------------
-# 🏠 HOME ROUTE WITH AUTO-KEYBOARD & SUGGESTIONS
+# 🏠 HOME ROUTE
 # -------------------------------------------------------------
 @app.route("/")
 def home():
@@ -469,45 +456,41 @@ def home():
             </div>
             <p class="fw-medium small mb-3" style="color: #d95100;">Universal Search Engine 🇮🇳</p>
 
-            <!-- SEARCH BAR WITH REALTIME SUGGESTIONS -->
             <form action="/search" method="GET" class="google-search-container">
                 <i class="bi bi-search search-left-icon"></i>
-                <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="Search apps, loans, boards, science or AI..." autocomplete="off" required autofocus>
-                <!-- 💡 SUGGESTIONS BOX -->
+                <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="Search apps, loans, finance or AI..." autocomplete="off" required autofocus>
                 <div id="suggestionsBox" class="suggestions-box"></div>
             </form>
 
-            <!-- KNOWLEDGE CATEGORIES -->
             <div class="container my-3" style="max-width: 680px;">
                 <div class="row g-2 text-start">
                     <div class="col-6 col-md-3">
-                        <a href="/search?q=Piramal+Finance+Aavas+Loans" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
+                        <a href="/search?q=Piramal+Finance" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
                             <div class="fs-4 text-success">🏦</div>
                             <div class="fw-bold small" style="font-size:12px;">Loans & Finance</div>
                         </a>
                     </div>
                     <div class="col-6 col-md-3">
-                        <a href="/search?q=All+Boards+Education+NCERT" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
+                        <a href="/search?q=Khan+Academy" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
                             <div class="fs-4 text-primary">🎓</div>
                             <div class="fw-bold small" style="font-size:12px;">All Boards Study</div>
                         </a>
                     </div>
                     <div class="col-6 col-md-3">
-                        <a href="/search?q=Space+Science+NASA+ISRO+Quantum" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
-                            <div class="fs-4 text-info">🛰️</div>
-                            <div class="fw-bold small" style="font-size:12px;">Science & Space</div>
+                        <a href="/search?q=ChatGPT" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
+                            <div class="fs-4 text-info">🤖</div>
+                            <div class="fw-bold small" style="font-size:12px;">AI Tools</div>
                         </a>
                     </div>
                     <div class="col-6 col-md-3">
-                        <a href="/search?q=Vedas+Geeta+Upanishad+Religious+Texts" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
-                            <div class="fs-4 text-danger">🛕</div>
-                            <div class="fw-bold small" style="font-size:12px;">Vedic & Religious</div>
+                        <a href="/search?q=Steam" class="card p-2 text-decoration-none text-dark shadow-sm border text-center rounded-3 bg-white">
+                            <div class="fs-4 text-danger">🎮</div>
+                            <div class="fw-bold small" style="font-size:12px;">Games Arcade</div>
                         </a>
                     </div>
                 </div>
             </div>
 
-            <!-- UNLIMITED DISCOVER FEED -->
             <div class="container text-start mt-2 mb-5" style="max-width: 720px;">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <h6 class="fw-bold text-muted mb-0"><i class="bi bi-newspaper text-warning me-2"></i>Discover Feed</h6>
@@ -525,7 +508,7 @@ def home():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 🔍 SEARCH ENGINE ROUTE
+# 🔍 UNIVERSAL SEARCH ROUTE (WITH CLICKABLE AI LINKS)
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -544,6 +527,7 @@ def search():
         except Exception:
             pass
 
+    # 1. डेटाबेस से लिंक्स खोजें
     local_results = []
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -570,7 +554,7 @@ def search():
             <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white">
                 <div class="d-flex align-items-center gap-2 mb-1">
                     <img src="{favicon}" width="20" height="20" class="rounded" onerror="this.src='https://www.google.com/s2/favicons?domain=google.com'">
-                    <span class="text-muted small" style="font-size: 11px;">{url[:45]}...</span>
+                    <span class="text-muted small" style="font-size: 11px;">{url}</span>
                     {f'<span class="badge bg-light text-dark border ms-auto">{category}</span>' if category else ''}
                 </div>
                 <h6 class="mb-1"><a href="{url}" target="_blank" class="text-primary text-decoration-none fw-bold">{title}</a></h6>
@@ -578,18 +562,78 @@ def search():
             </div>
             """
 
+    # 2. लाइव वेब क्रॉल लिंक्स
+    crawl_html = ""
+    ai_links_from_web = []
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        crawl_url = f"https://html.duckduckgo.com/html/?q={quote_plus(query)}"
+        resp = requests.get(crawl_url, headers=headers, timeout=5)
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            snippets = soup.find_all("a", class_="result__snippet", limit=5)
+            titles = soup.find_all("a", class_="result__a", limit=5)
+            
+            if titles:
+                crawl_html += f'<h6 class="fw-bold text-primary my-3"><i class="bi bi-globe me-2"></i>Live Web Results</h6>'
+                for i in range(len(titles)):
+                    t = titles[i].get_text()
+                    u = titles[i].get("href", "#")
+                    s = snippets[i].get_text() if i < len(snippets) else "वेब से लाइव परिणाम..."
+                    parsed_domain = urlparse(u).netloc
+                    fav = f"https://www.google.com/s2/favicons?domain={parsed_domain}&sz=64" if parsed_domain else "https://www.google.com/s2/favicons?domain=google.com"
+
+                    ai_links_from_web.append((t, u))
+
+                    crawl_html += f"""
+                    <div class="card p-3 mb-2 border-0 shadow-sm rounded-4 bg-white">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <img src="{fav}" width="18" height="18" class="rounded">
+                            <span class="text-muted small" style="font-size: 11px;">{u[:40]}...</span>
+                        </div>
+                        <h6 class="mb-1"><a href="{u}" target="_blank" class="text-primary text-decoration-none fw-bold">{t}</a></h6>
+                        <p class="text-muted small mb-0" style="font-size: 13px;">{s}</p>
+                    </div>
+                    """
+    except Exception:
+        crawl_html = ""
+
+    # 3. AI Overview Search
     ai_answer = ""
-    if ai_client:
+    ai_sources_html = ""
+    if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
         try:
-            prompt = f"You are Bharat AI. Provide a quick concise answer for: {query}"
-            response = ai_client.models.generate_content(
-                model='gemini-3.6-flash',
-                contents=prompt
-            )
-            if response and hasattr(response, 'text') and response.text:
-                ai_answer = response.text
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+            payload = {
+                "contents": [{
+                    "parts": [{"text": f"You are Bharat AI. Provide a clear, detailed summary with key facts for: {query}."}]
+                }]
+            }
+            res = requests.post(url, json=payload, timeout=8)
+            if res.status_code == 200:
+                data = res.json()
+                ai_answer = data["candidates"][0]["content"]["parts"][0]["text"]
         except Exception:
             ai_answer = ""
+
+    if ai_answer:
+        combined_links = []
+        if local_results:
+            for item in local_results[:3]:
+                combined_links.append((item[0], item[1]))
+        if ai_links_from_web:
+            for item in ai_links_from_web[:3]:
+                combined_links.append((item[0], item[1]))
+
+        if combined_links:
+            ai_sources_html = '<div class="mt-3 pt-3 border-top"><div class="fw-bold small text-secondary mb-2"><i class="bi bi-link-45deg"></i> आधिकारिक व उपयोगी लिंक्स (Official Web Links):</div>'
+            for title, link_url in combined_links:
+                domain_name = urlparse(link_url).netloc.replace("www.", "")
+                ai_sources_html += f'<a href="{link_url}" target="_blank" class="ai-link-btn"><i class="bi bi-box-arrow-up-right"></i> {title[:25]}... ({domain_name})</a>'
+            ai_sources_html += '</div>'
+
+    if not ai_answer:
+        ai_answer = f"<b>{query}</b> से संबंधित सभी आधिकारिक लिंक्स ऊपर दिए गए परिणामों में उपलब्ध हैं।"
 
     return get_html_header() + f"""
     <div class="container mt-4 mb-5" style="max-width: 720px;">
@@ -600,19 +644,143 @@ def search():
         </form>
 
         {local_html}
+        {crawl_html}
 
-        <div class="card p-4 rounded-4 shadow-sm border bg-white mb-4">
+        <div class="card p-4 rounded-4 shadow-sm border bg-white mb-4 mt-3">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fs-4">🤖</span>
-                <h6 class="fw-bold text-primary mb-0">Bharat AI Summary</h6>
+                <h6 class="fw-bold text-primary mb-0">Bharat AI Overview</h6>
             </div>
             <div style="line-height: 1.6; font-size: 14px; color: #333;">
-                {ai_answer.replace('\n', '<br>') if ai_answer else f"'{query}' के लिए ऊपर दिए गए परिणाम देखें।"}
+                {ai_answer.replace('\n', '<br>')}
+                {ai_sources_html}
             </div>
         </div>
 
         <div class="text-center mt-3">
             <a href="/" class="btn btn-outline-secondary btn-sm rounded-pill">Back to Home</a>
+        </div>
+    </div>
+    """ + get_footer("home")
+
+# -------------------------------------------------------------
+# 👑 OWNER DASHBOARD (WITH LIVE CRAWL & LINK MANAGEMENT)
+# -------------------------------------------------------------
+@app.route("/owner_dashboard", methods=["GET", "POST"])
+def owner_dashboard():
+    if not session.get("owner_logged"): 
+        return redirect("/owner_login")
+
+    message = ""
+    # 🔗1. नई इंडेक्स / क्रॉल लिंक जोड़ने का फ़ंक्शन
+    if request.method == "POST":
+        form_type = request.form.get("form_type")
+
+        if form_type == "add_link":
+            title = request.form.get("title", "").strip()
+            url = request.form.get("url", "").strip()
+            snippet = request.form.get("snippet", "").strip()
+            category = request.form.get("category", "General").strip()
+
+            if title and url:
+                try:
+                    domain = urlparse(url).netloc
+                    logo = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO local_search_index (title, url, snippet, category, logo_url)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (title, url, snippet, category, logo))
+                    conn.commit()
+                    conn.close()
+                    message = f"✅ नई लिंक सफलतापूर्वक इंडेक्स कर दी गई: <b>{title}</b>"
+                except Exception as e:
+                    message = f"⚠️ त्रुटि: {str(e)}"
+
+        elif form_type == "payment_action":
+            action = request.form.get("action")
+            target_user = request.form.get("username")
+            req_id = request.form.get("req_id")
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            if action == "approve":
+                expiry_date = (datetime.now() + timedelta(days=VIP_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
+                cursor.execute("UPDATE users SET is_premium = 1, vip_expires_at = ? WHERE username = ?", (expiry_date, target_user))
+                cursor.execute("UPDATE payment_requests SET status = 'approved' WHERE id = ?", (req_id,))
+                message = f"✅ Approved {target_user} for 90 Days VIP!"
+            elif action == "reject":
+                cursor.execute("UPDATE payment_requests SET status = 'rejected' WHERE id = ?", (req_id,))
+                message = f"❌ Rejected payment request."
+            conn.commit()
+            conn.close()
+
+    # पेमेंट रिक्वेस्ट्स
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, utr_number, status, timestamp FROM payment_requests ORDER BY id DESC")
+    requests_list = cursor.fetchall()
+
+    # कुल इंडेक्स लिंक्स की संख्या
+    cursor.execute("SELECT COUNT(*) FROM local_search_index")
+    total_indexed_count = cursor.fetchone()[0]
+    conn.close()
+
+    req_rows = "".join([f'<tr><td>{r[1]}</td><td><code>{r[2]}</code></td><td><span class="badge bg-warning">{r[3]}</span></td><td><form method="POST" class="d-inline"><input type="hidden" name="form_type" value="payment_action"><input type="hidden" name="req_id" value="{r[0]}"><input type="hidden" name="username" value="{r[1]}"><button name="action" value="approve" class="btn btn-sm btn-success py-0 me-1">Approve</button><button name="action" value="reject" class="btn btn-sm btn-danger py-0">Reject</button></form></td></tr>' for r in requests_list if r[3] == 'pending'])
+
+    return get_html_header() + f"""
+    <div class="container mt-4 mb-5" style="max-width: 850px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold text-danger mb-0"><i class="bi bi-speedometer2 me-2"></i>Owner Control Center</h4>
+                <span class="badge bg-primary rounded-pill px-3 py-2">Total Indexed Links: {total_indexed_count}</span>
+            </div>
+            
+            {f'<div class="alert alert-info py-2 small mb-3">{message}</div>' if message else ''}
+
+            <!-- 🌐 ADD CRAWL / CUSTOM WEBSITE LINK FORM -->
+            <div class="card p-3 border-warning bg-light mb-4 rounded-4">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-plus-circle-fill text-warning me-2"></i>Add New Crawl & Master Index Link</h6>
+                <p class="text-muted small mb-3">यहाँ से आप सीधे कोई भी नई वेबसाइट, ऐप या फाइनेंस पोर्टल सर्च इंजन में जोड़ सकते हैं:</p>
+
+                <form method="POST">
+                    <input type="hidden" name="form_type" value="add_link">
+                    <div class="row g-2 mb-2">
+                        <div class="col-12 col-md-6">
+                            <input type="text" name="title" class="form-control form-control-sm" placeholder="Site Title (e.g. Piramal Finance)" required>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <input type="url" name="url" class="form-control form-control-sm" placeholder="Full URL (https://...)" required>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-8">
+                            <input type="text" name="snippet" class="form-control form-control-sm" placeholder="Description/Snippet (Short info)" required>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <input type="text" name="category" class="form-control form-control-sm" placeholder="Category (e.g. Finance/AI/Education)" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-warning btn-sm rounded-pill fw-bold w-100"><i class="bi bi-cloud-upload me-1"></i> Add Link to Bharat Search Index</button>
+                </form>
+            </div>
+
+            <!-- 💸 VIP PAYMENT REQUESTS -->
+            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-credit-card me-2"></i>Pending VIP Payments (₹{VIP_PRICE})</h6>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle small">
+                    <thead class="table-light">
+                        <tr><th>User</th><th>UTR Number</th><th>Status</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        {req_rows if req_rows else '<tr><td colspan="4" class="text-center text-muted">No pending payment requests.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-center mt-3">
+                <a href="/" class="btn btn-outline-secondary btn-sm rounded-pill">Back to Home</a>
+            </div>
         </div>
     </div>
     """ + get_footer("home")
@@ -787,41 +955,6 @@ def remove_ads():
         </div>
     </div>
     """ + get_footer("noads")
-
-@app.route("/owner_dashboard", methods=["GET", "POST"])
-def owner_dashboard():
-    if not session.get("owner_logged"): return redirect("/owner_login")
-    if request.method == "POST":
-        action = request.form.get("action")
-        target_user = request.form.get("username")
-        req_id = request.form.get("req_id")
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        if action == "approve":
-            expiry_date = (datetime.now() + timedelta(days=VIP_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute("UPDATE users SET is_premium = 1, vip_expires_at = ? WHERE username = ?", (expiry_date, target_user))
-            cursor.execute("UPDATE payment_requests SET status = 'approved' WHERE id = ?", (req_id,))
-        elif action == "reject":
-            cursor.execute("UPDATE payment_requests SET status = 'rejected' WHERE id = ?", (req_id,))
-        conn.commit()
-        conn.close()
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, username, utr_number, status, timestamp FROM payment_requests ORDER BY id DESC")
-    requests_list = cursor.fetchall()
-    conn.close()
-
-    req_rows = "".join([f'<tr><td>{r[1]}</td><td><code>{r[2]}</code></td><td>{r[3]}</td><td><form method="POST" class="d-inline"><input type="hidden" name="req_id" value="{r[0]}"><input type="hidden" name="username" value="{r[1]}"><button name="action" value="approve" class="btn btn-sm btn-success py-0">Approve</button></form></td></tr>' for r in requests_list])
-
-    return get_html_header() + f"""
-    <div class="container mt-4 mb-5" style="max-width: 800px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border">
-            <h4 class="mb-3">👑 Owner Dashboard</h4>
-            <table class="table table-bordered small"><thead><tr><th>User</th><th>UTR</th><th>Status</th><th>Action</th></tr></thead><tbody>{req_rows}</tbody></table>
-        </div>
-    </div>
-    """ + get_footer("home")
 
 @app.route("/my_history")
 def my_history():
