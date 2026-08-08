@@ -15,6 +15,9 @@ except ImportError:
 
 import requests
 
+# 🤖 NEW VECTOR SEARCH ENGINE IMPORT
+from engine import bharat_engine, sync_db_to_vector_engine
+
 # -------------------------------------------------------------
 # 🔑 CONFIGURATION & CONSTANTS
 # -------------------------------------------------------------
@@ -107,6 +110,8 @@ def init_db():
     conn.commit()
     conn.close()
     auto_seed_master_data()
+    # Synchronize Database to Vector Search Brain
+    sync_db_to_vector_engine(DB_PATH)
 
 def auto_seed_master_data():
     master_links = [
@@ -261,7 +266,7 @@ def get_html_header():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bharat AI Universal SuperApp</title>
+    <title>Bharat AI Universal SuperApp Engine</title>
     {adsense_script}
     <link rel="manifest" href="/manifest.json">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -304,7 +309,7 @@ def get_html_header():
 <body>
 
 <div class="top-bar-chrome">
-    <div class="creator-badge">🚀 <b>Bharat AI</b> <span class="badge {badge_class} rounded-pill ms-1">{badge_label}</span></div>
+    <div class="creator-badge">🚀 <b>Bharat AI OS</b> <span class="badge {badge_class} rounded-pill ms-1">{badge_label}</span></div>
     
     <div class="top-actions">
         <a href="/chats" class="icon-btn position-relative" title="Bharat Chat">
@@ -508,7 +513,7 @@ def home():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 🔍 UNIVERSAL SEARCH ROUTE (WITH CLICKABLE AI LINKS)
+# 🔍 UNIVERSAL SEARCH ROUTE (INTEGRATED WITH VECTOR AI ENGINE)
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -527,29 +532,35 @@ def search():
         except Exception:
             pass
 
-    # 1. डेटाबेस से लिंक्स खोजें
-    local_results = []
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        search_kw = f"%{query}%"
-        cursor.execute("""
-            SELECT title, url, snippet, category, logo_url 
-            FROM local_search_index 
-            WHERE title LIKE ? OR snippet LIKE ? OR category LIKE ? OR url LIKE ? 
-            LIMIT 20
-        """, (search_kw, search_kw, search_kw, search_kw))
-        local_results = cursor.fetchall()
-        conn.close()
-    except Exception:
-        local_results = []
-
+    # 1. 🤖 VECTOR AI SEARCH ENGINE CALL (गूगल-बीटिंग स्मार्ट सर्च)
+    vector_results = bharat_engine.search(query, top_k=5)
+    
     local_html = ""
-    if local_results:
-        local_html += f'<h6 class="fw-bold text-success mb-3"><i class="bi bi-database-check me-2"></i>Bharat Master Index ({len(local_results)} Found)</h6>'
-        for item in local_results:
-            title, url, snippet, category, logo = item[0], item[1], item[2], item[3], item[4]
-            favicon = logo if logo else f"https://www.google.com/s2/favicons?domain={urlparse(url).netloc if url else 'google.com'}&sz=64"
+    knowledge_panel_html = ""
+    
+    if vector_results:
+        first_item = vector_results[0]
+        kp_title, kp_url, kp_snippet, kp_cat = first_item["title"], first_item["url"], first_item["snippet"], first_item["category"]
+        kp_fav = f"https://www.google.com/s2/favicons?domain={urlparse(kp_url).netloc if kp_url else 'google.com'}&sz=128"
+        
+        knowledge_panel_html = f"""
+        <div class="card p-3 mb-4 rounded-4 shadow-sm border-primary bg-primary bg-opacity-10 border-2">
+            <div class="d-flex align-items-center gap-3 mb-2">
+                <img src="{kp_fav}" width="40" height="40" class="rounded-3 shadow-sm" onerror="this.src='https://www.google.com/s2/favicons?domain=google.com'">
+                <div>
+                    <h5 class="fw-bold mb-0 text-primary">{kp_title}</h5>
+                    <span class="badge bg-primary rounded-pill small" style="font-size:10px;">{kp_cat if kp_cat else 'AI Vector Match'}</span>
+                </div>
+            </div>
+            <p class="small text-dark mb-2" style="line-height: 1.5;">{kp_snippet}</p>
+            <a href="{kp_url}" target="_blank" class="btn btn-primary btn-sm rounded-pill fw-bold align-self-start"><i class="bi bi-box-arrow-up-right me-1"></i> Visit Official Site</a>
+        </div>
+        """
+
+        local_html += f'<h6 class="fw-bold text-success mb-3"><i class="bi bg-cpu me-2"></i>Bharat Vector Smart Index ({len(vector_results)} Matches)</h6>'
+        for item in vector_results:
+            title, url, snippet, category = item["title"], item["url"], item["snippet"], item["category"]
+            favicon = f"https://www.google.com/s2/favicons?domain={urlparse(url).netloc if url else 'google.com'}&sz=64"
             local_html += f"""
             <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white">
                 <div class="d-flex align-items-center gap-2 mb-1">
@@ -562,7 +573,7 @@ def search():
             </div>
             """
 
-    # 2. लाइव वेब क्रॉल लिंक्स
+    # 2. 🌐 लाइव वेब क्रॉल लिंक्स
     crawl_html = ""
     ai_links_from_web = []
     try:
@@ -598,7 +609,7 @@ def search():
     except Exception:
         crawl_html = ""
 
-    # 3. AI Overview Search
+    # 3. 🤖 AI Overview Search
     ai_answer = ""
     ai_sources_html = ""
     if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
@@ -618,9 +629,9 @@ def search():
 
     if ai_answer:
         combined_links = []
-        if local_results:
-            for item in local_results[:3]:
-                combined_links.append((item[0], item[1]))
+        if vector_results:
+            for item in vector_results[:3]:
+                combined_links.append((item["title"], item["url"]))
         if ai_links_from_web:
             for item in ai_links_from_web[:3]:
                 combined_links.append((item[0], item[1]))
@@ -631,6 +642,39 @@ def search():
                 domain_name = urlparse(link_url).netloc.replace("www.", "")
                 ai_sources_html += f'<a href="{link_url}" target="_blank" class="ai-link-btn"><i class="bi bi-box-arrow-up-right"></i> {title[:25]}... ({domain_name})</a>'
             ai_sources_html += '</div>'
+
+    # 4. ❓ Google-Style "People Also Ask"
+    paa_html = f"""
+    <div class="card p-3 my-4 border-0 shadow-sm rounded-4 bg-white">
+        <h6 class="fw-bold text-dark mb-3"><i class="bi bi-question-circle-fill text-warning me-2"></i>People Also Ask (लोग यह भी पूछते हैं)</h6>
+        <div class="accordion accordion-flush" id="paaAccordion">
+            <div class="accordion-item border-bottom">
+                <h2 class="accordion-header" id="headingOne">
+                    <button class="accordion-button collapsed py-2 px-0 bg-transparent fw-medium small" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                        {query} का उपयोग और मुख्य लाभ क्या हैं?
+                    </button>
+                </h2>
+                <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#paaAccordion">
+                    <div class="accordion-body small text-muted px-0 py-2">
+                        {query} मुख्य रूप से सही जानकारी, आधिकारिक सेवाओं और त्वरित सहायता के लिए उपयोग किया जाता है। ऊपर दिए गए लिंक्स पर क्लिक करके आप इसकी आधिकारिक वेबसाइट पर पहुँच सकते हैं।
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item border-bottom">
+                <h2 class="accordion-header" id="headingTwo">
+                    <button class="accordion-button collapsed py-2 px-0 bg-transparent fw-medium small" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                        {query} की आधिकारिक/Official Website कौन सी है?
+                    </button>
+                </h2>
+                <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#paaAccordion">
+                    <div class="accordion-body small text-muted px-0 py-2">
+                        {query} की आधिकारिक वेबसाइट का लिंक ऊपर दिए गए <b>Bharat Master Index</b> और <b>Official Web Links</b> सेक्शन में नीले रंग के बटन में दिया गया है।
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
 
     if not ai_answer:
         ai_answer = f"<b>{query}</b> से संबंधित सभी आधिकारिक लिंक्स ऊपर दिए गए परिणामों में उपलब्ध हैं।"
@@ -643,10 +687,11 @@ def search():
             <div id="suggestionsBox" class="suggestions-box"></div>
         </form>
 
-        {local_html}
-        {crawl_html}
+        <!-- 1. Knowledge Panel -->
+        {knowledge_panel_html}
 
-        <div class="card p-4 rounded-4 shadow-sm border bg-white mb-4 mt-3">
+        <!-- 2. AI Overview Summary -->
+        <div class="card p-4 rounded-4 shadow-sm border bg-white mb-4">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fs-4">🤖</span>
                 <h6 class="fw-bold text-primary mb-0">Bharat AI Overview</h6>
@@ -657,6 +702,15 @@ def search():
             </div>
         </div>
 
+        <!-- 3. People Also Ask -->
+        {paa_html}
+
+        <!-- 4. Indexed Vector Results -->
+        {local_html}
+
+        <!-- 5. Live Crawl Results -->
+        {crawl_html}
+
         <div class="text-center mt-3">
             <a href="/" class="btn btn-outline-secondary btn-sm rounded-pill">Back to Home</a>
         </div>
@@ -664,7 +718,7 @@ def search():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 👑 OWNER DASHBOARD (WITH LIVE CRAWL & LINK MANAGEMENT)
+# 👑 OWNER DASHBOARD
 # -------------------------------------------------------------
 @app.route("/owner_dashboard", methods=["GET", "POST"])
 def owner_dashboard():
@@ -672,7 +726,6 @@ def owner_dashboard():
         return redirect("/owner_login")
 
     message = ""
-    # 🔗1. नई इंडेक्स / क्रॉल लिंक जोड़ने का फ़ंक्शन
     if request.method == "POST":
         form_type = request.form.get("form_type")
 
@@ -694,7 +747,11 @@ def owner_dashboard():
                     """, (title, url, snippet, category, logo))
                     conn.commit()
                     conn.close()
-                    message = f"✅ नई लिंक सफलतापूर्वक इंडेक्स कर दी गई: <b>{title}</b>"
+                    
+                    # Also index in real-time into the AI Vector Engine!
+                    bharat_engine.index_item(title, url, snippet, category)
+                    
+                    message = f"✅ नई लिंक सफलतापूर्वक Vector Engine और DB में इंडेक्स कर दी गई: <b>{title}</b>"
                 except Exception as e:
                     message = f"⚠️ त्रुटि: {str(e)}"
 
@@ -715,13 +772,11 @@ def owner_dashboard():
             conn.commit()
             conn.close()
 
-    # पेमेंट रिक्वेस्ट्स
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT id, username, utr_number, status, timestamp FROM payment_requests ORDER BY id DESC")
     requests_list = cursor.fetchall()
 
-    # कुल इंडेक्स लिंक्स की संख्या
     cursor.execute("SELECT COUNT(*) FROM local_search_index")
     total_indexed_count = cursor.fetchone()[0]
     conn.close()
@@ -765,7 +820,6 @@ def owner_dashboard():
                 </form>
             </div>
 
-            <!-- 💸 VIP PAYMENT REQUESTS -->
             <h6 class="fw-bold text-dark mb-2"><i class="bi bi-credit-card me-2"></i>Pending VIP Payments (₹{VIP_PRICE})</h6>
             <div class="table-responsive">
                 <table class="table table-bordered table-hover align-middle small">
