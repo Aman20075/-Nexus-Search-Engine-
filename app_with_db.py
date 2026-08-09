@@ -24,8 +24,6 @@ from engine import bharat_engine, sync_db_to_vector_engine
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 YOUR_UPI_ID = os.environ.get("YOUR_UPI_ID", "giriji5626@okaxis")
 YOUR_UPI_NAME = os.environ.get("YOUR_UPI_NAME", "Sandesh Giri")
-VIP_PRICE = 49
-VIP_DAYS = 90
 
 app = Flask(__name__)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60
@@ -42,13 +40,13 @@ OWNER_PASSWORD = "@Aman2007"
 BLOCKED_KEYWORDS = ["porn", "xxx", "sex", "adult", "nsfw", "nude", "hot video"]
 
 # -------------------------------------------------------------
-# 👑 4-TIER MEMBERSHIP MATRIX
+# 👑 HYPER-ADVANCED MEMBERSHIP MATRIX
 # -------------------------------------------------------------
-TIER_LIMITS = {
-    "Free": {"ai_limit": 10, "deep_search": False, "badge": "🟢 FREE USER", "badge_cls": "bg-secondary"},
-    "VIP": {"ai_limit": 100, "deep_search": False, "badge": "🔵 VIP MEMBER", "badge_cls": "bg-warning text-dark"},
-    "VIP Pro": {"ai_limit": 500, "deep_search": True, "badge": "🟣 VIP PRO", "badge_cls": "bg-primary"},
-    "VIP Ultra": {"ai_limit": 9999, "deep_search": True, "badge": "👑 VIP ULTRA", "badge_cls": "bg-danger"}
+TIER_DETAILS = {
+    "Free": {"price": 0, "days": 0, "badge": "🟢 FREE USER", "cls": "bg-secondary"},
+    "VIP": {"price": 49, "days": 90, "badge": "🔵 VIP MEMBER", "cls": "bg-warning text-dark"},
+    "VIP_PRO": {"price": 149, "days": 90, "badge": "🟣 VIP PRO", "cls": "bg-primary"},
+    "VIP_ULTRA": {"price": 299, "days": 90, "badge": "👑 VIP ULTRA", "cls": "bg-danger"}
 }
 
 def is_safe_query(query):
@@ -59,7 +57,7 @@ def is_safe_query(query):
     return True
 
 # -------------------------------------------------------------
-# 🗄️ DATABASE INITIALIZATION & SEEDER
+# 🗄️ DATABASE INITIALIZATION
 # -------------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -82,8 +80,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
             utr_number TEXT UNIQUE,
-            status TEXT DEFAULT 'pending',
             plan_type TEXT DEFAULT 'VIP',
+            status TEXT DEFAULT 'pending',
             timestamp TEXT
         )
     """)
@@ -153,13 +151,13 @@ def auto_seed_master_data():
 
 init_db()
 
-def get_user_subscription():
+def get_user_tier_info():
     if session.get("owner_logged"):
-        return "VIP Ultra", TIER_LIMITS["VIP Ultra"]
+        return "VIP_ULTRA", TIER_DETAILS["VIP_ULTRA"]
     
     username = session.get("username")
     if not username:
-        return "Free", TIER_LIMITS["Free"]
+        return "Free", TIER_DETAILS["Free"]
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -168,9 +166,12 @@ def get_user_subscription():
     conn.close()
 
     if not row:
-        return "Free", TIER_LIMITS["Free"]
+        return "Free", TIER_DETAILS["Free"]
 
-    tier, is_prem, expires_at_str = row[0] or "Free", row[1], row[2]
+    tier = row[0] or "Free"
+    is_prem = row[1]
+    expires_at_str = row[2]
+
     if is_prem and expires_at_str:
         try:
             expires_at = datetime.strptime(expires_at_str, "%Y-%m-%d %H:%M:%S")
@@ -180,25 +181,20 @@ def get_user_subscription():
                 cursor.execute("UPDATE users SET is_premium = 0, tier = 'Free' WHERE username = ?", (username,))
                 conn.commit()
                 conn.close()
-                return "Free", TIER_LIMITS["Free"]
+                return "Free", TIER_DETAILS["Free"]
         except ValueError:
             pass
-        return tier, TIER_LIMITS.get(tier, TIER_LIMITS["VIP"])
+        return tier, TIER_DETAILS.get(tier, TIER_DETAILS["VIP"])
 
-    return "Free", TIER_LIMITS["Free"]
-
-def is_user_premium():
-    tier, _ = get_user_subscription()
-    return tier != "Free"
+    return "Free", TIER_DETAILS["Free"]
 
 # -------------------------------------------------------------
-# 🔍 SUGGESTIONS & NEWS
+# 🔍 SEARCH SUGGESTIONS & NEWS
 # -------------------------------------------------------------
 @app.route("/api/suggestions")
 def suggestions():
     q = request.args.get("q", "").strip()
     if not q: return jsonify([])
-    results = []
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -206,8 +202,9 @@ def suggestions():
         cursor.execute("SELECT DISTINCT title FROM local_search_index WHERE title LIKE ? OR category LIKE ? LIMIT 6", (search_kw, search_kw))
         results = [r[0] for r in cursor.fetchall()]
         conn.close()
-    except Exception: pass
-    return jsonify(results)
+        return jsonify(results)
+    except Exception:
+        return jsonify([])
 
 NEWS_CATEGORIES = {
     "top": "https://news.google.com/rss?hl=hi&gl=IN&ceid=IN:hi",
@@ -242,17 +239,17 @@ def fetch_unlimited_news(category="top"):
     return news_items
 
 # -------------------------------------------------------------
-# 🎨 UI HEADER & FOOTER ENGINE
+# 🎨 HEADER & FOOTER ENGINE
 # -------------------------------------------------------------
 def get_html_header():
-    tier, tier_info = get_user_subscription()
+    tier_name, tier_info = get_user_tier_info()
     is_owner = session.get("owner_logged", False)
     username = session.get("username", "Owner" if is_owner else "Guest User")
     
     badge_label = "👑 OWNER" if is_owner else tier_info["badge"]
-    badge_class = "bg-danger" if is_owner else tier_info["badge_cls"]
+    badge_class = "bg-danger" if is_owner else tier_info["cls"]
 
-    adsense_script = """<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6514818403683886" crossorigin="anonymous"></script>""" if tier == "Free" else "<!-- VIP Member: Ads Disabled -->"
+    adsense_script = """<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6514818403683886" crossorigin="anonymous"></script>""" if tier_name == "Free" else "<!-- VIP Member: Ads Disabled -->"
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -281,9 +278,16 @@ def get_html_header():
         .search-left-icon {{ position: absolute; left: 18px; top: 16px; color: #e67300; font-size: 18px; z-index: 10; }}
         .suggestions-box {{ position: absolute; top: 58px; left: 0; right: 0; background: #fff; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid #ffe0b2; z-index: 9999; display: none; text-align: left; overflow: hidden; }}
         .suggestion-item {{ padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #fff3e0; display: flex; align-items: center; gap: 10px; color: #333; }}
-        .bottom-nav-bar {{ position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-color); border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; padding: 8px 0; z-index: 9998; }}
+        .bottom-nav-bar {{ position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-color); border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; padding: 8px 0; z-index: 9998; transition: transform 0.2s ease-in-out; }}
         .nav-link-item {{ text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; flex: 1; }}
         .nav-link-item.active {{ color: #ff7700; font-weight: 600; }}
+        
+        /* 📱 कीबोर्ड खुलने पर बॉटम बार ऑटोमैटिक छिपाना */
+        @media (max-height: 550px) {{
+            .bottom-nav-bar {{ display: none !important; }}
+            body {{ padding-bottom: 0px !important; }}
+        }}
+        .bottom-nav-bar.keyboard-open {{ display: none !important; }}
         .no-scrollbar::-webkit-scrollbar {{ display: none; }}
     </style>
 </head>
@@ -293,7 +297,7 @@ def get_html_header():
     <div class="creator-badge">🚀 <b>Bharat OS</b> <span class="badge {badge_class} rounded-pill ms-1">{badge_label}</span></div>
     <div class="top-actions">
         <a href="/chats" class="icon-btn" title="Bharat Chat"><i class="bi bi-chat-dots-fill text-primary"></i></a>
-        <a href="/vip_tiers" class="icon-btn" title="VIP Tiers"><i class="bi bi-crown-fill text-warning"></i></a>
+        <a href="/vip_tiers" class="icon-btn" title="VIP Tiers"><i class="bi bi-gem-fill text-warning"></i></a>
         <div class="dropdown">
             <button class="icon-btn" type="button" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
             <ul class="dropdown-menu dropdown-menu-end p-2 shadow-lg" style="width: 230px; border-radius: 16px;">
@@ -305,7 +309,7 @@ def get_html_header():
                 <li><a class="dropdown-item rounded-3 py-2" href="/converters"><i class="bi bi-gear-wide-connected me-2 text-warning"></i> VIP Tools</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><button class="dropdown-item rounded-3 py-2" onclick="toggleDarkMode()"><i class="bi bi-moon-stars me-2 text-info"></i> Toggle Theme</button></li>
-                <li><a class="dropdown-item rounded-3 py-2 fw-bold text-danger" href="/vip_tiers"><i class="bi bi-gem me-2"></i> Upgrade Tiers</a></li>
+                <li><a class="dropdown-item rounded-3 py-2 fw-bold text-danger" href="/vip_tiers"><i class="bi bi-crown me-2"></i> Subscription Tiers</a></li>
             </ul>
         </div>
         <div class="dropdown">
@@ -346,6 +350,21 @@ def get_footer(active_tab="home"):
     }}
     if (localStorage.getItem('bharat_dark_mode') === 'enabled') {{ document.body.classList.add('dark-mode'); }}
 
+    // 📱 कीबोर्ड खुलने पर नेविगेशन बार ऑटोमैटिक छिपाने की स्क्रिप्ट
+    const navBar = document.getElementById("bottomNavBar");
+    const inputs = document.querySelectorAll("input, textarea, select");
+
+    inputs.forEach(input => {{
+        input.addEventListener("focus", () => {{
+            if (navBar) navBar.classList.add("keyboard-open");
+        }});
+        input.addEventListener("blur", () => {{
+            setTimeout(() => {{
+                if (navBar) navBar.classList.remove("keyboard-open");
+            }}, 200);
+        }});
+    }});
+
     const searchInput = document.getElementById("searchInput");
     const suggestionsBox = document.getElementById("suggestionsBox");
 
@@ -365,9 +384,9 @@ def get_footer(active_tab="home"):
     }}
 
     function selectSuggestion(text) {{
-        searchInput.value = text;
-        suggestionsBox.style.display = "none";
-        searchInput.form.submit();
+        if (searchInput) searchInput.value = text;
+        if (suggestionsBox) suggestionsBox.style.display = "none";
+        if (searchInput && searchInput.form) searchInput.form.submit();
     }}
 </script>
 </body>
@@ -375,7 +394,7 @@ def get_footer(active_tab="home"):
 """
 
 # -------------------------------------------------------------
-# 🏠 HOME ROUTE (ADVANCED 140-FEATURE SEARCH ENGINE)
+# 🏠 HOME ROUTE
 # -------------------------------------------------------------
 @app.route("/")
 def home():
@@ -404,7 +423,6 @@ def home():
             </div>
             <p class="fw-medium small mb-2" style="color: #d95100;">Universal AI Search Engine 🇮🇳</p>
 
-            <!-- 140 ADVANCED SEARCH FILTERS BAR -->
             <form action="/search" method="GET" class="google-search-container">
                 <i class="bi bi-search search-left-icon"></i>
                 <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="सर्च करें, फाइल्स ढूंढें या AI से पूछें..." autocomplete="off" required autofocus>
@@ -461,9 +479,6 @@ def search():
 
     if not query or not is_safe_query(query): return redirect("/")
 
-    tier, _ = get_user_subscription()
-
-    # 1. AI Vector Search Call
     vector_results = bharat_engine.search(query, top_k=5)
     
     local_html = ""
@@ -481,9 +496,8 @@ def search():
         </div>
         """
 
-    # 2. AI Overview Generation (Mode Adaptive)
-    prompt_prefix = "Explain like I'm 5 years old:" if mode == "eli5" else ("Provide a deep academic summary for:" if mode == "deep" else "Provide a detailed overview for:")
-    ai_answer = f"<b>{query}</b> ({mode.upper()} Mode) से संबंधित सभी आधिकारिक लिंक्स और परिणाम नीचे प्रस्तुत हैं।"
+    prompt_prefix = "Explain like I'm 5 years old:" if mode == "eli5" else ("Provide a deep academic summary with research facts for:" if mode == "deep" else "Provide a detailed overview for:")
+    ai_answer = f"<b>{query}</b> ({mode.upper()} Mode) से संबंधित परिणाम नीचे प्रस्तुत हैं।"
     
     if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
         try:
@@ -518,66 +532,84 @@ def search():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 👑 4-TIERS MEMBERSHIP CLUB ROUTE
+# 👑 HYPER-ADVANCED MEMBERSHIP SHOWCASE
 # -------------------------------------------------------------
 @app.route("/vip_tiers")
 def vip_tiers():
     return get_html_header() + f"""
-    <div class="container mt-4 mb-5" style="max-width: 750px;">
+    <div class="container mt-4 mb-5" style="max-width: 850px;">
         <div class="text-center mb-4">
-            <h3 class="fw-bold">Bharat OS Subscription Tiers</h3>
-            <p class="text-muted small">अपनी आवश्यकतानुसार बेस्ट प्लान चुनें</p>
+            <h3 class="fw-bold">Bharat OS Power Subscriptions</h3>
+            <p class="text-muted small">अपनी आवश्यकताओं के लिए सबसे एडवांस्ड प्लान चुनें</p>
         </div>
 
         <div class="row g-3">
+            <!-- FREE -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 border rounded-4 shadow-sm h-100 bg-white">
-                    <span class="badge bg-secondary align-self-start mb-2">🟢 FREE</span>
-                    <h4 class="fw-bold">₹0 <small class="fs-6 text-muted">/ forever</small></h4>
-                    <ul class="small text-muted ps-3 mt-2">
-                        <li>Basic Search + Images + News</li>
-                        <li>Limited AI Answers (10/day)</li>
-                        <li>Standard Speed</li>
+                    <span class="badge bg-secondary align-self-start mb-2">🟢 FREE PLAN</span>
+                    <h4 class="fw-bold mb-1">₹0 <small class="fs-6 text-muted">/ forever</small></h4>
+                    <hr class="my-2">
+                    <ul class="small text-muted ps-3 mb-0" style="line-height: 1.8;">
+                        <li>Basic Web & Keyword Search</li>
+                        <li>10 AI Overview Queries / day</li>
+                        <li>Live News Feed & Discover</li>
+                        <li>Standard Speed & Ads Supported</li>
                     </ul>
                 </div>
             </div>
 
+            <!-- VIP -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 border-warning rounded-4 shadow-sm h-100 bg-light">
-                    <span class="badge bg-warning text-dark align-self-start mb-2">🔵 VIP</span>
-                    <h4 class="fw-bold">₹49 <small class="fs-6 text-muted">/ 90 Days</small></h4>
-                    <ul class="small ps-3 mt-2">
-                        <li><b>Ad-Free Experience</b></li>
-                        <li>100 AI Answers / day</li>
-                        <li>Advanced Search Filters</li>
+                    <span class="badge bg-warning text-dark align-self-start mb-2">🔵 VIP MEMBER</span>
+                    <h4 class="fw-bold mb-1">₹49 <small class="fs-6 text-muted">/ 90 Days</small></h4>
+                    <hr class="my-2">
+                    <ul class="small text-dark ps-3 mb-3" style="line-height: 1.8;">
+                        <li><b>🚫 100% Zero Ads Clean UI</b></li>
+                        <li>100 Fast AI Answers / day</li>
+                        <li>📄 PDF, DOCX, PPTX Filters</li>
+                        <li>🛠️ Unlimited VIP Toolkit Converter Access</li>
+                        <li>👑 Blue VIP Status Badge</li>
                     </ul>
-                    <a href="/remove_ads?plan=VIP" class="btn btn-warning btn-sm rounded-pill fw-bold mt-auto">Choose VIP</a>
+                    <a href="/remove_ads?plan=VIP" class="btn btn-warning btn-sm rounded-pill fw-bold w-100 mt-auto">Choose VIP (₹49)</a>
                 </div>
             </div>
 
+            <!-- VIP PRO -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 border-primary rounded-4 shadow-sm h-100 bg-white">
                     <span class="badge bg-primary align-self-start mb-2">🟣 VIP PRO</span>
-                    <h4 class="fw-bold">₹149 <small class="fs-6 text-muted">/ 90 Days</small></h4>
-                    <ul class="small ps-3 mt-2">
+                    <h4 class="fw-bold mb-1">₹149 <small class="fs-6 text-muted">/ 90 Days</small></h4>
+                    <hr class="my-2">
+                    <ul class="small text-dark ps-3 mb-3" style="line-height: 1.8;">
                         <li>VIP के सभी फ़ायदे +</li>
-                        <li><b>Deep Research Mode</b></li>
-                        <li>500 AI Answers / day</li>
+                        <li><b>🔬 Deep Research Engine v2.0 (Multi-source)</b></li>
+                        <li><b>⚡ Code & Algorithm Engine (Debug/Write Code)</b></li>
+                        <li><b>👶 ELI5 Mode ("Explain Like I'm 5")</b></li>
+                        <li>📁 Smart Document OCR & PDF Chat Engine</li>
+                        <li>⚡ 500 AI Queries / day (Priority Speed)</li>
                     </ul>
-                    <a href="/remove_ads?plan=VIP_PRO" class="btn btn-primary btn-sm rounded-pill fw-bold mt-auto">Choose VIP Pro</a>
+                    <a href="/remove_ads?plan=VIP_PRO" class="btn btn-primary btn-sm rounded-pill fw-bold w-100 mt-auto">Choose VIP Pro (₹149)</a>
                 </div>
             </div>
 
+            <!-- VIP ULTRA -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 border-danger rounded-4 shadow-sm h-100 bg-danger bg-opacity-10">
                     <span class="badge bg-danger align-self-start mb-2">👑 VIP ULTRA</span>
-                    <h4 class="fw-bold">₹299 <small class="fs-6 text-muted">/ 90 Days</small></h4>
-                    <ul class="small ps-3 mt-2">
+                    <h4 class="fw-bold mb-1">₹299 <small class="fs-6 text-muted">/ 90 Days</small></h4>
+                    <hr class="my-2">
+                    <ul class="small text-dark ps-3 mb-3" style="line-height: 1.8;">
                         <li>VIP Pro के सभी फ़ायदे +</li>
-                        <li><b>Unlimited Reasonable Usage</b></li>
-                        <li>Early Access to Experimental AI</li>
+                        <li><b>♾️ Unlimited Reasonable AI Queries</b></li>
+                        <li><b>🤖 Autonomous Web AI Agent</b></li>
+                        <li><b>🛡️ Private Vault & Auto-Delete History</b></li>
+                        <li>🔮 Live Data & Market Price AI Tracker</li>
+                        <li>⚡ Quantum Queue Allocation (0.001s Speed)</li>
+                        <li>💬 Direct Owner Hotline & Early Beta Access</li>
                     </ul>
-                    <a href="/remove_ads?plan=VIP_ULTRA" class="btn btn-danger btn-sm rounded-pill fw-bold mt-auto">Choose VIP Ultra</a>
+                    <a href="/remove_ads?plan=VIP_ULTRA" class="btn btn-danger btn-sm rounded-pill fw-bold w-100 mt-auto">Choose VIP Ultra (₹299)</a>
                 </div>
             </div>
         </div>
@@ -585,7 +617,83 @@ def vip_tiers():
     """ + get_footer("vip")
 
 # -------------------------------------------------------------
-# 📚 RESEARCH WORKSPACE & 🛡️ PRIVACY CENTER
+# 💳 PAYMENT ROUTE
+# -------------------------------------------------------------
+@app.route("/remove_ads", methods=["GET", "POST"])
+def remove_ads():
+    plan_key = request.args.get("plan", "VIP").upper()
+    plan_info = TIER_DETAILS.get(plan_key, TIER_DETAILS["VIP"])
+    price = plan_info["price"]
+
+    msg = ""
+    is_owner = session.get("owner_logged", False)
+    username = session.get("username", "Owner" if is_owner else "")
+
+    if request.method == "POST":
+        utr_no = request.form.get("utr_number", "").strip()
+        if utr_no and len(utr_no) >= 10:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            try:
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                cursor.execute("INSERT INTO payment_requests (username, utr_number, plan_type, status, timestamp) VALUES (?, ?, ?, 'pending', ?)", (username, utr_no, plan_key, now))
+                conn.commit()
+                msg = "✅ UTR सफलतापूर्वक सबमिट हो गई है! ऑनर वेरिफिकेशन के बाद एक्टिवेट होगा।"
+            except sqlite3.IntegrityError:
+                msg = "⚠️ यह UTR पहले ही सबमिट की जा चुकी है!"
+            conn.close()
+
+    upi_intent = f"upi://pay?pa={YOUR_UPI_ID}&pn={quote_plus(YOUR_UPI_NAME)}&am={price}&cu=INR"
+    upi_qr_url = f"https://quickchart.io/qr?text={quote_plus(upi_intent)}&size=250&margin=1"
+
+    return get_html_header() + f"""
+    <div class="container mt-3 mb-5" style="max-width: 500px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
+            <span class="badge bg-warning text-dark rounded-pill px-3 py-1 mb-2">⚡ UNIFORM PAYMENTS</span>
+            <h4 class="fw-bold mb-1">Upgrade to {plan_key.replace('_', ' ')} Plan</h4>
+            <p class="text-muted small mb-3">स्कैन करें या UPI ID पर भुगतान करें</p>
+
+            {f'<div class="alert alert-info py-2 small mb-3">{msg}</div>' if msg else ''}
+
+            <div class="card p-3 my-2 bg-light border-warning rounded-4 shadow-sm">
+                <div class="fw-bold text-danger fs-3 mb-1">₹{price} <small class="fs-6 text-muted">/ 90 दिन</small></div>
+                
+                <div class="my-2 p-2 bg-white d-inline-block rounded-3 border mx-auto">
+                    <img src="{upi_qr_url}" alt="Bharat UPI QR Code" style="width: 200px; height: 200px; display: block;">
+                </div>
+
+                <div class="mt-2 bg-white p-2 rounded-3 border d-flex justify-content-between align-items-center">
+                    <div class="text-start">
+                        <small class="text-muted d-block" style="font-size:10px;">UPI ID</small>
+                        <strong class="text-dark" id="upiIdText" style="font-size:14px;">{YOUR_UPI_ID}</strong>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="copyUPI()"><i class="bi bi-clipboard me-1"></i>Copy</button>
+                </div>
+
+                <a href="{upi_intent}" class="btn btn-success btn-sm w-100 rounded-pill fw-bold mt-3"><i class="bi bi-wallet2 me-1"></i> Open GPay / PhonePe / Paytm</a>
+            </div>
+
+            <form method="POST" class="mt-3">
+                <div class="text-start mb-1">
+                    <label class="form-label small fw-bold text-muted mb-1">भुगतान के बाद 12-अंकों का UTR / Ref No. दर्ज करें:</label>
+                </div>
+                <input type="text" name="utr_number" class="form-control text-center rounded-pill mb-2" placeholder="e.g. 4238XXXX1234" required pattern="[0-9]{{10,16}}">
+                <button type="submit" class="btn btn-warning w-100 rounded-pill fw-bold py-2"><i class="bi bi-check-circle-fill me-1"></i> Submit Payment UTR</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    function copyUPI() {{
+        const upiText = document.getElementById("upiIdText").innerText;
+        navigator.clipboard.writeText(upiText);
+        alert("UPI ID कॉपी हो गई है: " + upiText);
+    }}
+    </script>
+    """ + get_footer("vip")
+
+# -------------------------------------------------------------
+# 📚 RESEARCH & 🛡️ PRIVACY & OTHER ROUTES
 # -------------------------------------------------------------
 @app.route("/research")
 def research():
@@ -614,9 +722,6 @@ def privacy_center():
     </div>
     """ + get_footer("home")
 
-# -------------------------------------------------------------
-# 💬 CHAT, GAMES, CONVERTERS, OWNER & AUTH ROUTES (UNTOUCHED)
-# -------------------------------------------------------------
 @app.route("/chats", methods=["GET", "POST"])
 def chats():
     username = session.get("username", "")
@@ -725,23 +830,6 @@ def owner_dashboard():
         </div>
     </div>
     """ + get_footer("home")
-
-@app.route("/remove_ads", methods=["GET", "POST"])
-def remove_ads():
-    plan = request.args.get("plan", "VIP")
-    upi_qr_url = f"https://chart.googleapis.com/chart?cht=qr&chs=250x250&chl=upi://pay?pa={YOUR_UPI_ID}&pn={quote_plus(YOUR_UPI_NAME)}&am={VIP_PRICE}&cu=INR"
-    return get_html_header() + f"""
-    <div class="container mt-4 mb-5" style="max-width: 500px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border text-center">
-            <h3 class="fw-bold">Upgrade to {plan}</h3>
-            <img src="{upi_qr_url}" alt="UPI QR" class="mx-auto my-2" style="width:180px;">
-            <form method="POST">
-                <input type="text" name="utr_number" class="form-control text-center rounded-pill my-2" placeholder="Enter 12-digit UTR No." required>
-                <button type="submit" class="btn btn-warning w-100 rounded-pill fw-bold">Submit Payment UTR</button>
-            </form>
-        </div>
-    </div>
-    """ + get_footer("vip")
 
 @app.route("/my_history")
 def my_history():
