@@ -357,19 +357,18 @@ def get_footer(active_tab="home"):
     }}
     if (localStorage.getItem('bharat_dark_mode') === 'enabled') {{ document.body.classList.add('dark-mode'); }}
 
+    // 📱 केवल असली मोबाइल कीबोर्ड खुलने पर ही नेविगेशन छिपाने का सटीक लॉजिक
     const navBar = document.getElementById("bottomNavBar");
-    const inputs = document.querySelectorAll("input, textarea, select");
-
-    inputs.forEach(input => {{
-        input.addEventListener("focus", () => {{
-            if (navBar) navBar.classList.add("keyboard-open");
-        }});
-        input.addEventListener("blur", () => {{
-            setTimeout(() => {{
+    
+    if (window.visualViewport) {{
+        window.visualViewport.addEventListener('resize', () => {{
+            if (window.visualViewport.height < window.innerHeight - 150) {{
+                if (navBar) navBar.classList.add("keyboard-open");
+            }} else {{
                 if (navBar) navBar.classList.remove("keyboard-open");
-            }}, 200);
+            }}
         }});
-    }});
+    }}
 
     const searchInput = document.getElementById("searchInput");
     const suggestionsBox = document.getElementById("suggestionsBox");
@@ -420,7 +419,7 @@ def enforce_tier_access(required_level=1, required_plan_name="VIP"):
     return None
 
 # -------------------------------------------------------------
-# 🏠 HOME ROUTE
+# 🏠 HOME ROUTE (AUTO-FOCUS REMOVED FOR VISIBLE BOTTOM NAV)
 # -------------------------------------------------------------
 @app.route("/")
 def home():
@@ -451,7 +450,7 @@ def home():
 
             <form action="/search" method="GET" class="google-search-container">
                 <i class="bi bi-search search-left-icon"></i>
-                <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="सर्च करें, फाइल्स ढूंढें या AI से पूछें..." autocomplete="off" required autofocus>
+                <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="सर्च करें, फाइल्स ढूंढें या AI से पूछें..." autocomplete="off" required>
                 <div id="suggestionsBox" class="suggestions-box"></div>
 
                 <div class="d-flex gap-2 overflow-auto py-2 px-1 no-scrollbar mt-2" style="white-space: nowrap;">
@@ -492,7 +491,6 @@ def home():
         </div>
     </div>
     """ + get_footer("home")
-
 # -------------------------------------------------------------
 # 🔍 SEARCH ROUTE
 # -------------------------------------------------------------
