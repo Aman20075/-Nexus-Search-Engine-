@@ -1,56 +1,50 @@
+# engine.py
 import sqlite3
 import difflib
 
-class BharatAdvancedEngine:
+class BharatVectorEngine:
     def __init__(self):
         self.documents = []
 
-    def index_item(self, title, url, snippet, category, file_type="web", country="IN"):
+    def index_item(self, title, url, snippet, category):
         self.documents.append({
             "title": title,
             "url": url,
             "snippet": snippet,
             "category": category,
-            "file_type": file_type.lower(),
-            "country": country.upper(),
-            "search_text": f"{title} {snippet} {category} {file_type}".lower()
+            "search_text": f"{title} {snippet} {category}".lower()
         })
 
-    def search_advanced(self, query, file_type="all", country="all", top_k=10):
-        if not self.documents: return []
+    def search(self, query, top_k=5):
+        if not self.documents:
+            return []
         
-        query_lower = query.lower()
-        results = []
-
+        query = query.lower()
+        scored_results = []
+        
         for doc in self.documents:
-            # File Type & Region Filters
-            if file_type != "all" and doc["file_type"] != file_type.lower():
-                continue
-            if country != "all" and doc["country"] != country.upper():
-                continue
-
-            score = difflib.SequenceMatcher(None, query_lower, doc["search_text"]).ratio()
-            if query_lower in doc["search_text"]:
-                score += 0.5
-
+            score = difflib.SequenceMatcher(None, query, doc["search_text"]).ratio()
+            if query in doc["search_text"]:
+                score += 0.5 
+                
             if score > 0.05:
-                results.append((score, doc))
+                scored_results.append((score, doc))
+        
+        scored_results.sort(key=lambda x: x[0], reverse=True)
+        return [item[1] for item in scored_results[:top_k]]
 
-        results.sort(key=lambda x: x[0], reverse=True)
-        return [item[1] for item in results[:top_k]]
+bharat_engine = BharatVectorEngine()
 
-bharat_engine = BharatAdvancedEngine()
-
-def sync_db_to_engine():
+# ⬇️ इस नाम को 'sync_db_to_vector_engine' कर दिया गया है ताकि app_with_db.py इसे पहचान ले
+def sync_db_to_vector_engine(db_path="search_engine.db"):
     try:
-        conn = sqlite3.connect("search_engine.db")
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute("SELECT title, url, snippet, category FROM local_search_index")
         rows = cursor.fetchall()
         conn.close()
+
         for r in rows:
             bharat_engine.index_item(r[0], r[1], r[2], r[3])
-    except Exception:
-        pass
-
-sync_db_to_engine()
+    except Exception as e:
+        print(f"Engine Sync Warning: {e}")
