@@ -43,10 +43,10 @@ BLOCKED_KEYWORDS = ["porn", "xxx", "sex", "adult", "nsfw", "nude", "hot video"]
 # 👑 HYPER-ADVANCED MEMBERSHIP MATRIX
 # -------------------------------------------------------------
 TIER_DETAILS = {
-    "Free": {"price": 0, "days": 0, "badge": "🟢 FREE USER", "cls": "bg-secondary"},
-    "VIP": {"price": 49, "days": 90, "badge": "🔵 VIP MEMBER", "cls": "bg-warning text-dark"},
-    "VIP_PRO": {"price": 149, "days": 90, "badge": "🟣 VIP PRO", "cls": "bg-primary"},
-    "VIP_ULTRA": {"price": 299, "days": 90, "badge": "👑 VIP ULTRA", "cls": "bg-danger"}
+    "Free": {"price": 0, "days": 0, "badge": "🟢 FREE USER", "cls": "bg-secondary", "level": 0},
+    "VIP": {"price": 49, "days": 90, "badge": "🔵 VIP MEMBER", "cls": "bg-warning text-dark", "level": 1},
+    "VIP_PRO": {"price": 149, "days": 90, "badge": "🟣 VIP PRO", "cls": "bg-primary", "level": 2},
+    "VIP_ULTRA": {"price": 299, "days": 90, "badge": "👑 VIP ULTRA", "cls": "bg-danger", "level": 3}
 }
 
 def is_safe_query(query):
@@ -282,7 +282,6 @@ def get_html_header():
         .nav-link-item {{ text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; flex: 1; }}
         .nav-link-item.active {{ color: #ff7700; font-weight: 600; }}
         
-        /* 📱 कीबोर्ड खुलने पर बॉटम बार ऑटोमैटिक छिपाना */
         @media (max-height: 550px) {{
             .bottom-nav-bar {{ display: none !important; }}
             body {{ padding-bottom: 0px !important; }}
@@ -350,7 +349,6 @@ def get_footer(active_tab="home"):
     }}
     if (localStorage.getItem('bharat_dark_mode') === 'enabled') {{ document.body.classList.add('dark-mode'); }}
 
-    // 📱 कीबोर्ड खुलने पर नेविगेशन बार ऑटोमैटिक छिपाने की स्क्रिप्ट
     const navBar = document.getElementById("bottomNavBar");
     const inputs = document.querySelectorAll("input, textarea, select");
 
@@ -392,6 +390,34 @@ def get_footer(active_tab="home"):
 </body>
 </html>
 """
+
+# -------------------------------------------------------------
+# 🔒 STRICT TIER CHECK ACCESS WALL
+# -------------------------------------------------------------
+def enforce_tier_access(required_level=1, required_plan_name="VIP"):
+    tier_name, tier_info = get_user_tier_info()
+    user_level = tier_info.get("level", 0)
+
+    if user_level < required_level:
+        return f"""
+        <div class="container mt-5 text-center" style="max-width: 500px;">
+            <div class="card p-4 rounded-4 shadow-lg border-danger bg-white">
+                <div class="display-1 text-danger mb-2"><i class="bi bi-lock-fill"></i></div>
+                <h4 class="fw-bold text-dark mb-1">Access Restricted!</h4>
+                <p class="text-muted small mb-3">यह फीचर केवल <b>{required_plan_name}</b> और ऊपर के मेंबर्स के लिए उपलब्ध है।</p>
+                <div class="bg-light p-3 rounded-3 mb-3 border text-start small">
+                    <b>आपको क्या मिलेगा:</b>
+                    <ul class="mb-0 ps-3 mt-1">
+                        <li>100% Ad-Free Clean UI</li>
+                        <li>Advanced AI & Converter Tools</li>
+                        <li>High Speed Priority Access</li>
+                    </ul>
+                </div>
+                <a href="/vip_tiers" class="btn btn-danger rounded-pill fw-bold py-2 shadow-sm"><i class="bi bi-crown me-1"></i> Upgrade to {required_plan_name} Now</a>
+            </div>
+        </div>
+        """
+    return None
 
 # -------------------------------------------------------------
 # 🏠 HOME ROUTE
@@ -479,6 +505,11 @@ def search():
 
     if not query or not is_safe_query(query): return redirect("/")
 
+    tier_name, tier_info = get_user_tier_info()
+    if mode == "deep" and tier_info["level"] < 2:
+        block_ui = enforce_tier_access(required_level=2, required_plan_name="VIP Pro")
+        return get_html_header() + block_ui + get_footer("home")
+
     vector_results = bharat_engine.search(query, top_k=5)
     
     local_html = ""
@@ -496,7 +527,7 @@ def search():
         </div>
         """
 
-    prompt_prefix = "Explain like I'm 5 years old:" if mode == "eli5" else ("Provide a deep academic summary with research facts for:" if mode == "deep" else "Provide a detailed overview for:")
+    prompt_prefix = "Explain like I'm 5 years old:" if mode == "eli5" else ("Provide a deep academic research report with citation facts for:" if mode == "deep" else "Provide a detailed overview for:")
     ai_answer = f"<b>{query}</b> ({mode.upper()} Mode) से संबंधित परिणाम नीचे प्रस्तुत हैं।"
     
     if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
@@ -532,7 +563,107 @@ def search():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 👑 HYPER-ADVANCED MEMBERSHIP SHOWCASE
+# 🛠️ VIP CONVERTERS (PROTECTED FOR VIP LEVEL 1+)
+# -------------------------------------------------------------
+@app.route("/converters")
+def converters_hub():
+    block_ui = enforce_tier_access(required_level=1, required_plan_name="VIP")
+    if block_ui:
+        return get_html_header() + block_ui + get_footer("converters")
+
+    return get_html_header() + """
+    <div class="container mt-4 mb-5" style="max-width: 600px;">
+        <h4 class="fw-bold mb-3"><i class="bi bi-gear-wide-connected text-warning me-2"></i>VIP Toolkit Suite</h4>
+        <div class="card p-3 shadow-sm rounded-4 border bg-white mb-3">
+            <h6>JPG to PDF Converter</h6>
+            <form action="/convert_jpg_to_pdf" method="POST" enctype="multipart/form-data">
+                <input type="file" name="image_file" accept="image/*" class="form-control form-control-sm mb-2" required>
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill w-100">Convert to PDF</button>
+            </form>
+        </div>
+    </div>
+    """ + get_footer("converters")
+
+@app.route("/convert_jpg_to_pdf", methods=["POST"])
+def convert_jpg_to_pdf():
+    _, tier_info = get_user_tier_info()
+    if tier_info["level"] < 1:
+        return redirect("/vip_tiers")
+
+    if not Image: return "Image library missing."
+    file = request.files.get('image_file')
+    if not file: return redirect("/converters")
+    try:
+        image = Image.open(file.stream)
+        if image.mode != 'RGB': image = image.convert('RGB')
+        pdf_bytes = io.BytesIO()
+        image.save(pdf_bytes, format='PDF')
+        pdf_bytes.seek(0)
+        return send_file(pdf_bytes, mimetype='application/pdf', as_attachment=True, download_name='converted.pdf')
+    except Exception as e: return str(e)
+
+# -------------------------------------------------------------
+# 🎮 VIP GAMES (PROTECTED FOR VIP LEVEL 1+)
+# -------------------------------------------------------------
+@app.route("/games")
+def games():
+    block_ui = enforce_tier_access(required_level=1, required_plan_name="VIP")
+    if block_ui:
+        return get_html_header() + block_ui + get_footer("home")
+
+    return get_html_header() + """
+    <div class="container mt-4 mb-5" style="max-width: 600px;">
+        <h4 class="fw-bold mb-3"><i class="bi bi-controller text-success me-2"></i>VIP Games Arcade</h4>
+        <div class="row g-3">
+            <div class="col-6"><div class="card p-4 text-center shadow-sm rounded-4 border">🚀 Space Runner</div></div>
+            <div class="col-6"><div class="card p-4 text-center shadow-sm rounded-4 border">💡 Brain Quiz</div></div>
+        </div>
+    </div>
+    """ + get_footer("games")
+
+# -------------------------------------------------------------
+# 📚 RESEARCH WORKSPACE (PROTECTED FOR VIP PRO LEVEL 2+)
+# -------------------------------------------------------------
+@app.route("/research")
+def research():
+    block_ui = enforce_tier_access(required_level=2, required_plan_name="VIP Pro")
+    if block_ui:
+        return get_html_header() + block_ui + get_footer("research")
+
+    return get_html_header() + """
+    <div class="container mt-4 mb-5" style="max-width: 650px;">
+        <div class="card p-4 rounded-4 shadow-sm border bg-white">
+            <h4 class="fw-bold text-primary mb-2"><i class="bi bi-journal-bookmark-fill me-2"></i>Research Workspace</h4>
+            <p class="small text-muted mb-3">Save research projects, organizing sources, and PDF summaries.</p>
+            <button class="btn btn-primary btn-sm rounded-pill fw-bold align-self-start">+ Create New Research Project</button>
+        </div>
+    </div>
+    """ + get_footer("research")
+
+# -------------------------------------------------------------
+# 🛡️ PRIVACY CENTER (PROTECTED FOR VIP ULTRA LEVEL 3)
+# -------------------------------------------------------------
+@app.route("/privacy_center")
+def privacy_center():
+    block_ui = enforce_tier_access(required_level=3, required_plan_name="VIP Ultra")
+    if block_ui:
+        return get_html_header() + block_ui + get_footer("home")
+
+    return get_html_header() + """
+    <div class="container mt-4 mb-5" style="max-width: 650px;">
+        <div class="card p-4 rounded-4 shadow-sm border bg-white">
+            <h4 class="fw-bold text-success mb-3"><i class="bi bi-shield-check me-2"></i>Privacy Controls & History Management</h4>
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="privateMode">
+                <label class="form-check-label small fw-bold" for="privateMode">Enhanced Private Search Mode</label>
+            </div>
+            <button class="btn btn-danger btn-sm rounded-pill fw-bold">Auto-Delete History (30 Days)</button>
+        </div>
+    </div>
+    """ + get_footer("home")
+
+# -------------------------------------------------------------
+# 👑 HYPER-ADVANCED MEMBERSHIP SHOWCASE (PERFECT BUTTON FIX)
 # -------------------------------------------------------------
 @app.route("/vip_tiers")
 def vip_tiers():
@@ -543,73 +674,81 @@ def vip_tiers():
             <p class="text-muted small">अपनी आवश्यकताओं के लिए सबसे एडवांस्ड प्लान चुनें</p>
         </div>
 
-        <div class="row g-3">
+        <div class="row g-3 d-flex align-items-stretch">
             <!-- FREE -->
             <div class="col-12 col-md-6">
-                <div class="card p-3 border rounded-4 shadow-sm h-100 bg-white">
-                    <span class="badge bg-secondary align-self-start mb-2">🟢 FREE PLAN</span>
-                    <h4 class="fw-bold mb-1">₹0 <small class="fs-6 text-muted">/ forever</small></h4>
-                    <hr class="my-2">
-                    <ul class="small text-muted ps-3 mb-0" style="line-height: 1.8;">
-                        <li>Basic Web & Keyword Search</li>
-                        <li>10 AI Overview Queries / day</li>
-                        <li>Live News Feed & Discover</li>
-                        <li>Standard Speed & Ads Supported</li>
-                    </ul>
+                <div class="card p-3 border rounded-4 shadow-sm h-100 bg-white d-flex flex-column justify-content-between">
+                    <div>
+                        <span class="badge bg-secondary align-self-start mb-2">🟢 FREE PLAN</span>
+                        <h4 class="fw-bold mb-1">₹0 <small class="fs-6 text-muted">/ forever</small></h4>
+                        <hr class="my-2">
+                        <ul class="small text-muted ps-3 mb-0" style="line-height: 1.8;">
+                            <li>Basic Web & Keyword Search</li>
+                            <li>10 AI Overview Queries / day</li>
+                            <li>Live News Feed & Discover</li>
+                            <li>Standard Speed & Ads Supported</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
             <!-- VIP -->
             <div class="col-12 col-md-6">
-                <div class="card p-3 border-warning rounded-4 shadow-sm h-100 bg-light">
-                    <span class="badge bg-warning text-dark align-self-start mb-2">🔵 VIP MEMBER</span>
-                    <h4 class="fw-bold mb-1">₹49 <small class="fs-6 text-muted">/ 90 Days</small></h4>
-                    <hr class="my-2">
-                    <ul class="small text-dark ps-3 mb-3" style="line-height: 1.8;">
-                        <li><b>🚫 100% Zero Ads Clean UI</b></li>
-                        <li>100 Fast AI Answers / day</li>
-                        <li>📄 PDF, DOCX, PPTX Filters</li>
-                        <li>🛠️ Unlimited VIP Toolkit Converter Access</li>
-                        <li>👑 Blue VIP Status Badge</li>
-                    </ul>
-                    <a href="/remove_ads?plan=VIP" class="btn btn-warning btn-sm rounded-pill fw-bold w-100 mt-auto">Choose VIP (₹49)</a>
+                <div class="card p-3 border-warning rounded-4 shadow-sm h-100 bg-light d-flex flex-column justify-content-between">
+                    <div>
+                        <span class="badge bg-warning text-dark align-self-start mb-2">🔵 VIP MEMBER</span>
+                        <h4 class="fw-bold mb-1">₹49 <small class="fs-6 text-muted">/ 90 Days</small></h4>
+                        <hr class="my-2">
+                        <ul class="small text-dark ps-3 mb-3" style="line-height: 1.8;">
+                            <li><b>🚫 100% Zero Ads Clean UI</b></li>
+                            <li>100 Fast AI Answers / day</li>
+                            <li>📄 PDF, DOCX, PPTX Filters</li>
+                            <li>🛠️ Unlimited VIP Toolkit Converter Access</li>
+                            <li>👑 Blue VIP Status Badge</li>
+                        </ul>
+                    </div>
+                    <a href="/remove_ads?plan=VIP" class="btn btn-warning btn-sm rounded-pill fw-bold w-100 mt-3 py-2">Choose VIP (₹49)</a>
                 </div>
             </div>
 
             <!-- VIP PRO -->
             <div class="col-12 col-md-6">
-                <div class="card p-3 border-primary rounded-4 shadow-sm h-100 bg-white">
-                    <span class="badge bg-primary align-self-start mb-2">🟣 VIP PRO</span>
-                    <h4 class="fw-bold mb-1">₹149 <small class="fs-6 text-muted">/ 90 Days</small></h4>
-                    <hr class="my-2">
-                    <ul class="small text-dark ps-3 mb-3" style="line-height: 1.8;">
-                        <li>VIP के सभी फ़ायदे +</li>
-                        <li><b>🔬 Deep Research Engine v2.0 (Multi-source)</b></li>
-                        <li><b>⚡ Code & Algorithm Engine (Debug/Write Code)</b></li>
-                        <li><b>👶 ELI5 Mode ("Explain Like I'm 5")</b></li>
-                        <li>📁 Smart Document OCR & PDF Chat Engine</li>
-                        <li>⚡ 500 AI Queries / day (Priority Speed)</li>
-                    </ul>
-                    <a href="/remove_ads?plan=VIP_PRO" class="btn btn-primary btn-sm rounded-pill fw-bold w-100 mt-auto">Choose VIP Pro (₹149)</a>
+                <div class="card p-3 border-primary rounded-4 shadow-sm h-100 bg-white d-flex flex-column justify-content-between">
+                    <div>
+                        <span class="badge bg-primary align-self-start mb-2">🟣 VIP PRO</span>
+                        <h4 class="fw-bold mb-1">₹149 <small class="fs-6 text-muted">/ 90 Days</small></h4>
+                        <hr class="my-2">
+                        <ul class="small text-dark ps-3 mb-3" style="line-height: 1.8;">
+                            <li>VIP के सभी फ़ायदे +</li>
+                            <li><b>🔬 Deep Research Engine v2.0</b></li>
+                            <li><b>⚡ Code & Algorithm Engine</b></li>
+                            <li><b>👶 ELI5 Mode ("Explain Like I'm 5")</b></li>
+                            <li>📁 Smart Document OCR & PDF Chat Engine</li>
+                            <li>⚡ 500 AI Queries / day (Priority Speed)</li>
+                        </ul>
+                    </div>
+                    <a href="/remove_ads?plan=VIP_PRO" class="btn btn-primary btn-sm rounded-pill fw-bold w-100 mt-3 py-2">Choose VIP Pro (₹149)</a>
                 </div>
             </div>
 
             <!-- VIP ULTRA -->
             <div class="col-12 col-md-6">
-                <div class="card p-3 border-danger rounded-4 shadow-sm h-100 bg-danger bg-opacity-10">
-                    <span class="badge bg-danger align-self-start mb-2">👑 VIP ULTRA</span>
-                    <h4 class="fw-bold mb-1">₹299 <small class="fs-6 text-muted">/ 90 Days</small></h4>
-                    <hr class="my-2">
-                    <ul class="small text-dark ps-3 mb-3" style="line-height: 1.8;">
-                        <li>VIP Pro के सभी फ़ायदे +</li>
-                        <li><b>♾️ Unlimited Reasonable AI Queries</b></li>
-                        <li><b>🤖 Autonomous Web AI Agent</b></li>
-                        <li><b>🛡️ Private Vault & Auto-Delete History</b></li>
-                        <li>🔮 Live Data & Market Price AI Tracker</li>
-                        <li>⚡ Quantum Queue Allocation (0.001s Speed)</li>
-                        <li>💬 Direct Owner Hotline & Early Beta Access</li>
-                    </ul>
-                    <a href="/remove_ads?plan=VIP_ULTRA" class="btn btn-danger btn-sm rounded-pill fw-bold w-100 mt-auto">Choose VIP Ultra (₹299)</a>
+                <div class="card p-3 border-danger rounded-4 shadow-sm h-100 bg-danger bg-opacity-10 d-flex flex-column justify-content-between">
+                    <div>
+                        <span class="badge bg-danger align-self-start mb-2">👑 VIP ULTRA</span>
+                        <h4 class="fw-bold mb-1">₹299 <small class="fs-6 text-muted">/ 90 Days</small></h4>
+                        <hr class="my-2">
+                        <ul class="small text-dark ps-3 mb-3" style="line-height: 1.8;">
+                            <li>VIP Pro के सभी फ़ायदे +</li>
+                            <li><b>♾️ Unlimited Reasonable AI Queries</b></li>
+                            <li><b>🤖 Autonomous Web AI Agent</b></li>
+                            <li><b>🛡️ Private Vault & Auto-Delete History</b></li>
+                            <li>🔮 Live Data & Market Price AI Tracker</li>
+                            <li>⚡ Quantum Queue Allocation (0.001s Speed)</li>
+                            <li>💬 Direct Owner Hotline & Early Beta Access</li>
+                        </ul>
+                    </div>
+                    <a href="/remove_ads?plan=VIP_ULTRA" class="btn btn-danger btn-sm rounded-pill fw-bold w-100 mt-3 py-2">Choose VIP Ultra (₹299)</a>
                 </div>
             </div>
         </div>
@@ -693,35 +832,8 @@ def remove_ads():
     """ + get_footer("vip")
 
 # -------------------------------------------------------------
-# 📚 RESEARCH & 🛡️ PRIVACY & OTHER ROUTES
+# 💬 CHAT, OWNER & AUTH ROUTES
 # -------------------------------------------------------------
-@app.route("/research")
-def research():
-    return get_html_header() + """
-    <div class="container mt-4 mb-5" style="max-width: 650px;">
-        <div class="card p-4 rounded-4 shadow-sm border bg-white">
-            <h4 class="fw-bold text-primary mb-2"><i class="bi bi-journal-bookmark-fill me-2"></i>Research Workspace</h4>
-            <p class="small text-muted mb-3">Save research projects, organizing sources, and PDF summaries.</p>
-            <button class="btn btn-primary btn-sm rounded-pill fw-bold align-self-start">+ Create New Research Project</button>
-        </div>
-    </div>
-    """ + get_footer("research")
-
-@app.route("/privacy_center")
-def privacy_center():
-    return get_html_header() + """
-    <div class="container mt-4 mb-5" style="max-width: 650px;">
-        <div class="card p-4 rounded-4 shadow-sm border bg-white">
-            <h4 class="fw-bold text-success mb-3"><i class="bi bi-shield-check me-2"></i>Privacy Controls & History Management</h4>
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" id="privateMode">
-                <label class="form-check-label small fw-bold" for="privateMode">Enhanced Private Search Mode</label>
-            </div>
-            <button class="btn btn-danger btn-sm rounded-pill fw-bold">Auto-Delete History (30 Days)</button>
-        </div>
-    </div>
-    """ + get_footer("home")
-
 @app.route("/chats", methods=["GET", "POST"])
 def chats():
     username = session.get("username", "")
@@ -758,47 +870,6 @@ def chats():
         </div>
     </div>
     """ + get_footer("chats")
-
-@app.route("/games")
-def games():
-    return get_html_header() + """
-    <div class="container mt-4 mb-5" style="max-width: 600px;">
-        <h4 class="fw-bold mb-3"><i class="bi bi-controller text-success me-2"></i>VIP Games Arcade</h4>
-        <div class="row g-3">
-            <div class="col-6"><div class="card p-4 text-center shadow-sm rounded-4 border">🚀 Space Runner</div></div>
-            <div class="col-6"><div class="card p-4 text-center shadow-sm rounded-4 border">💡 Brain Quiz</div></div>
-        </div>
-    </div>
-    """ + get_footer("games")
-
-@app.route("/converters")
-def converters_hub():
-    return get_html_header() + """
-    <div class="container mt-4 mb-5" style="max-width: 600px;">
-        <h4 class="fw-bold mb-3"><i class="bi bi-gear-wide-connected text-warning me-2"></i>VIP Toolkit Suite</h4>
-        <div class="card p-3 shadow-sm rounded-4 border bg-white mb-3">
-            <h6>JPG to PDF Converter</h6>
-            <form action="/convert_jpg_to_pdf" method="POST" enctype="multipart/form-data">
-                <input type="file" name="image_file" accept="image/*" class="form-control form-control-sm mb-2" required>
-                <button type="submit" class="btn btn-primary btn-sm rounded-pill w-100">Convert to PDF</button>
-            </form>
-        </div>
-    </div>
-    """ + get_footer("converters")
-
-@app.route("/convert_jpg_to_pdf", methods=["POST"])
-def convert_jpg_to_pdf():
-    if not Image: return "Image library missing."
-    file = request.files.get('image_file')
-    if not file: return redirect("/converters")
-    try:
-        image = Image.open(file.stream)
-        if image.mode != 'RGB': image = image.convert('RGB')
-        pdf_bytes = io.BytesIO()
-        image.save(pdf_bytes, format='PDF')
-        pdf_bytes.seek(0)
-        return send_file(pdf_bytes, mimetype='application/pdf', as_attachment=True, download_name='converted.pdf')
-    except Exception as e: return str(e)
 
 @app.route("/owner_dashboard", methods=["GET", "POST"])
 def owner_dashboard():
