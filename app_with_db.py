@@ -24,6 +24,7 @@ from engine import bharat_engine, sync_db_to_vector_engine
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 YOUR_UPI_ID = os.environ.get("YOUR_UPI_ID", "giriji5626@okaxis")
 YOUR_UPI_NAME = os.environ.get("YOUR_UPI_NAME", "Sandesh Giri")
+VIP_DAYS = 90
 
 app = Flask(__name__)
 app.permanent_session_lifetime = 365 * 24 * 60 * 60
@@ -117,6 +118,13 @@ def init_db():
         )
     """)
 
+    # Safety Column Checks
+    try: cursor.execute("ALTER TABLE payment_requests ADD COLUMN plan_type TEXT DEFAULT 'VIP'")
+    except Exception: pass
+
+    try: cursor.execute("ALTER TABLE users ADD COLUMN tier TEXT DEFAULT 'Free'")
+    except Exception: pass
+
     conn.commit()
     conn.close()
     auto_seed_master_data()
@@ -189,7 +197,7 @@ def get_user_tier_info():
     return "Free", TIER_DETAILS["Free"]
 
 # -------------------------------------------------------------
-# 🔍 SEARCH SUGGESTIONS & NEWS
+# 🔍 SUGGESTIONS & NEWS
 # -------------------------------------------------------------
 @app.route("/api/suggestions")
 def suggestions():
@@ -392,7 +400,7 @@ def get_footer(active_tab="home"):
 """
 
 # -------------------------------------------------------------
-# 🔒 STRICT TIER CHECK ACCESS WALL
+# 🔒 STRICT TIER ACCESS WALL
 # -------------------------------------------------------------
 def enforce_tier_access(required_level=1, required_plan_name="VIP"):
     tier_name, tier_info = get_user_tier_info()
@@ -405,14 +413,6 @@ def enforce_tier_access(required_level=1, required_plan_name="VIP"):
                 <div class="display-1 text-danger mb-2"><i class="bi bi-lock-fill"></i></div>
                 <h4 class="fw-bold text-dark mb-1">Access Restricted!</h4>
                 <p class="text-muted small mb-3">यह फीचर केवल <b>{required_plan_name}</b> और ऊपर के मेंबर्स के लिए उपलब्ध है।</p>
-                <div class="bg-light p-3 rounded-3 mb-3 border text-start small">
-                    <b>आपको क्या मिलेगा:</b>
-                    <ul class="mb-0 ps-3 mt-1">
-                        <li>100% Ad-Free Clean UI</li>
-                        <li>Advanced AI & Converter Tools</li>
-                        <li>High Speed Priority Access</li>
-                    </ul>
-                </div>
                 <a href="/vip_tiers" class="btn btn-danger rounded-pill fw-bold py-2 shadow-sm"><i class="bi bi-crown me-1"></i> Upgrade to {required_plan_name} Now</a>
             </div>
         </div>
@@ -563,13 +563,12 @@ def search():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 🛠️ VIP CONVERTERS (PROTECTED FOR VIP LEVEL 1+)
+# 🛠️ VIP CONVERTERS (PROTECTED LEVEL 1+)
 # -------------------------------------------------------------
 @app.route("/converters")
 def converters_hub():
     block_ui = enforce_tier_access(required_level=1, required_plan_name="VIP")
-    if block_ui:
-        return get_html_header() + block_ui + get_footer("converters")
+    if block_ui: return get_html_header() + block_ui + get_footer("converters")
 
     return get_html_header() + """
     <div class="container mt-4 mb-5" style="max-width: 600px;">
@@ -587,9 +586,7 @@ def converters_hub():
 @app.route("/convert_jpg_to_pdf", methods=["POST"])
 def convert_jpg_to_pdf():
     _, tier_info = get_user_tier_info()
-    if tier_info["level"] < 1:
-        return redirect("/vip_tiers")
-
+    if tier_info["level"] < 1: return redirect("/vip_tiers")
     if not Image: return "Image library missing."
     file = request.files.get('image_file')
     if not file: return redirect("/converters")
@@ -603,13 +600,12 @@ def convert_jpg_to_pdf():
     except Exception as e: return str(e)
 
 # -------------------------------------------------------------
-# 🎮 VIP GAMES (PROTECTED FOR VIP LEVEL 1+)
+# 🎮 VIP GAMES (PROTECTED LEVEL 1+)
 # -------------------------------------------------------------
 @app.route("/games")
 def games():
     block_ui = enforce_tier_access(required_level=1, required_plan_name="VIP")
-    if block_ui:
-        return get_html_header() + block_ui + get_footer("home")
+    if block_ui: return get_html_header() + block_ui + get_footer("home")
 
     return get_html_header() + """
     <div class="container mt-4 mb-5" style="max-width: 600px;">
@@ -622,13 +618,12 @@ def games():
     """ + get_footer("games")
 
 # -------------------------------------------------------------
-# 📚 RESEARCH WORKSPACE (PROTECTED FOR VIP PRO LEVEL 2+)
+# 📚 RESEARCH WORKSPACE (PROTECTED LEVEL 2+)
 # -------------------------------------------------------------
 @app.route("/research")
 def research():
     block_ui = enforce_tier_access(required_level=2, required_plan_name="VIP Pro")
-    if block_ui:
-        return get_html_header() + block_ui + get_footer("research")
+    if block_ui: return get_html_header() + block_ui + get_footer("research")
 
     return get_html_header() + """
     <div class="container mt-4 mb-5" style="max-width: 650px;">
@@ -641,13 +636,12 @@ def research():
     """ + get_footer("research")
 
 # -------------------------------------------------------------
-# 🛡️ PRIVACY CENTER (PROTECTED FOR VIP ULTRA LEVEL 3)
+# 🛡️ PRIVACY CENTER (PROTECTED LEVEL 3)
 # -------------------------------------------------------------
 @app.route("/privacy_center")
 def privacy_center():
     block_ui = enforce_tier_access(required_level=3, required_plan_name="VIP Ultra")
-    if block_ui:
-        return get_html_header() + block_ui + get_footer("home")
+    if block_ui: return get_html_header() + block_ui + get_footer("home")
 
     return get_html_header() + """
     <div class="container mt-4 mb-5" style="max-width: 650px;">
@@ -663,7 +657,7 @@ def privacy_center():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 👑 HYPER-ADVANCED MEMBERSHIP SHOWCASE (PERFECT BUTTON FIX)
+# 👑 MEMBERSHIP SHOWCASE
 # -------------------------------------------------------------
 @app.route("/vip_tiers")
 def vip_tiers():
@@ -775,11 +769,11 @@ def remove_ads():
             cursor = conn.cursor()
             try:
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                cursor.execute("INSERT INTO payment_requests (username, utr_number, plan_type, status, timestamp) VALUES (?, ?, ?, 'pending', ?)", (username, utr_no, plan_key, now))
+                cursor.execute("INSERT OR REPLACE INTO payment_requests (username, utr_number, plan_type, status, timestamp) VALUES (?, ?, ?, 'pending', ?)", (username, utr_no, plan_key, now))
                 conn.commit()
                 msg = "✅ UTR सफलतापूर्वक सबमिट हो गई है! ऑनर वेरिफिकेशन के बाद एक्टिवेट होगा।"
-            except sqlite3.IntegrityError:
-                msg = "⚠️ यह UTR पहले ही सबमिट की जा चुकी है!"
+            except Exception as e:
+                msg = f"⚠️ त्रुटि: {str(e)}"
             conn.close()
 
     upi_intent = f"upi://pay?pa={YOUR_UPI_ID}&pn={quote_plus(YOUR_UPI_NAME)}&am={price}&cu=INR"
@@ -832,7 +826,187 @@ def remove_ads():
     """ + get_footer("vip")
 
 # -------------------------------------------------------------
-# 💬 CHAT, OWNER & AUTH ROUTES
+# 👑 OWNER DASHBOARD (AUTOMATIC + DIRECT MANUAL UPGRADE)
+# -------------------------------------------------------------
+@app.route("/owner_dashboard", methods=["GET", "POST"])
+def owner_dashboard():
+    if not session.get("owner_logged"): return redirect("/owner_login")
+
+    message = ""
+    if request.method == "POST":
+        form_type = request.form.get("form_type")
+
+        # 1. 🚀 DIRECT MANUAL USER UPGRADE (सबसे पक्का तरीका)
+        if form_type == "direct_upgrade":
+            target_user = request.form.get("username", "").strip()
+            selected_tier = request.form.get("tier", "VIP")
+            
+            if target_user:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                expiry_date = (datetime.now() + timedelta(days=VIP_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
+                
+                # Check if user exists
+                cursor.execute("SELECT id FROM users WHERE username = ?", (target_user,))
+                user_exists = cursor.fetchone()
+                
+                if user_exists:
+                    cursor.execute("UPDATE users SET is_premium = 1, tier = ?, vip_expires_at = ? WHERE username = ?", (selected_tier, expiry_date, target_user))
+                    message = f"✅ <b>{target_user}</b> को सफलता से <b>{selected_tier}</b> में अपग्रेड कर दिया गया है!"
+                else:
+                    cursor.execute("INSERT INTO users (username, password, tier, is_premium, vip_expires_at) VALUES (?, '123456', ?, 1, ?)", (target_user, selected_tier, expiry_date))
+                    message = f"✅ नया यूज़र <b>{target_user}</b> बनाकर उसे <b>{selected_tier}</b> एक्टिवेट कर दिया गया!"
+                
+                conn.commit()
+                conn.close()
+
+        # 2. ⚡ APPROVE / REJECT FROM PENDING TABLE
+        elif form_type == "payment_action":
+            action = request.form.get("action")
+            target_user = request.form.get("username")
+            req_id = request.form.get("req_id")
+            plan_type = request.form.get("plan_type", "VIP")
+
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            if action == "approve":
+                expiry_date = (datetime.now() + timedelta(days=VIP_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
+                cursor.execute("UPDATE users SET is_premium = 1, tier = ?, vip_expires_at = ? WHERE username = ?", (plan_type, expiry_date, target_user))
+                cursor.execute("UPDATE payment_requests SET status = 'approved' WHERE id = ?", (req_id,))
+                message = f"✅ {target_user} का भुगतान स्वीकृत! ({plan_type} सक्रीय)"
+            elif action == "reject":
+                cursor.execute("UPDATE payment_requests SET status = 'rejected' WHERE id = ?", (req_id,))
+                message = f"❌ भुगतान अनुरोध अस्वीकृत।"
+            conn.commit()
+            conn.close()
+
+        # 3. 🌐 ADD NEW LINK TO SEARCH INDEX
+        elif form_type == "add_link":
+            title, url, snippet, category = request.form.get("title"), request.form.get("url"), request.form.get("snippet"), request.form.get("category")
+            if title and url:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("INSERT OR REPLACE INTO local_search_index (title, url, snippet, category) VALUES (?, ?, ?, ?)", (title, url, snippet, category))
+                conn.commit()
+                conn.close()
+                bharat_engine.index_item(title, url, snippet, category)
+                message = f"✅ नई लिंक इंडेक्स हो गई: {title}"
+
+    # Database से रिक्वेस्ट्स फेच करें
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("SELECT id, username, utr_number, plan_type, status, timestamp FROM payment_requests ORDER BY id DESC")
+        requests_list = cursor.fetchall()
+    except Exception:
+        requests_list = []
+
+    cursor.execute("SELECT COUNT(*) FROM local_search_index")
+    total_indexed_count = cursor.fetchone()[0]
+    conn.close()
+
+    req_rows = ""
+    for r in requests_list:
+        req_id, u_name, utr, p_type, p_status, p_time = r[0], r[1], r[2], r[3] or "VIP", r[4], r[5]
+        if p_status == "pending":
+            req_rows += f"""
+            <tr>
+                <td><b>{u_name}</b></td>
+                <td><code>{utr}</code></td>
+                <td><span class="badge bg-primary">{p_type}</span></td>
+                <td><small class="text-muted">{p_time[:16] if p_time else ''}</small></td>
+                <td>
+                    <form method="POST" class="d-inline">
+                        <input type="hidden" name="form_type" value="payment_action">
+                        <input type="hidden" name="req_id" value="{req_id}">
+                        <input type="hidden" name="username" value="{u_name}">
+                        <input type="hidden" name="plan_type" value="{p_type}">
+                        <button name="action" value="approve" class="btn btn-sm btn-success fw-bold px-2 py-1 me-1"><i class="bi bi-check-circle"></i> Approve</button>
+                        <button name="action" value="reject" class="btn btn-sm btn-danger fw-bold px-2 py-1"><i class="bi bi-x-circle"></i> Reject</button>
+                    </form>
+                </td>
+            </tr>
+            """
+
+    return get_html_header() + f"""
+    <div class="container mt-4 mb-5" style="max-width: 800px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold text-danger mb-0"><i class="bi bi-speedometer2 me-2"></i>Owner Control Center</h4>
+                <span class="badge bg-primary rounded-pill px-3 py-2">Total Links: {total_indexed_count}</span>
+            </div>
+            
+            {f'<div class="alert alert-success py-2 small mb-3">{message}</div>' if message else ''}
+
+            <!-- 🚀 1. DIRECT MANUAL USER UPGRADE (100% WORKING GUARANTEED) -->
+            <div class="card p-3 border-danger bg-danger bg-opacity-10 mb-4 rounded-4">
+                <h6 class="fw-bold text-danger mb-1"><i class="bi bi-lightning-charge-fill me-1"></i>Direct VIP Upgrade (1-Click Approval)</h6>
+                <p class="text-muted small mb-2">अगर पेंडिंग टेबल में यूजर का नाम नहीं दिख रहा है, तो यहाँ उसका Username दर्ज करके सीधे एक्टिवेट करें:</p>
+                
+                <form method="POST">
+                    <input type="hidden" name="form_type" value="direct_upgrade">
+                    <div class="row g-2">
+                        <div class="col-12 col-md-5">
+                            <input type="text" name="username" class="form-control form-control-sm" placeholder="Enter Username (e.g. Rahul123)" required>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <select name="tier" class="form-select form-select-sm">
+                                <option value="VIP">🔵 VIP (₹49)</option>
+                                <option value="VIP_PRO">🟣 VIP Pro (₹149)</option>
+                                <option value="VIP_ULTRA">👑 VIP Ultra (₹299)</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <button type="submit" class="btn btn-danger btn-sm w-100 fw-bold rounded-pill"><i class="bi bi-check2-circle"></i> Activate VIP</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 2. PENDING UTR REQUESTS TABLE -->
+            <div class="card p-3 border-warning bg-light mb-4 rounded-4">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-credit-card-2-front text-warning me-2"></i>Pending UTR Requests</h6>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle small mb-0 bg-white rounded-3 overflow-hidden">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>User</th>
+                                <th>UTR Number</th>
+                                <th>Plan</th>
+                                <th>Time</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {req_rows if req_rows else '<tr><td colspan="5" class="text-center text-muted py-3">कोई नया पेंडिंग अनुरोध नहीं है। ऊपर दिए गए "Direct VIP Upgrade" फ़ॉर्म का उपयोग करें!</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 3. ADD LINK FORM -->
+            <div class="card p-3 border-secondary bg-white rounded-4">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-plus-circle-fill text-primary me-2"></i>Add Web Link to Index</h6>
+                <form method="POST">
+                    <input type="hidden" name="form_type" value="add_link">
+                    <div class="row g-2 mb-2">
+                        <div class="col-12 col-md-6"><input type="text" name="title" class="form-control form-control-sm" placeholder="Site Title" required></div>
+                        <div class="col-12 col-md-6"><input type="url" name="url" class="form-control form-control-sm" placeholder="Full URL (https://...)" required></div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-8"><input type="text" name="snippet" class="form-control form-control-sm" placeholder="Description/Snippet" required></div>
+                        <div class="col-12 col-md-4"><input type="text" name="category" class="form-control form-control-sm" placeholder="Category" required></div>
+                    </div>
+                    <button type="submit" class="btn btn-warning btn-sm rounded-pill fw-bold w-100">Add Link to Index</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    """ + get_footer("home")
+
+# -------------------------------------------------------------
+# 💬 OTHER ROUTES & AUTH
 # -------------------------------------------------------------
 @app.route("/chats", methods=["GET", "POST"])
 def chats():
@@ -862,7 +1036,7 @@ def chats():
             <form method="POST" class="mb-4">
                 <input type="text" name="receiver" class="form-control mb-2" placeholder="To Username" required>
                 <div class="input-group">
-                    <input type="text" name="message" class="form-control" placeholder="Message..." required>
+                    <input type="text" name="message" class="form-control" placeholder="Type a message..." required>
                     <button class="btn btn-primary" type="submit">Send</button>
                 </div>
             </form>
@@ -870,37 +1044,6 @@ def chats():
         </div>
     </div>
     """ + get_footer("chats")
-
-@app.route("/owner_dashboard", methods=["GET", "POST"])
-def owner_dashboard():
-    if not session.get("owner_logged"): return redirect("/owner_login")
-    if request.method == "POST":
-        form_type = request.form.get("form_type")
-        if form_type == "add_link":
-            title, url, snippet, category = request.form.get("title"), request.form.get("url"), request.form.get("snippet"), request.form.get("category")
-            if title and url:
-                conn = sqlite3.connect(DB_PATH)
-                cursor = conn.cursor()
-                cursor.execute("INSERT OR REPLACE INTO local_search_index (title, url, snippet, category) VALUES (?, ?, ?, ?)", (title, url, snippet, category))
-                conn.commit()
-                conn.close()
-                bharat_engine.index_item(title, url, snippet, category)
-
-    return get_html_header() + """
-    <div class="container mt-4 mb-5" style="max-width: 700px;">
-        <div class="card p-4 rounded-4 shadow-sm border bg-white">
-            <h4 class="fw-bold text-danger mb-3"><i class="bi bi-speedometer2 me-2"></i>Owner Control Center</h4>
-            <form method="POST">
-                <input type="hidden" name="form_type" value="add_link">
-                <input type="text" name="title" class="form-control form-control-sm mb-2" placeholder="Site Title" required>
-                <input type="url" name="url" class="form-control form-control-sm mb-2" placeholder="URL" required>
-                <input type="text" name="snippet" class="form-control form-control-sm mb-2" placeholder="Description" required>
-                <input type="text" name="category" class="form-control form-control-sm mb-3" placeholder="Category" required>
-                <button type="submit" class="btn btn-warning btn-sm rounded-pill fw-bold w-100">Add Link to Index</button>
-            </form>
-        </div>
-    </div>
-    """ + get_footer("home")
 
 @app.route("/my_history")
 def my_history():
