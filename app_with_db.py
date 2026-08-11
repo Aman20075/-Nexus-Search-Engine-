@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import sqlite3
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
@@ -56,6 +57,15 @@ def is_safe_query(query):
         if word in query_lower:
             return False
     return True
+
+def format_markdown_to_html(text):
+    if not text: return ""
+    # Convert bold **text** to <b>text</b>
+    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+    # Convert italic *text* to <i>text</i>
+    text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
+    # Convert newlines to <br>
+    return text.replace('\n', '<br>')
 
 # -------------------------------------------------------------
 # 🗄️ DATABASE INITIALIZATION
@@ -115,47 +125,6 @@ def init_db():
             snippet TEXT,
             category TEXT,
             logo_url TEXT
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_subscriptions (
-            username TEXT PRIMARY KEY,
-            tier TEXT DEFAULT 'Free',
-            ai_daily_limit INTEGER DEFAULT 10,
-            ai_used_today INTEGER DEFAULT 0,
-            last_usage_date TEXT,
-            expires_at TEXT
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS research_projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,
-            title TEXT,
-            notes TEXT,
-            sources_json TEXT,
-            created_at TEXT
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS privacy_settings (
-            username TEXT PRIMARY KEY,
-            private_mode INTEGER DEFAULT 0,
-            auto_delete_days INTEGER DEFAULT 30,
-            allow_personalization INTEGER DEFAULT 1
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_alerts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,
-            keyword TEXT,
-            alert_type TEXT,
-            created_at TEXT
         )
     """)
 
@@ -513,7 +482,7 @@ def home():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 🔍 SEARCH ROUTE (GEMINI 3.6 FLASH & KNOWLEDGE GRAPH INTEGRATED)
+# 🔍 SEARCH ROUTE (WITH HISTORY SAVING & GEMINI 3.6 FLASH)
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -524,7 +493,19 @@ def search():
 
     if not query or not is_safe_query(query): return redirect("/")
 
-    # Execute Super Engine Pipeline (Vector + Intent + Knowledge Graph)
+    # 1. 💾 Save Search Query to User History (FIXED)
+    username = session.get("username", "Guest")
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("INSERT INTO search_history (username, query, timestamp) VALUES (?, ?, ?)", (username, query, now_str))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+    # 2. Execute Super Engine Pipeline
     engine_data = bharat_engine.process_super_search(query)
     intent_data = engine_data.get("intent", {})
     kg_card = engine_data.get("knowledge_card")
@@ -559,16 +540,16 @@ def search():
         """
 
     prompt_prefix = "Explain like I'm 5 years old:" if mode == "eli5" else ("Provide a deep academic research report with citation facts for:" if mode == "deep" else "Provide a detailed overview for:")
-    ai_answer = f"<b>{query}</b> ({mode.upper()} Mode) से संबंधित परिणाम नीचे प्रस्तुत हैं।"
+    ai_answer = f"<b>{query}</b> ({mode.upper()} Mode) से संबंधित परिणाम प्रस्तुत हैं।"
     
     if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
         try:
-            # 🎯 UPDATED TO GEMINI 3.6 FLASH ENDPOINT
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
             payload = {"contents": [{"parts": [{"text": f"{prompt_prefix} {query}"}]}]}
             res = requests.post(url, json=payload, timeout=8)
             if res.status_code == 200:
-                ai_answer = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                raw_answer = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                ai_answer = format_markdown_to_html(raw_answer)
         except Exception: pass
 
     return get_html_header() + f"""
@@ -584,15 +565,15 @@ def search():
         <div class="card p-4 rounded-4 shadow-sm border bg-white mb-4">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fs-4">🤖</span>
-                <h6 class="fw-bold text-primary mb-0">Bharat AI Summary (Gemini 3.6 Flash)</h6>
+                <h6 class="fw-bold text-primary mb-0">Bharat AI Summary</h6>
             </div>
             <div style="line-height: 1.6; font-size: 14px; color: #333;">
-                {ai_answer.replace('\n', '<br>')}
+                {ai_answer}
             </div>
         </div>
 
         <h6 class="fw-bold text-success mb-3"><i class="bi bi-cpu me-2"></i>Bharat Vector Smart Matches</h6>
-        {local_html if local_html else '<p class="text-muted small">कोई स्थानीय परिणाम नहीं मिला। वेब खोज चालू है...</p>'}
+        {local_html if local_html else '<p class="text-muted small">कोई स्थानीय परिणाम नहीं मिला। लाइव सर्च अपडेटेड है...</p>'}
     </div>
     """ + get_footer("home")
 
@@ -610,7 +591,6 @@ def converters_hub():
         </div>
 
         <div class="row g-3">
-            <!-- Tool 1: Image to PDF -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 shadow-sm rounded-4 border bg-white h-100">
                     <h6 class="fw-bold text-primary"><i class="bi bi-file-earmark-pdf me-2"></i>JPG to PDF Converter</h6>
@@ -622,7 +602,6 @@ def converters_hub():
                 </div>
             </div>
 
-            <!-- Tool 2: Format Converter -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 shadow-sm rounded-4 border bg-white h-100">
                     <h6 class="fw-bold text-success"><i class="bi bi-file-earmark-image me-2"></i>PNG / WEBP to JPG</h6>
@@ -634,7 +613,6 @@ def converters_hub():
                 </div>
             </div>
 
-            <!-- Tool 3: AI Text Summarizer -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 shadow-sm rounded-4 border bg-white h-100">
                     <h6 class="fw-bold text-info"><i class="bi bi-journal-text me-2"></i>AI Text Summarizer</h6>
@@ -647,7 +625,6 @@ def converters_hub():
                 </div>
             </div>
 
-            <!-- Tool 4: Code Assistant -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 shadow-sm rounded-4 border bg-white h-100">
                     <h6 class="fw-bold text-dark"><i class="bi bi-code-slash me-2"></i>AI Code Debugger</h6>
@@ -660,7 +637,6 @@ def converters_hub():
                 </div>
             </div>
 
-            <!-- Tool 5: Finance & EMI Calculators -->
             <div class="col-12 text-center mt-2">
                 <div class="card p-3 shadow-sm rounded-4 border bg-warning bg-opacity-10">
                     <h6 class="fw-bold text-dark"><i class="bi bi-calculator me-2"></i>Bharat Financial Calculators</h6>
@@ -705,7 +681,7 @@ def convert_image_format():
     except Exception as e: return str(e)
 
 # -------------------------------------------------------------
-# 🎮 GAMES ARCADE (UNLOCKED FOR ALL)
+# 🎮 GAMES ARCADE (UNLOCKED)
 # -------------------------------------------------------------
 @app.route("/games")
 def games():
@@ -720,7 +696,7 @@ def games():
     """ + get_footer("games")
 
 # -------------------------------------------------------------
-# 📚 RESEARCH WORKSPACE (UNLOCKED FOR ALL)
+# 📚 RESEARCH WORKSPACE (UNLOCKED)
 # -------------------------------------------------------------
 @app.route("/research")
 def research():
@@ -735,7 +711,7 @@ def research():
     """ + get_footer("research")
 
 # -------------------------------------------------------------
-# 🛡️ PRIVACY CENTER (UNLOCKED FOR ALL)
+# 🛡️ PRIVACY CENTER (UNLOCKED)
 # -------------------------------------------------------------
 @app.route("/privacy_center")
 def privacy_center():
@@ -765,7 +741,6 @@ def vip_tiers():
         </div>
 
         <div class="row g-3 d-flex align-items-stretch">
-            <!-- FREE -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 border rounded-4 shadow-sm h-100 bg-white d-flex flex-column justify-content-between">
                     <div>
@@ -782,7 +757,6 @@ def vip_tiers():
                 </div>
             </div>
 
-            <!-- VIP -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 border-warning rounded-4 shadow-sm h-100 bg-light d-flex flex-column justify-content-between">
                     <div>
@@ -801,7 +775,6 @@ def vip_tiers():
                 </div>
             </div>
 
-            <!-- VIP PRO -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 border-primary rounded-4 shadow-sm h-100 bg-white d-flex flex-column justify-content-between">
                     <div>
@@ -821,7 +794,6 @@ def vip_tiers():
                 </div>
             </div>
 
-            <!-- VIP ULTRA -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 border-danger rounded-4 shadow-sm h-100 bg-danger bg-opacity-10 d-flex flex-column justify-content-between">
                     <div>
@@ -1121,7 +1093,8 @@ def chats():
     chat_list = cursor.fetchall()
     conn.close()
 
-    chat_rows = "".join([f'<li class="list-group-item d-flex justify-content-between"><div><b>{c[0]} $\\rightarrow$ {c[1]}:</b> {c[2]}</div><small class="text-muted">{c[3][11:16]}</small></li>' for c in chat_list])
+    # Unicode arrow fix
+    chat_rows = "".join([f'<li class="list-group-item d-flex justify-content-between"><div><b>{c[0]} → {c[1]}:</b> {c[2]}</div><small class="text-muted">{c[3][11:16]}</small></li>' for c in chat_list])
 
     return get_html_header() + f"""
     <div class="container mt-4 mb-5" style="max-width: 600px;">
@@ -1148,8 +1121,8 @@ def my_history():
     cursor.execute("SELECT query, timestamp FROM search_history WHERE username = ? ORDER BY id DESC LIMIT 20", (username,))
     rows = cursor.fetchall()
     conn.close()
-    history_html = "".join([f'<li class="list-group-item d-flex justify-content-between"><span>{r[0]}</span><small class="text-muted">{r[1]}</small></li>' for r in rows])
-    return get_html_header() + f'<div class="container mt-4 mb-5" style="max-width: 600px;"><ul class="list-group shadow-sm">{history_html}</ul></div>' + get_footer("home")
+    history_html = "".join([f'<li class="list-group-item d-flex justify-content-between"><span>{r[0]}</span><small class="text-muted">{r[1]}</small></li>' for r in rows]) if rows else '<li class="list-group-item text-muted text-center py-3">कोई खोज इतिहास नहीं मिला।</li>'
+    return get_html_header() + f'<div class="container mt-4 mb-5" style="max-width: 600px;"><h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-warning"></i>आपकी खोज इतिहास</h5><ul class="list-group shadow-sm rounded-4 overflow-hidden">{history_html}</ul></div>' + get_footer("home")
 
 @app.route("/user_login", methods=["GET", "POST"])
 def user_login():
