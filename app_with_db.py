@@ -482,7 +482,7 @@ def home():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 🔍 SEARCH ROUTE (WITH HISTORY SAVING & GEMINI 3.6 FLASH)
+# 🔍 SEARCH ROUTE (PRODUCTION-READY & ERROR-FREE)
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -491,9 +491,10 @@ def search():
     country = request.args.get("country", "all")
     mode = request.args.get("mode", "fast")
 
-    if not query or not is_safe_query(query): return redirect("/")
+    if not query or not is_safe_query(query): 
+        return redirect("/")
 
-    # 1. 💾 Save Search Query to User History (FIXED)
+    # 1. 💾 Save Search Query to User History
     username = session.get("username", "Guest")
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -524,6 +525,7 @@ def search():
         </div>
         """
 
+    # 3. Process Smart Local Vector Results
     local_html = ""
     for item in vector_results:
         title, url, snippet, category = item["title"], item["url"], item["snippet"], item["category"]
@@ -531,7 +533,7 @@ def search():
         local_html += f"""
         <div class="card p-3 mb-2 border-0 shadow-sm rounded-4 bg-white">
             <div class="d-flex align-items-center gap-2 mb-1">
-                <img src="{favicon}" width="18" height="18" class="rounded">
+                <img src="{favicon}" width="18" height="18" class="rounded" alt="icon">
                 <span class="text-muted small" style="font-size: 11px;">{url}</span>
             </div>
             <h6 class="mb-1"><a href="{url}" target="_blank" class="text-primary text-decoration-none fw-bold">{title}</a></h6>
@@ -539,18 +541,41 @@ def search():
         </div>
         """
 
-    prompt_prefix = "Explain like I'm 5 years old:" if mode == "eli5" else ("Provide a deep academic research report with citation facts for:" if mode == "deep" else "Provide a detailed overview for:")
-    ai_answer = f"<b>{query}</b> ({mode.upper()} Mode) से संबंधित परिणाम प्रस्तुत हैं।"
-    
+    # 4. Generate Robust AI Answer (With Fallback)
+    prompt_prefix = "Explain like I'm 5 years old:" if mode == "eli5" else ("Provide a detailed academic analysis for:" if mode == "deep" else "Provide a concise summary for:")
+    ai_answer = ""
+
     if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
-            payload = {"contents": [{"parts": [{"text": f"{prompt_prefix} {query}"}]}]}
-            res = requests.post(url, json=payload, timeout=8)
+            # Note: Endpoint updated for standard REST generation
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+            payload = {
+                "contents": [{"parts": [{"text": f"{prompt_prefix} {query}. Reply in clear Hindi or simple English."}]}]
+            }
+            res = requests.post(url, json=payload, timeout=7)
             if res.status_code == 200:
-                raw_answer = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                json_data = res.json()
+                raw_answer = json_data["candidates"][0]["content"]["parts"][0]["text"]
                 ai_answer = format_markdown_to_html(raw_answer)
-        except Exception: pass
+            else:
+                ai_answer = f"⚠️ AI सेवा प्रतिक्रिया देने में असमर्थ रही (Status: {res.status_code})। कृपया अपनी API Key की जाँच करें।"
+        except Exception as e:
+            ai_answer = f"⚠️ लाइव खोज नेटवर्क कनेक्शन में त्रुटि: {str(e)}"
+    
+    if not ai_answer:
+        ai_answer = f"<b>'{query}'</b> के लिए खोज पूर्ण हुई। विस्तृत जानकारी के लिए नीचे दिए गए लिंक्स देखें।"
+
+    # Fallback for empty search matches
+    fallback_web_link = f"https://www.google.com/search?q={quote_plus(query)}"
+    if not local_html:
+        local_html = f"""
+        <div class="card p-3 text-center border-0 shadow-sm rounded-4 bg-white">
+            <p class="text-muted small mb-2">स्थानीय डेटाबेस में सीधा परिणाम नहीं मिला।</p>
+            <a href="{fallback_web_link}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill fw-bold mx-auto" style="max-width: 250px;">
+                <i class="bi bi-globe me-1"></i> Google पर '{query}' खोजें
+            </a>
+        </div>
+        """
 
     return get_html_header() + f"""
     <div class="container mt-4 mb-5" style="max-width: 720px;">
@@ -572,8 +597,8 @@ def search():
             </div>
         </div>
 
-        <h6 class="fw-bold text-success mb-3"><i class="bi bi-cpu me-2"></i>Bharat Vector Smart Matches</h6>
-        {local_html if local_html else '<p class="text-muted small">कोई स्थानीय परिणाम नहीं मिला। लाइव सर्च अपडेटेड है...</p>'}
+        <h6 class="fw-bold text-success mb-3"><i class="bi bi-cpu me-2"></i>Bharat Smart Web Results</h6>
+        {local_html}
     </div>
     """ + get_footer("home")
 
