@@ -3,7 +3,7 @@ import sqlite3
 import difflib
 
 # -------------------------------------------------------------
-# 🎯 1. QUERY INTENT ROUTER (मंशा और श्रेणी की पहचान)
+# 🎯 1. QUERY INTENT ROUTER
 # -------------------------------------------------------------
 class BharatQueryRouter:
     def __init__(self):
@@ -31,7 +31,7 @@ class BharatQueryRouter:
 
 
 # -------------------------------------------------------------
-# 🇮🇳 2. BHARAT KNOWLEDGE GRAPH (सरकारी योजनाएं एवं कार्ड्स)
+# 🇮🇳 2. BHARAT KNOWLEDGE GRAPH
 # -------------------------------------------------------------
 class BharatKnowledgeGraph:
     def __init__(self):
@@ -64,7 +64,7 @@ class BharatKnowledgeGraph:
 
 
 # -------------------------------------------------------------
-# 🔍 3. BHARAT VECTOR SEARCH ENGINE (आपका मूल इंजन)
+# 🔍 3. BHARAT VECTOR SEARCH ENGINE
 # -------------------------------------------------------------
 class BharatVectorEngine:
     def __init__(self):
@@ -73,7 +73,6 @@ class BharatVectorEngine:
         self.kg = BharatKnowledgeGraph()
 
     def index_item(self, title, url, snippet, category):
-        # डुप्लिकेट लिंक्स रोकने के लिए चेक
         for doc in self.documents:
             if doc["url"] == url:
                 return
@@ -105,7 +104,6 @@ class BharatVectorEngine:
         return [item[1] for item in scored_results[:top_k]]
 
     def process_super_search(self, query):
-        """मास्टर ब्लूप्रिंट के लिए स्मार्ट सर्च प्रोसेसिंग"""
         intent = self.router.detect_intent(query)
         kg_card = self.kg.search_knowledge_base(query)
         results = self.search(query)
@@ -122,7 +120,7 @@ bharat_engine = BharatVectorEngine()
 
 
 # -------------------------------------------------------------
-# 🔄 4. DATABASE SYNC FUNCTION (पुराने नाम के साथ सुरक्षित)
+# 🔄 4. DATABASE SYNC FUNCTION
 # -------------------------------------------------------------
 def sync_db_to_vector_engine(db_path="search_engine.db"):
     try:
