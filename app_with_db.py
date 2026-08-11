@@ -16,14 +16,14 @@ except ImportError:
 
 import requests
 
-# 🤖 GOOGLE GENAI SDK IMPORT (Gemini 3.6 Flash Support)
+# 🤖 GOOGLE GENAI SDK IMPORT (Gemini Support with Fallback)
 try:
     from google import genai
     genai_client = genai.Client()
 except Exception as e:
     genai_client = None
 
-# 🤖 ADVANCED SEARCH ENGINE IMPORT
+# 🤖 ADVANCED SEARCH ENGINE & CRAWLER IMPORT
 from engine import bharat_engine, sync_db_to_vector_engine
 
 # -------------------------------------------------------------
@@ -72,7 +72,7 @@ def format_markdown_to_html(text):
     return text.replace('\n', '<br>')
 
 # -------------------------------------------------------------
-# 🗄️ DATABASE INITIALIZATION
+# 🗄️ DATABASE & CRAWLER INITIALIZATION
 # -------------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -209,7 +209,7 @@ def get_user_tier_info():
     return "Free", TIER_DETAILS["Free"]
 
 # -------------------------------------------------------------
-# 🌐 CHROME-LIKE MULTI-TAB CONTROLLER
+# 🌐 MULTI-TAB CONTROLLER
 # -------------------------------------------------------------
 def get_chrome_tabs_html():
     if "tabs" not in session:
@@ -306,7 +306,7 @@ def fetch_unlimited_news(category="top"):
     return news_items
 
 # -------------------------------------------------------------
-# 🎨 CHROME 3-DOT MENU & HEADER ENGINE
+# 🎨 HEADER & FOOTER ENGINE
 # -------------------------------------------------------------
 def get_html_header():
     tier_name, tier_info = get_user_tier_info()
@@ -393,7 +393,6 @@ def get_html_header():
         .chrome-menu-item:hover {{ background-color: #f8f9fa; color: #000; }}
         .chrome-menu-divider {{ height: 1px; background: #e8eaed; margin: 6px 0; }}
 
-        /* 💎 PROFESSIONAL SEARCH RESULT STYLING */
         .pro-result-card {{
             transition: all 0.2s ease-in-out;
             border: 1px solid #ffe4cc !important;
@@ -605,7 +604,7 @@ def home():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 💎 HYPER-PROFESSIONAL SEARCH RESULT ROUTE
+# 💎 SEARCH ROUTE (WITH AUTOMATIC FALLBACK FOR QUOTA EXHAUSTION)
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -674,14 +673,13 @@ def search():
             </div>
         </div>
         """
-    # 4. Generate AI Answer using Gemini SDK (With Automatic Fallback)
+
     prompt_prefix = "Explain like I'm 5 years old:" if mode == "eli5" else ("Provide a detailed academic research report with citation facts for:" if mode == "deep" else "Provide a concise summary for:")
     ai_answer = ""
 
+    # 🚀 AUTOMATIC MODEL FALLBACK SYSTEM (Avoids 429 Quota Error)
     if genai_client:
-        # प्राथमिक और फ़ॉलबैक मॉडल्स की लिस्ट
         models_to_try = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
-        
         for model_name in models_to_try:
             try:
                 response = genai_client.models.generate_content(
@@ -690,14 +688,13 @@ def search():
                 )
                 if response and response.text:
                     ai_answer = format_markdown_to_html(response.text)
-                    break  # अगर उत्तर मिल गया तो लूप रोक दें
-            except Exception as e:
-                # अगर Quota Exceeded (429) आया तो अगले मॉडल पर स्विच करेगा
+                    break
+            except Exception:
                 continue
 
     if not ai_answer:
-        ai_answer = f"<b>'{query}'</b> के लिए खोज पूर्ण हुई। विस्तृत जानकारी नीचे देखें।"
-    
+        ai_answer = f"<b>'{query}'</b> के लिए खोज पूर्ण हुई।"
+
     fallback_web_link = f"https://www.google.com/search?q={quote_plus(query)}"
     if not local_html:
         local_html = f"""
@@ -723,7 +720,7 @@ def search():
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="d-flex align-items-center gap-2">
                     <span class="fs-4">🤖</span>
-                    <h6 class="fw-bold text-primary mb-0">Bharat AI Insight (Gemini 3.6 Flash)</h6>
+                    <h6 class="fw-bold text-primary mb-0">Bharat AI Insight</h6>
                 </div>
                 <span class="badge bg-primary bg-opacity-10 text-primary">Fast AI Answer</span>
             </div>
@@ -739,7 +736,7 @@ def search():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 🛍️ BHARAT APP STORE ROUTE (DIRECT 1-CLICK WEB-APK INSTALLATION)
+# 🛍️ BHARAT APP STORE ROUTE (DIRECT INSTALLATION)
 # -------------------------------------------------------------
 @app.route("/app_store")
 def app_store():
@@ -814,6 +811,100 @@ def app_store():
         }}
     </script>
     """ + get_footer("apps")
+
+# -------------------------------------------------------------
+# 👑 OWNER DASHBOARD (WITH CRAWLER / RESYNC OPTION & USERS LIST)
+# -------------------------------------------------------------
+@app.route("/owner_dashboard", methods=["GET", "POST"])
+def owner_dashboard():
+    if not session.get("owner_logged"): return redirect("/owner_login")
+
+    message = ""
+    if request.method == "POST":
+        form_type = request.form.get("form_type")
+
+        # 🕷️ 1-CLICK CRAWLER RESYNC ENGINE
+        if form_type == "run_crawler":
+            try:
+                sync_db_to_vector_engine(DB_PATH)
+                message = "🕷️ <b>Web Crawler Resync Complete!</b> सभी नए लिंक्स और डेटाबेस वेक्टर इंजन के साथ सिंक हो गए हैं।"
+            except Exception as e:
+                message = f"⚠️ क्रॉलर एरर: {str(e)}"
+
+        elif form_type == "add_link":
+            title, url, snippet, category = request.form.get("title"), request.form.get("url"), request.form.get("snippet"), request.form.get("category")
+            if title and url:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("INSERT OR REPLACE INTO local_search_index (title, url, snippet, category) VALUES (?, ?, ?, ?)", (title, url, snippet, category))
+                conn.commit()
+                conn.close()
+                bharat_engine.index_item(title, url, snippet, category)
+                message = f"✅ नई लिंक क्रॉल और इंडेक्स हो गई: {title}"
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total_users_count = cursor.fetchone()[0]
+    cursor.execute("SELECT id, username, tier, is_premium, vip_expires_at FROM users ORDER BY id DESC")
+    all_users_list = cursor.fetchall()
+    cursor.execute("SELECT COUNT(*) FROM local_search_index")
+    total_indexed_count = cursor.fetchone()[0]
+    conn.close()
+
+    users_table_rows = "".join([f"<tr><td>#{u[0]}</td><td><b>{u[1]}</b></td><td><span class='badge bg-secondary'>{u[2] or 'Free'}</span></td></tr>" for u in all_users_list])
+
+    return get_html_header() + f"""
+    <div class="container mt-4 mb-5" style="max-width: 850px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
+            <h4 class="fw-bold text-danger mb-3"><i class="bi bi-speedometer2 me-2"></i>Owner Control Center</h4>
+            
+            {f'<div class="alert alert-success py-2 small mb-3">{message}</div>' if message else ''}
+
+            <!-- 🕷️ 1-CLICK MANUAL CRAWLER & INDEXER -->
+            <div class="card p-3 border-warning bg-warning bg-opacity-10 mb-4 rounded-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-bug-fill text-warning me-2"></i>Bharat Web Crawler Engine</h6>
+                        <small class="text-muted">डेटाबेस और नए लिंक्स को स्मार्ट वेक्टर सर्च इंडेक्स में तुरंत सिंक करें</small>
+                    </div>
+                    <form method="POST" class="mb-0">
+                        <input type="hidden" name="form_type" value="run_crawler">
+                        <button type="submit" class="btn btn-warning btn-sm rounded-pill fw-bold px-3"><i class="bi bi-arrow-repeat me-1"></i> Run Crawler Now</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ADD LINK FORM -->
+            <div class="card p-3 border-secondary bg-white mb-4 rounded-4">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-plus-circle-fill text-primary me-2"></i>Crawl & Add New Web Link</h6>
+                <form method="POST">
+                    <input type="hidden" name="form_type" value="add_link">
+                    <div class="row g-2 mb-2">
+                        <div class="col-12 col-md-6"><input type="text" name="title" class="form-control form-control-sm" placeholder="Site Title" required></div>
+                        <div class="col-12 col-md-6"><input type="url" name="url" class="form-control form-control-sm" placeholder="Full URL (https://...)" required></div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-8"><input type="text" name="snippet" class="form-control form-control-sm" placeholder="Description/Snippet" required></div>
+                        <div class="col-12 col-md-4"><input type="text" name="category" class="form-control form-control-sm" placeholder="Category" required></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm rounded-pill fw-bold w-100">Crawl & Index Link</button>
+                </form>
+            </div>
+
+            <!-- ALL USERS LIST TABLE -->
+            <div class="card p-3 border-secondary bg-light rounded-4">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-people-fill text-primary me-2"></i>Registered App Users ({total_users_count})</h6>
+                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                    <table class="table table-sm table-hover align-middle small mb-0 bg-white rounded-3">
+                        <thead class="table-dark"><tr><th>ID</th><th>Username</th><th>Tier</th></tr></thead>
+                        <tbody>{users_table_rows}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    """ + get_footer("home")
 
 # -------------------------------------------------------------
 # 📌 HELPER ROUTES (BOOKMARKS, HISTORY, CLEAR DATA)
@@ -949,33 +1040,6 @@ def user_login():
     </div>
     """ + get_footer("home")
 
-@app.route("/owner_dashboard", methods=["GET", "POST"])
-def owner_dashboard():
-    if not session.get("owner_logged"): return redirect("/owner_login")
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM users")
-    total_users_count = cursor.fetchone()[0]
-    cursor.execute("SELECT id, username, tier, is_premium, vip_expires_at FROM users ORDER BY id DESC")
-    all_users_list = cursor.fetchall()
-    conn.close()
-
-    users_table_rows = "".join([f"<tr><td>#{u[0]}</td><td><b>{u[1]}</b></td><td><span class='badge bg-secondary'>{u[2] or 'Free'}</span></td></tr>" for u in all_users_list])
-
-    return get_html_header() + f"""
-    <div class="container mt-4 mb-5" style="max-width: 800px;">
-        <div class="bg-white p-4 rounded-4 shadow-sm border">
-            <h4 class="fw-bold text-danger mb-3">👑 Owner Dashboard</h4>
-            <h5>Total Registered Users: {total_users_count}</h5>
-            <table class="table table-sm mt-3">
-                <thead><tr><th>ID</th><th>Username</th><th>Tier</th></tr></thead>
-                <tbody>{users_table_rows}</tbody>
-            </table>
-        </div>
-    </div>
-    """ + get_footer("home")
-
 @app.route("/owner_login", methods=["GET", "POST"])
 def owner_login():
     if request.method == "POST":
@@ -999,7 +1063,9 @@ def logout():
     session.clear()
     return redirect("/")
 
+# -------------------------------------------------------------
+# 🚀 DYNAMIC PORT BINDING FOR LOCAL & CLOUD DEPLOYMENT
+# -------------------------------------------------------------
 if __name__ == "__main__":
-    # अगर सर्वर से PORT मिले तो वो यूज़ करो, नहीं तो 10000 यूज़ करो
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)
