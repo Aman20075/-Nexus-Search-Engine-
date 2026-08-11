@@ -61,7 +61,7 @@ def format_markdown_to_html(text):
     return text.replace('\n', '<br>')
 
 # -------------------------------------------------------------
-# 🗄️ DATABASE & VECTOR ENGINE INITIALIZATION
+# 🗄️ DATABASE & CRAWLER INITIALIZATION
 # -------------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -115,21 +115,18 @@ def init_db():
     sync_db_to_vector_engine(DB_PATH)
 
 def auto_seed_master_data():
-    master_links = [
-        ("ChatGPT", "https://chatgpt.com/", "Official ChatGPT AI chatbot for writing, coding, and query resolution.", "AI Tools"),
-        ("Google Gemini", "https://gemini.google.com/", "Google's official advanced multimodal AI assistant.", "AI Tools"),
-        ("Piramal Finance", "https://www.piramalfinance.com/", "Official site for Piramal personal, home, and business loans.", "Loans/NBFC"),
-        ("Aavas Financiers", "https://www.aavas.in/", "Official site for Aavas home loans and loan against property.", "Housing Finance"),
-        ("State Bank of India (SBI)", "https://sbi.co.in/", "Official SBI Internet Banking and loan services portal.", "Bank"),
-        ("Khan Academy", "https://www.khanacademy.org/", "Free online education courses, math, and science tutorials.", "Education")
+    master_apps = [
+        ("Bharat Chat AI", "/chats", "WhatsApp style secure chat & calls", "Apps", "💬"),
+        ("SBI Net Banking", "https://sbi.co.in/", "Official banking & loan portal", "Apps", "🏧"),
+        ("Piramal Finance", "https://www.piramalfinance.com/", "Personal & home loans easily", "Apps", "🏦"),
+        ("Research Workspace", "/research", "Academic Research & Summarizer", "Apps", "📚"),
+        ("JPG to PDF Tool", "/converters", "Fast offline document converter", "Apps", "📄")
     ]
 
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        for title, url, snippet, category in master_links:
-            domain = urlparse(url).netloc
-            logo = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+        for title, url, snippet, category, logo in master_apps:
             cursor.execute("""
                 INSERT OR IGNORE INTO local_search_index (title, url, snippet, category, logo_url)
                 VALUES (?, ?, ?, ?, ?)
@@ -188,9 +185,6 @@ def api_close_tab(tab_id):
         session.modified = True
     return redirect("/")
 
-# -------------------------------------------------------------
-# 🔍 SUGGESTIONS & NEWS API
-# -------------------------------------------------------------
 @app.route("/api/suggestions")
 def suggestions():
     q = request.args.get("q", "").strip()
@@ -199,7 +193,7 @@ def suggestions():
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         search_kw = f"%{q}%"
-        cursor.execute("SELECT DISTINCT title FROM local_search_index WHERE title LIKE ? LIMIT 5", (search_kw,))
+        cursor.execute("SELECT DISTINCT title FROM local_search_index WHERE title LIKE ? LIMIT 6", (search_kw,))
         results = [r[0] for r in cursor.fetchall()]
         conn.close()
         return jsonify(results)
@@ -234,7 +228,6 @@ def fetch_unlimited_news(category="top"):
 # -------------------------------------------------------------
 def get_html_header():
     is_owner = session.get("owner_logged", False)
-    username = session.get("username", OWNER_USERNAME if is_owner else "Guest User")
     badge_label = "👑 OWNER (Aman Giri)" if is_owner else "🟢 USER"
     badge_cls = "bg-danger" if is_owner else "bg-secondary"
     tabs_bar = get_chrome_tabs_html()
@@ -256,18 +249,18 @@ def get_html_header():
             background-color: var(--bg-color); 
             color: var(--text-color); 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            padding-bottom: 90px !important; 
+            padding-bottom: 95px !important; 
         }}
         .sticky-top-header {{ position: sticky; top: 0; z-index: 9999; background-color: var(--bg-color); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }}
         .top-bar-chrome {{ display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background-color: var(--bg-color); }}
         .icon-btn {{ background: none; border: none; font-size: 22px; color: #d96b00; cursor: pointer; text-decoration: none; padding: 4px; }}
         
         .google-search-container {{ max-width: 620px; width: 92%; margin: 15px auto; position: relative; }}
-        .google-input {{ height: 50px; border-radius: 25px; padding-left: 45px; padding-right: 85px; border: 2px solid #ffaa44; font-size: 15px; background: #fff; }}
-        .search-left-icon {{ position: absolute; left: 16px; top: 16px; color: #e67300; font-size: 18px; z-index: 10; }}
+        .google-input {{ height: 54px; border-radius: 27px; padding-left: 48px; padding-right: 90px; border: 2px solid #ffaa44; background: var(--card-bg); color: var(--text-color); box-shadow: 0 4px 12px rgba(255, 153, 51, 0.2); font-size: 15px; }}
+        .search-left-icon {{ position: absolute; left: 18px; top: 18px; color: #e67300; font-size: 18px; z-index: 10; }}
         
-        .suggestions-box {{ position: absolute; top: 55px; left: 0; right: 0; background: #fff; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #ffe0b2; z-index: 9999; display: none; text-align: left; overflow: hidden; }}
-        .suggestion-item {{ padding: 10px 18px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #fff3e0; display: flex; align-items: center; gap: 10px; color: #333; }}
+        .suggestions-box {{ position: absolute; top: 58px; left: 0; right: 0; background: #fff; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid #ffe0b2; z-index: 9999; display: none; text-align: left; overflow: hidden; }}
+        .suggestion-item {{ padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #fff3e0; display: flex; align-items: center; gap: 10px; color: #333; }}
         .suggestion-item:hover {{ background-color: #fff3e0; color: #d96b00; }}
 
         .bottom-nav-bar {{ 
@@ -275,16 +268,16 @@ def get_html_header():
             bottom: 0; 
             left: 0; 
             right: 0; 
-            background: #ffffff; 
-            border-top: 1px solid #ddd; 
+            background: var(--bg-color); 
+            border-top: 1px solid var(--border-color); 
             display: flex; 
             justify-content: space-around; 
             padding: 8px 0; 
-            z-index: 9999; 
-            box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
+            z-index: 9998; 
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
         }}
         .nav-link-item {{ text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; flex: 1; }}
-        .nav-link-item.active {{ color: #ff7700 !important; font-weight: 700; }}
+        .nav-link-item.active {{ color: #ff7700 !important; font-weight: 700; transform: translateY(-2px); }}
         
         .chat-container {{ height: calc(100vh - 230px); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; background: #efeae2; border-radius: 12px; }}
         .msg {{ padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; max-width: 75%; font-size: 14px; }}
@@ -309,7 +302,7 @@ def get_html_header():
             <span class="badge {badge_cls} rounded-pill" style="font-size:10px;">{badge_label}</span>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <a href="/app_store" class="icon-btn text-success" title="App Store"><i class="bi bi-bag-check-fill"></i></a>
+            <a href="/app_store" class="icon-btn text-success" title="Bharat Play Store"><i class="bi bi-bag-check-fill"></i></a>
             <a href="/research" class="icon-btn text-info" title="Research Workspace"><i class="bi bi-journal-bookmark-fill"></i></a>
             <a href="/chats" class="icon-btn text-primary" title="Bharat Chat"><i class="bi bi-chat-dots-fill"></i></a>
             
@@ -319,10 +312,10 @@ def get_html_header():
                     <div class="chrome-menu-header">
                         <a href="javascript:history.forward()" class="chrome-top-icon" title="Forward"><i class="bi bi-arrow-right"></i></a>
                         <a href="/bookmarks" class="chrome-top-icon" title="Bookmarks"><i class="bi bi-star"></i></a>
-                        <a href="/converters" class="chrome-top-icon" title="Downloads"><i class="bi bi-download"></i></a>
+                        <a href="/app_store" class="chrome-top-icon" title="Bharat Play Store"><i class="bi bi-bag-check-fill"></i></a>
                         <a href="javascript:location.reload()" class="chrome-top-icon" title="Reload"><i class="bi bi-arrow-clockwise"></i></a>
                     </div>
-                    <a class="chrome-menu-item" href="/app_store"><i class="bi bi-bag-check-fill fs-5 text-success"></i> Bharat App Store</a>
+                    <a class="chrome-menu-item" href="/app_store"><i class="bi bi-bag-check-fill fs-5 text-success"></i> Bharat Play Store</a>
                     <a class="chrome-menu-item" href="/api/tab/new"><i class="bi bi-plus-square fs-5"></i> New tab</a>
                     <a class="chrome-menu-item" href="/api/tab/new?incognito=true"><i class="bi bi-incognito fs-5"></i> New Incognito tab</a>
                     <div class="chrome-menu-divider"></div>
@@ -350,7 +343,7 @@ def get_footer(active_tab="home"):
     </a>
     <a href="/app_store" class="nav-link-item {'active' if active_tab == 'apps' else ''}">
         <i class="bi bi-bag-check-fill fs-5 d-block text-success"></i>
-        <span>Apps</span>
+        <span>Play Store</span>
     </a>
     <a href="/chats" class="nav-link-item {'active' if active_tab == 'chats' else ''}">
         <i class="bi bi-chat-dots-fill fs-5 d-block text-primary"></i>
@@ -442,32 +435,77 @@ def home():
     """ for n in news_list[:4]])
 
     return get_html_header() + f"""
-    <div class="container text-center pt-3" style="max-width: 650px;">
-        <h1 class="fw-bold mb-1" style="color: #d95100; letter-spacing: -1px;">Bharat OS 🇮🇳</h1>
-        <p class="text-muted small mb-3">Advanced SuperApp & In-App Search Engine</p>
+    <div class="container text-center pt-2">
+        <div class="bharat-logo mb-1" style="font-size: 52px; font-weight: 700;">
+            <span style="color:#FF9933">B</span><span style="color:#000080">h</span><span style="color:#138808">arat</span> 🛕
+        </div>
+        <p class="fw-medium small mb-2" style="color: #d95100;">Universal AI Search Engine 🇮🇳</p>
 
         <form action="/search" method="GET" id="searchForm" class="google-search-container">
             <i class="bi bi-search search-left-icon"></i>
-            <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="सर्च करें (जैसे: SBI, Piramal, ChatGPT)..." autocomplete="off" required>
+            <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="सर्च करें, ऐप्स ढूंढें या AI से पूछें..." autocomplete="off" required>
             <div id="suggestionsBox" class="suggestions-box"></div>
         </form>
 
-        <div class="row g-2 text-start mt-3">
-            <div class="col-6 col-md-3"><a href="/app_store" class="card p-3 text-decoration-none text-dark shadow-sm text-center rounded-4 bg-white"><div class="fs-3 text-success">🛍️</div><div class="fw-bold small mt-1">App Store</div></a></div>
-            <div class="col-6 col-md-3"><a href="/research" class="card p-3 text-decoration-none text-dark shadow-sm text-center rounded-4 bg-white"><div class="fs-3 text-info">📚</div><div class="fw-bold small mt-1">Research</div></a></div>
-            <div class="col-6 col-md-3"><a href="/chats" class="card p-3 text-decoration-none text-dark shadow-sm text-center rounded-4 bg-white"><div class="fs-3 text-primary">💬</div><div class="fw-bold small mt-1">Bharat Chat</div></a></div>
-            <div class="col-6 col-md-3"><a href="/owner_dashboard" class="card p-3 text-decoration-none text-dark shadow-sm text-center rounded-4 bg-white"><div class="fs-3 text-danger">👑</div><div class="fw-bold small mt-1">Owner Panel</div></a></div>
+        <div class="container my-3" style="max-width: 680px;">
+            <div class="row g-2 text-start">
+                <div class="col-6 col-md-3"><a href="/app_store" class="card p-2 text-decoration-none text-dark shadow-sm text-center rounded-3 bg-white"><div class="fs-4 text-success">🛍️</div><div class="fw-bold small" style="font-size:12px;">Play Store</div></a></div>
+                <div class="col-6 col-md-3"><a href="/chats" class="card p-2 text-decoration-none text-dark shadow-sm text-center rounded-3 bg-white"><div class="fs-4 text-primary">💬</div><div class="fw-bold small" style="font-size:12px;">Bharat Chat</div></a></div>
+                <div class="col-6 col-md-3"><a href="/research" class="card p-2 text-decoration-none text-dark shadow-sm text-center rounded-3 bg-white"><div class="fs-4 text-info">📚</div><div class="fw-bold small" style="font-size:12px;">Research</div></a></div>
+                <div class="col-6 col-md-3"><a href="/owner_dashboard" class="card p-2 text-decoration-none text-dark shadow-sm text-center rounded-3 bg-white"><div class="fs-4 text-danger">👑</div><div class="fw-bold small" style="font-size:12px;">Owner Panel</div></a></div>
+            </div>
         </div>
 
-        <div class="text-start mt-4">
-            <h6 class="fw-bold text-muted mb-2"><i class="bi bi-newspaper text-warning me-1"></i> Live Feed</h6>
+        <div class="container text-start mt-2 mb-5" style="max-width: 720px;">
+            <h6 class="fw-bold text-muted mb-2"><i class="bi bi-newspaper text-warning me-2"></i>Discover Feed</h6>
             <div class="row">{news_html}</div>
         </div>
     </div>
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 💎 ADVANCED SUPER-SEARCH ROUTE
+# 🛍️ BHARAT PLAY STORE (DYNAMIC DATABASE APPS)
+# -------------------------------------------------------------
+@app.route("/app_store")
+def app_store():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT title, url, snippet, logo_url FROM local_search_index WHERE category = 'Apps' OR category = 'AI Tools' OR category = 'Bank'")
+    apps_data = cursor.fetchall()
+    conn.close()
+
+    apps_html = ""
+    for app_item in apps_data:
+        title, url, snippet, logo = app_item[0], app_item[1], app_item[2], app_item[3] or "📦"
+        icon_display = f"<span class='fs-2'>{logo}</span>" if len(logo) <= 2 else f"<img src='{logo}' width='40' height='40' class='rounded-3'>"
+        
+        apps_html += f"""
+        <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white d-flex flex-row align-items-center gap-3">
+            <div class="p-2 bg-light rounded-4 d-flex align-items-center justify-content-center" style="width:55px; height:55px;">{icon_display}</div>
+            <div class="flex-grow-1">
+                <h6 class="fw-bold mb-0 text-dark">{title}</h6>
+                <small class="text-muted d-block" style="font-size:12px;">{snippet}</small>
+                <small class="text-success fw-bold" style="font-size:10px;">★ 4.9 • Instant Verified App</small>
+            </div>
+            <a href="{url}" target="_blank" class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm">
+                <i class="bi bi-download me-1"></i> Open / Install
+            </a>
+        </div>
+        """
+
+    return get_html_header() + f"""
+    <div class="container mt-3 mb-5" style="max-width: 650px;">
+        <div class="text-center mb-4">
+            <span class="badge bg-success px-3 py-1 rounded-pill fw-bold">🛍️ OFFICIAL BHARAT PLAY STORE</span>
+            <h3 class="fw-bold mt-2">Daily Needs & Super Apps</h3>
+            <p class="text-muted small">ओनर डैशबोर्ड से जोड़े गए सभी ऐप्स यहाँ लाइव दिखाई देते हैं</p>
+        </div>
+        {apps_html if apps_html else '<div class="card p-4 text-center text-muted bg-white rounded-4">कोई ऐप उपलब्ध नहीं है।</div>'}
+    </div>
+    """ + get_footer("apps")
+
+# -------------------------------------------------------------
+# 💎 ADVANCED SEARCH ROUTE
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -496,7 +534,7 @@ def search():
     kg_html = ""
     if kg_card:
         kg_html = f"""
-        <div class="card p-3 mb-3 rounded-4 shadow-sm border-warning bg-warning bg-opacity-10">
+        <div class="card p-3 mb-4 rounded-4 shadow-sm border-warning bg-warning bg-opacity-10">
             <span class="badge bg-warning text-dark align-self-start mb-2">🇮🇳 {kg_card['category']}</span>
             <h5 class="fw-bold text-dark">{kg_card['title']}</h5>
             <p class="small mb-1"><b>विभाग:</b> {kg_card['department']}</p>
@@ -511,13 +549,17 @@ def search():
         domain = urlparse(url).netloc if url else 'bharat.app'
         favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
         local_html += f"""
-        <div class="card p-3 mb-2 border-0 shadow-sm rounded-4 bg-white">
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <img src="{favicon}" width="18" height="18" class="rounded">
-                <small class="text-muted">{url[:45]}</small>
+        <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <img src="{favicon}" width="22" height="22" class="rounded-circle border p-1">
+                <div>
+                    <div class="fw-bold text-dark" style="font-size: 12px; line-height: 1;">{domain.replace('www.', '')}</div>
+                    <small class="text-muted" style="font-size: 10px;">{url[:45]}...</small>
+                </div>
             </div>
-            <h5 class="mb-1"><a href="{url}" class="text-primary fw-bold text-decoration-none">{title}</a></h5>
-            <p class="text-muted small mb-0">{snippet}</p>
+            <h5 class="mb-1"><a href="{url}" class="text-primary text-decoration-none fw-bold" style="font-size:16px;">{title}</a></h5>
+            <p class="text-secondary small mb-2" style="font-size: 13px; line-height: 1.5;">{snippet}</p>
+            <span class="badge bg-light text-dark border">{category}</span>
         </div>
         """
 
@@ -529,16 +571,27 @@ def search():
         except Exception: ai_answer = "खोज पूर्ण हुई।"
 
     return get_html_header() + f"""
-    <div class="container mt-3 mb-5" style="max-width: 680px;">
+    <div class="container mt-4 mb-5" style="max-width: 720px;">
         {kg_html}
-        {f'<div class="card p-3 rounded-4 shadow-sm border-0 bg-white mb-3 border-start border-4 border-warning"><b>Bharat AI Insight:</b> {ai_answer}</div>' if ai_answer else ''}
-        <h6 class="fw-bold text-muted mb-2">Smart In-App Matches</h6>
+        <div class="card p-4 rounded-4 shadow-sm border-0 bg-white mb-4" style="border-left: 4px solid #ff7700 !important;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fs-4">🤖</span>
+                    <h6 class="fw-bold text-primary mb-0">Bharat AI Insight</h6>
+                </div>
+            </div>
+            <hr class="my-2 text-muted">
+            <div style="line-height: 1.6; font-size: 14px; color: #202124;">
+                {ai_answer}
+            </div>
+        </div>
+        <h6 class="fw-bold text-muted mb-3"><i class="bi bi-cpu me-2"></i>Organic Web Matches</h6>
         {local_html if local_html else '<div class="card p-4 text-center text-muted bg-white rounded-4">कोई सीधा परिणाम नहीं मिला।</div>'}
     </div>
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 💬 BHARAT WHATSAPP CHAT & REAL PHONE/WHATSAPP INTEGRATION
+# 💬 BHARAT WHATSAPP CHAT
 # -------------------------------------------------------------
 CONTACTS_LIST = [
     {"id": "aman", "name": "Aman Giri (Owner)", "phone": "+919876543210", "status": "Online 🟢", "avatar": "👑"},
@@ -601,9 +654,7 @@ def chat_room(contact_id):
                 </div>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <!-- Direct Phone Call via SIM Dialer -->
                 <a href="{tel_link}" class="text-success fs-5" title="Direct Phone Call"><i class="bi bi-telephone-fill"></i></a>
-                <!-- Direct WhatsApp Chat -->
                 <a href="{wa_link}" target="_blank" class="text-success fs-5" title="Open Real WhatsApp"><i class="bi bi-whatsapp"></i></a>
             </div>
         </div>
@@ -624,7 +675,7 @@ def chat_room(contact_id):
     """ + get_footer("chats")
 
 # -------------------------------------------------------------
-# 👑 OWNER LOGIN & DASHBOARD (AMAN GIRI)
+# 👑 OWNER LOGIN & CONTROL CENTER
 # -------------------------------------------------------------
 @app.route("/owner_login", methods=["GET", "POST"])
 def owner_login():
@@ -636,13 +687,13 @@ def owner_login():
             session["owner_logged"] = True
             return redirect("/owner_dashboard")
         else:
-            error = "गलत यूज़रनेम या पासवर्ड!"
+            error = "गलत यूज़रनेम या पासवर्ड! (Aman Giri / @Aman2007)"
 
     return get_html_header() + f"""
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center text-danger fw-bold">👑 Owner Login</h4>
-            <p class="text-muted small text-center mb-3">सिर्फ ओनर (Aman Giri) के लिए</p>
+            <p class="text-muted small text-center mb-3">Aman Giri के लिए सुरक्षित पोर्टल</p>
             {f'<div class="alert alert-danger py-1 small">{error}</div>' if error else ''}
             <input type="text" name="username" class="form-control mb-3" placeholder="Username (Aman Giri)" required>
             <input type="password" name="password" class="form-control mb-3" placeholder="Password (@Aman2007)" required>
@@ -666,15 +717,15 @@ def owner_dashboard():
             except Exception as e:
                 message = f"⚠️ एरर: {str(e)}"
         elif form_type == "add_link":
-            title, url, snippet, category = request.form.get("title"), request.form.get("url"), request.form.get("snippet"), request.form.get("category")
+            title, url, snippet, category, logo = request.form.get("title"), request.form.get("url"), request.form.get("snippet"), request.form.get("category", "Apps"), request.form.get("logo_url", "📦")
             if title and url:
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
-                cursor.execute("INSERT OR REPLACE INTO local_search_index (title, url, snippet, category) VALUES (?, ?, ?, ?)", (title, url, snippet, category))
+                cursor.execute("INSERT OR REPLACE INTO local_search_index (title, url, snippet, category, logo_url) VALUES (?, ?, ?, ?, ?)", (title, url, snippet, category, logo))
                 conn.commit()
                 conn.close()
                 bharat_engine.index_item(title, url, snippet, category)
-                message = f"✅ नई लिंक जोड़ी गई: {title}"
+                message = f"✅ नया ऐप/लिंक Bharat Play Store में जोड़ा गया: {title}"
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -696,6 +747,25 @@ def owner_dashboard():
                 <a href="/logout" class="btn btn-outline-danger btn-sm rounded-pill">Logout (Aman Giri)</a>
             </div>
             {f'<div class="alert alert-success py-2 small mb-3">{message}</div>' if message else ''}
+            
+            <!-- ADD NEW APP TO PLAY STORE FORM -->
+            <div class="card p-3 border-secondary bg-white mb-4 rounded-4">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-bag-plus-fill text-success me-2"></i>Add App to Bharat Play Store</h6>
+                <form method="POST">
+                    <input type="hidden" name="form_type" value="add_link">
+                    <input type="hidden" name="category" value="Apps">
+                    <div class="row g-2 mb-2">
+                        <div class="col-12 col-md-6"><input type="text" name="title" class="form-control form-control-sm" placeholder="App Name (e.g. YouTube)" required></div>
+                        <div class="col-12 col-md-6"><input type="url" name="url" class="form-control form-control-sm" placeholder="App URL (https://...)" required></div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-8"><input type="text" name="snippet" class="form-control form-control-sm" placeholder="Short Description" required></div>
+                        <div class="col-12 col-md-4"><input type="text" name="logo_url" class="form-control form-control-sm" placeholder="Icon Emoji or Image URL" value="📱" required></div>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-sm rounded-pill fw-bold w-100">Publish App to Play Store</button>
+                </form>
+            </div>
+
             <div class="card p-3 border-warning bg-warning bg-opacity-10 mb-4 rounded-4">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -708,6 +778,7 @@ def owner_dashboard():
                     </form>
                 </div>
             </div>
+            
             <div class="card p-3 border-secondary bg-light rounded-4">
                 <h6 class="fw-bold text-dark mb-2"><i class="bi bi-people-fill text-primary me-2"></i>Registered App Users ({total_users_count})</h6>
                 <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
@@ -726,19 +797,51 @@ def owner_dashboard():
 # -------------------------------------------------------------
 @app.route("/bookmarks")
 def bookmarks(): return get_html_header() + '<div class="container mt-4 text-center" style="max-width:600px;"><h5 class="fw-bold mb-3"><i class="bi bi-star-fill text-warning me-2"></i>Bookmarked Pages</h5><p class="text-muted">कोई बुकमार्क सेव नहीं है।</p></div>' + get_footer("home")
+
 @app.route("/my_history")
 def my_history(): return get_html_header() + '<div class="container mt-4 text-center" style="max-width:600px;"><h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-warning"></i>Search History</h5><p class="text-muted">हिस्ट्री खाली है।</p></div>' + get_footer("home")
+
 @app.route("/converters")
-def converters(): return get_html_header() + '<div class="container mt-4 text-center" style="max-width:600px;"><h4 class="fw-bold">🛠️ Tools & Downloads</h4><p class="text-muted">JPG to PDF Converter active.</p></div>' + get_footer("home")
+def converters():
+    return get_html_header() + """
+    <div class="container mt-4 mb-5" style="max-width: 750px;">
+        <div class="text-center mb-4">
+            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold">🚀 FREE TOOLS</span>
+            <h3 class="fw-bold mt-2">Bharat AI Master Toolkit Suite</h3>
+        </div>
+        <div class="card p-3 shadow-sm rounded-4 border bg-white">
+            <h6 class="fw-bold text-primary"><i class="bi bi-file-earmark-pdf me-2"></i>JPG to PDF Converter</h6>
+            <form action="/convert_jpg_to_pdf" method="POST" enctype="multipart/form-data" class="mt-2">
+                <input type="file" name="image_file" accept="image/*" class="form-control form-control-sm mb-2" required>
+                <button type="submit" class="btn btn-primary btn-sm w-100 rounded-pill fw-bold">Convert to PDF</button>
+            </form>
+        </div>
+    </div>
+    """ + get_footer("tools")
+
+@app.route("/convert_jpg_to_pdf", methods=["POST"])
+def convert_jpg_to_pdf():
+    if not Image: return "Image library missing."
+    file = request.files.get('image_file')
+    if not file: return redirect("/converters")
+    try:
+        image = Image.open(file.stream)
+        if image.mode != 'RGB': image = image.convert('RGB')
+        pdf_bytes = io.BytesIO()
+        image.save(pdf_bytes, format='PDF')
+        pdf_bytes.seek(0)
+        return send_file(pdf_bytes, mimetype='application/pdf', as_attachment=True, download_name='converted.pdf')
+    except Exception as e: return str(e)
+
 @app.route("/research")
 def research(): return get_html_header() + '<div class="container mt-4 text-center" style="max-width:600px;"><h4 class="fw-bold">📚 Research Workspace</h4><p class="text-muted">Academic AI helper ready.</p></div>' + get_footer("research")
-@app.route("/app_store")
-def app_store(): return get_html_header() + '<div class="container mt-4 text-center" style="max-width:600px;"><h4 class="fw-bold">🛍️ Bharat App Store</h4><p class="text-muted">Daily needs apps available.</p></div>' + get_footer("apps")
+
 @app.route("/clear_browsing_data")
 def clear_data():
     session["tabs"] = [{"id": 1, "title": "New Tab", "query": "", "incognito": False}]
     session.modified = True
     return redirect("/")
+
 @app.route("/logout")
 def logout(): session.clear(); return redirect("/")
 
