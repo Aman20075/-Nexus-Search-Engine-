@@ -16,7 +16,7 @@ except ImportError:
 
 import requests
 
-# 🤖 GOOGLE GENAI SDK IMPORT (Gemini Support with Fallback)
+# 🤖 GOOGLE GENAI SDK IMPORT (Gemini 3.6 Flash Support)
 try:
     from google import genai
     genai_client = genai.Client()
@@ -209,7 +209,7 @@ def get_user_tier_info():
     return "Free", TIER_DETAILS["Free"]
 
 # -------------------------------------------------------------
-# 🌐 MULTI-TAB CONTROLLER
+# 🌐 CHROME MULTI-TAB CONTROLLER
 # -------------------------------------------------------------
 def get_chrome_tabs_html():
     if "tabs" not in session:
@@ -256,7 +256,7 @@ def api_close_tab(tab_id):
     return redirect("/")
 
 # -------------------------------------------------------------
-# 🔍 SUGGESTIONS & NEWS
+# 🔍 SUGGESTIONS & NEWS API
 # -------------------------------------------------------------
 @app.route("/api/suggestions")
 def suggestions():
@@ -306,7 +306,7 @@ def fetch_unlimited_news(category="top"):
     return news_items
 
 # -------------------------------------------------------------
-# 🎨 HEADER & FOOTER ENGINE
+# 🎨 CHROME 3-DOT MENU & HEADER ENGINE
 # -------------------------------------------------------------
 def get_html_header():
     tier_name, tier_info = get_user_tier_info()
@@ -368,6 +368,34 @@ def get_html_header():
         .search-action-btn {{ background: none; border: none; font-size: 20px; color: #e67300; cursor: pointer; padding: 4px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }}
         .search-action-btn:hover {{ background-color: rgba(255, 153, 51, 0.15); }}
         
+        /* 🔍 REAL-TIME AUTO-SUGGESTIONS BOX */
+        .suggestions-box {{ 
+            position: absolute; 
+            top: 58px; 
+            left: 0; 
+            right: 0; 
+            background: #fff; 
+            border-radius: 16px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15); 
+            border: 1px solid #ffe0b2; 
+            z-index: 9999; 
+            display: none; 
+            text-align: left; 
+            overflow: hidden; 
+        }}
+        .suggestion-item {{ 
+            padding: 12px 20px; 
+            cursor: pointer; 
+            font-size: 14px; 
+            border-bottom: 1px solid #fff3e0; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            color: #333; 
+        }}
+        .suggestion-item:hover {{ background-color: #fff3e0; color: #d96b00; }}
+
+        /* 📱 PROFESSIONAL BOTTOM NAVIGATION BAR */
         .bottom-nav-bar {{ 
             position: fixed; 
             bottom: 0; 
@@ -379,10 +407,21 @@ def get_html_header():
             justify-content: space-around; 
             padding: 8px 0; 
             z-index: 9998; 
-            box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
         }}
-        .nav-link-item {{ text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; flex: 1; }}
-        .nav-link-item.active {{ color: #ff7700; font-weight: 600; }}
+        .nav-link-item {{ 
+            text-decoration: none; 
+            color: #5f6368; 
+            font-size: 11px; 
+            text-align: center; 
+            flex: 1; 
+            transition: all 0.2s ease;
+        }}
+        .nav-link-item.active {{ 
+            color: #ff7700 !important; 
+            font-weight: 700; 
+            transform: translateY(-2px);
+        }}
         .no-scrollbar::-webkit-scrollbar {{ display: none; }}
 
         .chrome-menu {{ width: 280px; border-radius: 20px; padding: 8px 0; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }}
@@ -470,14 +509,32 @@ def get_html_header():
 </div>
 """
 
+# -------------------------------------------------------------
+# 📱 BOTTOM NAVIGATION FOOTER ENGINE
+# -------------------------------------------------------------
 def get_footer(active_tab="home"):
     return f"""
 <div class="bottom-nav-bar" id="bottomNavBar">
-    <a href="/" class="nav-link-item {'active' if active_tab == 'home' else ''}"><i class="bi bi-house-door-fill fs-5 d-block"></i>Home</a>
-    <a href="/app_store" class="nav-link-item {'active' if active_tab == 'apps' else ''}"><i class="bi bi-bag-check-fill fs-5 d-block text-success"></i>App Store</a>
-    <a href="/converters" class="nav-link-item {'active' if active_tab == 'converters' else ''}"><i class="bi bi-gear-wide-connected fs-5 d-block text-warning"></i>VIP Tools</a>
-    <a href="/chats" class="nav-link-item {'active' if active_tab == 'chats' else ''}"><i class="bi bi-chat-dots-fill fs-5 d-block text-primary"></i>Chats</a>
-    <a href="/vip_tiers" class="nav-link-item {'active' if active_tab == 'vip' else ''}"><i class="bi bi-gem fs-5 d-block text-danger"></i>VIP Club</a>
+    <a href="/" class="nav-link-item {'active' if active_tab == 'home' else ''}">
+        <i class="bi bi-house-door-fill fs-5 d-block"></i>
+        <span>Home</span>
+    </a>
+    <a href="/app_store" class="nav-link-item {'active' if active_tab == 'apps' else ''}">
+        <i class="bi bi-bag-check-fill fs-5 d-block text-success"></i>
+        <span>Apps</span>
+    </a>
+    <a href="/converters" class="nav-link-item {'active' if active_tab == 'converters' else ''}">
+        <i class="bi bi-gear-wide-connected fs-5 d-block text-warning"></i>
+        <span>Tools</span>
+    </a>
+    <a href="/chats" class="nav-link-item {'active' if active_tab == 'chats' else ''}">
+        <i class="bi bi-chat-dots-fill fs-5 d-block text-primary"></i>
+        <span>Chats</span>
+    </a>
+    <a href="/vip_tiers" class="nav-link-item {'active' if active_tab == 'vip' else ''}">
+        <i class="bi bi-gem-fill fs-5 d-block text-danger"></i>
+        <span>VIP</span>
+    </a>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -492,29 +549,94 @@ def get_footer(active_tab="home"):
     }}
     if (localStorage.getItem('bharat_dark_mode') === 'enabled') {{ document.body.classList.add('dark-mode'); }}
 
+    // Keyboard Auto-Hide for Navigation Bar
+    const navBar = document.getElementById("bottomNavBar");
+    if (window.visualViewport) {{
+        window.visualViewport.addEventListener('resize', () => {{
+            if (window.visualViewport.height < window.innerHeight - 150) {{
+                if (navBar) navBar.style.display = "none";
+            }} else {{
+                if (navBar) navBar.style.display = "flex";
+            }}
+        }});
+    }}
+
+    // Real-Time Auto-Suggestions Handler
+    const searchInput = document.getElementById("searchInput");
+    const suggestionsBox = document.getElementById("suggestionsBox");
+    const searchForm = document.getElementById("searchForm");
+
+    if (searchInput) {{
+        searchInput.addEventListener("input", async function() {{
+            const query = this.value.trim();
+            if (query.length < 2) {{ 
+                if(suggestionsBox) suggestionsBox.style.display = "none"; 
+                return; 
+            }}
+            try {{
+                const res = await fetch('/api/suggestions?q=' + encodeURIComponent(query));
+                const data = await res.json();
+                if (data.length > 0) {{
+                    suggestionsBox.innerHTML = data.map(item => `
+                        <div class="suggestion-item" onclick="selectAndSearch('${{item}}')">
+                            <i class="bi bi-search text-muted"></i> 
+                            <span>${{item}}</span>
+                        </div>
+                    `).join('');
+                    suggestionsBox.style.display = "block";
+                }} else {{
+                    suggestionsBox.style.display = "none";
+                }}
+            }} catch(e) {{
+                if(suggestionsBox) suggestionsBox.style.display = "none";
+            }}
+        }});
+
+        document.addEventListener("click", function(e) {{
+            if (e.target !== searchInput && suggestionsBox && !suggestionsBox.contains(e.target)) {{
+                suggestionsBox.style.display = "none";
+            }}
+        }});
+    }}
+
+    function selectAndSearch(text) {{
+        if (searchInput) searchInput.value = text;
+        if (suggestionsBox) suggestionsBox.style.display = "none";
+        if (searchForm) searchForm.submit();
+    }}
+
+    // Voice Search Engine
     function startVoiceSearch() {{
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {{ alert("ब्राउज़र सपोर्ट नहीं करता।"); return; }}
+        if (!SpeechRecognition) {{ alert("आपका ब्राउज़र वॉइस सर्च का समर्थन नहीं करता।"); return; }}
         const recognition = new SpeechRecognition();
         recognition.lang = 'hi-IN';
         const micBtn = document.getElementById("micIcon");
-        micBtn.style.color = "red";
+        if(micBtn) micBtn.style.color = "red";
         
-        recognition.onstart = function() {{ document.getElementById("searchInput").placeholder = "बोलिए, सुन रहा हूँ..."; }};
+        recognition.onstart = function() {{ 
+            if(searchInput) searchInput.placeholder = "बोलिए, सुन रहा हूँ..."; 
+        }};
         recognition.onresult = function(event) {{
-            document.getElementById("searchInput").value = event.results[0][0].transcript;
-            micBtn.style.color = "#e67300";
-            document.getElementById("searchForm").submit();
+            if(searchInput) {{
+                searchInput.value = event.results[0][0].transcript;
+                if(searchForm) searchForm.submit();
+            }}
         }};
         recognition.start();
     }}
 
-    function triggerCameraUpload() {{ document.getElementById("cameraFileInput").click(); }}
+    // Camera/Lens Upload Handler
+    function triggerCameraUpload() {{ 
+        const camInput = document.getElementById("cameraFileInput");
+        if(camInput) camInput.click(); 
+    }}
     function handleCameraSearch(input) {{
         if (input.files && input.files[0]) {{
-            alert("📷 इमेज अपलोड हो गई!");
-            document.getElementById("searchInput").value = "इमेज एनालिसिस: " + input.files[0].name;
-            document.getElementById("searchForm").submit();
+            if(searchInput) {{
+                searchInput.value = "इमेज एनालिसिस: " + input.files[0].name;
+                if(searchForm) searchForm.submit();
+            }}
         }}
     }}
 </script>
@@ -604,7 +726,7 @@ def home():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 💎 SEARCH ROUTE (WITH AUTOMATIC FALLBACK FOR QUOTA EXHAUSTION)
+# 💎 IN-APP BHARAT SEARCH RESULT ROUTE (NO EXTERNAL REDIRECTS)
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -647,14 +769,14 @@ def search():
             <h5 class="fw-bold text-dark">{kg_card['title']}</h5>
             <p class="small mb-1"><b>विभाग:</b> {kg_card['department']}</p>
             <p class="small mb-2"><b>लाभ:</b> {kg_card['benefits']}</p>
-            <a href="{kg_card['official_website']}" target="_blank" class="btn btn-warning btn-sm rounded-pill fw-bold">आधिकारिक पोर्टल पर जाएँ</a>
+            <a href="{kg_card['official_website']}" class="btn btn-warning btn-sm rounded-pill fw-bold">आधिकारिक पोर्टल पर जाएँ</a>
         </div>
         """
 
     local_html = ""
     for item in vector_results:
         title, url, snippet, category = item["title"], item["url"], item["snippet"], item["category"]
-        domain = urlparse(url).netloc if url else 'google.com'
+        domain = urlparse(url).netloc if url else 'bharat.app'
         favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
         local_html += f"""
         <div class="card pro-result-card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white">
@@ -665,11 +787,11 @@ def search():
                     <small class="text-muted" style="font-size: 10px;">{url[:45]}...</small>
                 </div>
             </div>
-            <h5 class="mb-1"><a href="{url}" target="_blank" class="text-primary text-decoration-none fw-bold" style="font-size:16px;">{title}</a></h5>
+            <h5 class="mb-1"><a href="{url}" class="text-primary text-decoration-none fw-bold" style="font-size:16px;">{title}</a></h5>
             <p class="text-secondary small mb-2" style="font-size: 13px; line-height: 1.5;">{snippet}</p>
             <div class="d-flex gap-2">
                 <span class="badge bg-light text-dark border">{category}</span>
-                <span class="badge bg-success bg-opacity-10 text-success">Verified Link</span>
+                <span class="badge bg-success bg-opacity-10 text-success">Verified In-App Match</span>
             </div>
         </div>
         """
@@ -677,7 +799,6 @@ def search():
     prompt_prefix = "Explain like I'm 5 years old:" if mode == "eli5" else ("Provide a detailed academic research report with citation facts for:" if mode == "deep" else "Provide a concise summary for:")
     ai_answer = ""
 
-    # 🚀 AUTOMATIC MODEL FALLBACK SYSTEM (Avoids 429 Quota Error)
     if genai_client:
         models_to_try = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
         for model_name in models_to_try:
@@ -695,14 +816,11 @@ def search():
     if not ai_answer:
         ai_answer = f"<b>'{query}'</b> के लिए खोज पूर्ण हुई।"
 
-    fallback_web_link = f"https://www.google.com/search?q={quote_plus(query)}"
     if not local_html:
         local_html = f"""
         <div class="card p-4 text-center border-0 shadow-sm rounded-4 bg-white">
-            <p class="text-muted small mb-2">स्थानीय डेटाबेस में सीधा परिणाम नहीं मिला।</p>
-            <a href="{fallback_web_link}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill fw-bold mx-auto" style="max-width: 250px;">
-                <i class="bi bi-globe me-1"></i> Google पर '{query}' खोजें
-            </a>
+            <h6 class="fw-bold text-dark mb-1">🔍 Bharat AI Search Result</h6>
+            <p class="text-muted small mb-0">'{query}' से संबंधित AI समरी ऊपर दी गई है। नए लिंक्स जोड़ने के लिए Owner Control में इंडेक्स करें।</p>
         </div>
         """
 
@@ -720,9 +838,9 @@ def search():
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="d-flex align-items-center gap-2">
                     <span class="fs-4">🤖</span>
-                    <h6 class="fw-bold text-primary mb-0">Bharat AI Insight</h6>
+                    <h6 class="fw-bold text-primary mb-0">Bharat AI Summary Engine</h6>
                 </div>
-                <span class="badge bg-primary bg-opacity-10 text-primary">Fast AI Answer</span>
+                <span class="badge bg-primary bg-opacity-10 text-primary">In-App Search</span>
             </div>
             <hr class="my-2 text-muted">
             <div style="line-height: 1.6; font-size: 14px; color: #202124;">
@@ -730,7 +848,7 @@ def search():
             </div>
         </div>
 
-        <h6 class="fw-bold text-muted mb-3"><i class="bi bi-globe me-2"></i>Organic Web Matches</h6>
+        <h6 class="fw-bold text-muted mb-3"><i class="bi bi-cpu me-2"></i>Bharat In-App Results</h6>
         {local_html}
     </div>
     """ + get_footer("home")
@@ -813,7 +931,7 @@ def app_store():
     """ + get_footer("apps")
 
 # -------------------------------------------------------------
-# 👑 OWNER DASHBOARD (WITH CRAWLER / RESYNC OPTION & USERS LIST)
+# 👑 OWNER DASHBOARD
 # -------------------------------------------------------------
 @app.route("/owner_dashboard", methods=["GET", "POST"])
 def owner_dashboard():
@@ -823,7 +941,6 @@ def owner_dashboard():
     if request.method == "POST":
         form_type = request.form.get("form_type")
 
-        # 🕷️ 1-CLICK CRAWLER RESYNC ENGINE
         if form_type == "run_crawler":
             try:
                 sync_db_to_vector_engine(DB_PATH)
@@ -861,7 +978,6 @@ def owner_dashboard():
             
             {f'<div class="alert alert-success py-2 small mb-3">{message}</div>' if message else ''}
 
-            <!-- 🕷️ 1-CLICK MANUAL CRAWLER & INDEXER -->
             <div class="card p-3 border-warning bg-warning bg-opacity-10 mb-4 rounded-4">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -875,7 +991,6 @@ def owner_dashboard():
                 </div>
             </div>
 
-            <!-- ADD LINK FORM -->
             <div class="card p-3 border-secondary bg-white mb-4 rounded-4">
                 <h6 class="fw-bold text-dark mb-2"><i class="bi bi-plus-circle-fill text-primary me-2"></i>Crawl & Add New Web Link</h6>
                 <form method="POST">
@@ -892,7 +1007,6 @@ def owner_dashboard():
                 </form>
             </div>
 
-            <!-- ALL USERS LIST TABLE -->
             <div class="card p-3 border-secondary bg-light rounded-4">
                 <h6 class="fw-bold text-dark mb-2"><i class="bi bi-people-fill text-primary me-2"></i>Registered App Users ({total_users_count})</h6>
                 <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
@@ -1064,7 +1178,7 @@ def logout():
     return redirect("/")
 
 # -------------------------------------------------------------
-# 🚀 DYNAMIC PORT BINDING FOR LOCAL & CLOUD DEPLOYMENT
+# 🚀 DYNAMIC PORT BINDING FOR RENDER & LOCAL HOST
 # -------------------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
