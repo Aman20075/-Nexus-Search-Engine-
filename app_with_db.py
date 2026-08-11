@@ -118,6 +118,47 @@ def init_db():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_subscriptions (
+            username TEXT PRIMARY KEY,
+            tier TEXT DEFAULT 'Free',
+            ai_daily_limit INTEGER DEFAULT 10,
+            ai_used_today INTEGER DEFAULT 0,
+            last_usage_date TEXT,
+            expires_at TEXT
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS research_projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            title TEXT,
+            notes TEXT,
+            sources_json TEXT,
+            created_at TEXT
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS privacy_settings (
+            username TEXT PRIMARY KEY,
+            private_mode INTEGER DEFAULT 0,
+            auto_delete_days INTEGER DEFAULT 30,
+            allow_personalization INTEGER DEFAULT 1
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            keyword TEXT,
+            alert_type TEXT,
+            created_at TEXT
+        )
+    """)
+
     # Safety Column Checks
     try: cursor.execute("ALTER TABLE payment_requests ADD COLUMN plan_type TEXT DEFAULT 'VIP'")
     except Exception: pass
@@ -357,7 +398,6 @@ def get_footer(active_tab="home"):
     }}
     if (localStorage.getItem('bharat_dark_mode') === 'enabled') {{ document.body.classList.add('dark-mode'); }}
 
-    // 📱 केवल असली मोबाइल कीबोर्ड खुलने पर ही नेविगेशन छिपाने का सटीक लॉजिक
     const navBar = document.getElementById("bottomNavBar");
     
     if (window.visualViewport) {{
@@ -399,27 +439,7 @@ def get_footer(active_tab="home"):
 """
 
 # -------------------------------------------------------------
-# 🔒 STRICT TIER ACCESS WALL
-# -------------------------------------------------------------
-def enforce_tier_access(required_level=1, required_plan_name="VIP"):
-    tier_name, tier_info = get_user_tier_info()
-    user_level = tier_info.get("level", 0)
-
-    if user_level < required_level:
-        return f"""
-        <div class="container mt-5 text-center" style="max-width: 500px;">
-            <div class="card p-4 rounded-4 shadow-lg border-danger bg-white">
-                <div class="display-1 text-danger mb-2"><i class="bi bi-lock-fill"></i></div>
-                <h4 class="fw-bold text-dark mb-1">Access Restricted!</h4>
-                <p class="text-muted small mb-3">यह फीचर केवल <b>{required_plan_name}</b> और ऊपर के मेंबर्स के लिए उपलब्ध है।</p>
-                <a href="/vip_tiers" class="btn btn-danger rounded-pill fw-bold py-2 shadow-sm"><i class="bi bi-crown me-1"></i> Upgrade to {required_plan_name} Now</a>
-            </div>
-        </div>
-        """
-    return None
-
-# -------------------------------------------------------------
-# 🏠 HOME ROUTE (AUTO-FOCUS REMOVED FOR VISIBLE BOTTOM NAV)
+# 🏠 HOME ROUTE
 # -------------------------------------------------------------
 @app.route("/")
 def home():
@@ -491,8 +511,9 @@ def home():
         </div>
     </div>
     """ + get_footer("home")
+
 # -------------------------------------------------------------
-# 🔍 SEARCH ROUTE
+# 🔍 SEARCH ROUTE (GEMINI 3.6 FLASH & KNOWLEDGE GRAPH INTEGRATED)
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -503,13 +524,25 @@ def search():
 
     if not query or not is_safe_query(query): return redirect("/")
 
-    tier_name, tier_info = get_user_tier_info()
-    if mode == "deep" and tier_info["level"] < 2:
-        block_ui = enforce_tier_access(required_level=2, required_plan_name="VIP Pro")
-        return get_html_header() + block_ui + get_footer("home")
+    # Execute Super Engine Pipeline (Vector + Intent + Knowledge Graph)
+    engine_data = bharat_engine.process_super_search(query)
+    intent_data = engine_data.get("intent", {})
+    kg_card = engine_data.get("knowledge_card")
+    vector_results = engine_data.get("results", [])
 
-    vector_results = bharat_engine.search(query, top_k=5)
-    
+    # Knowledge Panel HTML
+    kg_html = ""
+    if kg_card:
+        kg_html = f"""
+        <div class="card p-3 mb-4 rounded-4 shadow-sm border-warning bg-warning bg-opacity-10">
+            <span class="badge bg-warning text-dark align-self-start mb-2">🇮🇳 {kg_card['category']}</span>
+            <h5 class="fw-bold text-dark">{kg_card['title']}</h5>
+            <p class="small mb-1"><b>विभाग:</b> {kg_card['department']}</p>
+            <p class="small mb-2"><b>लाभ:</b> {kg_card['benefits']}</p>
+            <a href="{kg_card['official_website']}" target="_blank" class="btn btn-warning btn-sm rounded-pill fw-bold">आधिकारिक पोर्टल पर जाएँ</a>
+        </div>
+        """
+
     local_html = ""
     for item in vector_results:
         title, url, snippet, category = item["title"], item["url"], item["snippet"], item["category"]
@@ -530,7 +563,8 @@ def search():
     
     if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+            # 🎯 UPDATED TO GEMINI 3.6 FLASH ENDPOINT
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
             payload = {"contents": [{"parts": [{"text": f"{prompt_prefix} {query}"}]}]}
             res = requests.post(url, json=payload, timeout=8)
             if res.status_code == 200:
@@ -540,15 +574,17 @@ def search():
     return get_html_header() + f"""
     <div class="container mt-4 mb-5" style="max-width: 720px;">
         <div class="d-flex gap-2 mb-3">
-            <span class="badge bg-warning text-dark">Mode: {mode.upper()}</span>
+            <span class="badge bg-warning text-dark">Category: {intent_data.get('category', 'General').upper()}</span>
             <span class="badge bg-secondary">Filter: {file_type.upper()}</span>
             <span class="badge bg-info text-dark">Region: {country.upper()}</span>
         </div>
 
+        {kg_html}
+
         <div class="card p-4 rounded-4 shadow-sm border bg-white mb-4">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fs-4">🤖</span>
-                <h6 class="fw-bold text-primary mb-0">Bharat AI Summary</h6>
+                <h6 class="fw-bold text-primary mb-0">Bharat AI Summary (Gemini 3.6 Flash)</h6>
             </div>
             <div style="line-height: 1.6; font-size: 14px; color: #333;">
                 {ai_answer.replace('\n', '<br>')}
@@ -561,30 +597,87 @@ def search():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 🛠️ VIP CONVERTERS (PROTECTED LEVEL 1+)
+# 🛠️ UNLOCKED VIP TOOLKIT SUITE (100% FREE FOR ALL USERS)
 # -------------------------------------------------------------
 @app.route("/converters")
 def converters_hub():
-    block_ui = enforce_tier_access(required_level=1, required_plan_name="VIP")
-    if block_ui: return get_html_header() + block_ui + get_footer("converters")
-
     return get_html_header() + """
-    <div class="container mt-4 mb-5" style="max-width: 600px;">
-        <h4 class="fw-bold mb-3"><i class="bi bi-gear-wide-connected text-warning me-2"></i>VIP Toolkit Suite</h4>
-        <div class="card p-3 shadow-sm rounded-4 border bg-white mb-3">
-            <h6>JPG to PDF Converter</h6>
-            <form action="/convert_jpg_to_pdf" method="POST" enctype="multipart/form-data">
-                <input type="file" name="image_file" accept="image/*" class="form-control form-control-sm mb-2" required>
-                <button type="submit" class="btn btn-primary btn-sm rounded-pill w-100">Convert to PDF</button>
-            </form>
+    <div class="container mt-4 mb-5" style="max-width: 750px;">
+        <div class="text-center mb-4">
+            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold">🚀 FREE FOR ALL USERS</span>
+            <h3 class="fw-bold mt-2">Bharat AI Master Toolkit Suite</h3>
+            <p class="text-muted small">सभी यूज़र्स के लिए 100% मुफ़्त और अति-उन्नत टूल्स</p>
+        </div>
+
+        <div class="row g-3">
+            <!-- Tool 1: Image to PDF -->
+            <div class="col-12 col-md-6">
+                <div class="card p-3 shadow-sm rounded-4 border bg-white h-100">
+                    <h6 class="fw-bold text-primary"><i class="bi bi-file-earmark-pdf me-2"></i>JPG to PDF Converter</h6>
+                    <p class="small text-muted mb-2">अपनी किसी भी फोटो या डॉक्यूमेंट इमेज को PDF में बदलें।</p>
+                    <form action="/convert_jpg_to_pdf" method="POST" enctype="multipart/form-data" class="mt-auto">
+                        <input type="file" name="image_file" accept="image/*" class="form-control form-control-sm mb-2" required>
+                        <button type="submit" class="btn btn-primary btn-sm w-100 rounded-pill fw-bold">Convert to PDF</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tool 2: Format Converter -->
+            <div class="col-12 col-md-6">
+                <div class="card p-3 shadow-sm rounded-4 border bg-white h-100">
+                    <h6 class="fw-bold text-success"><i class="bi bi-file-earmark-image me-2"></i>PNG / WEBP to JPG</h6>
+                    <p class="small text-muted mb-2">इमेज के फॉर्मेट को तुरंत बदलें और डाउनलोड करें।</p>
+                    <form action="/convert_image_format" method="POST" enctype="multipart/form-data" class="mt-auto">
+                        <input type="file" name="image_file" accept="image/*" class="form-control form-control-sm mb-2" required>
+                        <button type="submit" class="btn btn-success btn-sm w-100 rounded-pill fw-bold">Convert Format</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tool 3: AI Text Summarizer -->
+            <div class="col-12 col-md-6">
+                <div class="card p-3 shadow-sm rounded-4 border bg-white h-100">
+                    <h6 class="fw-bold text-info"><i class="bi bi-journal-text me-2"></i>AI Text Summarizer</h6>
+                    <p class="small text-muted mb-2">किसी भी लंबे लेख या पैराग्राफ का 1 सेकंड में सार प्राप्त करें।</p>
+                    <form action="/search" method="GET" class="mt-auto">
+                        <input type="hidden" name="mode" value="fast">
+                        <input type="text" name="q" class="form-control form-control-sm mb-2" placeholder="समरी के लिए विषय दर्ज करें..." required>
+                        <button type="submit" class="btn btn-info text-white btn-sm w-100 rounded-pill fw-bold">Summarize Now</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tool 4: Code Assistant -->
+            <div class="col-12 col-md-6">
+                <div class="card p-3 shadow-sm rounded-4 border bg-white h-100">
+                    <h6 class="fw-bold text-dark"><i class="bi bi-code-slash me-2"></i>AI Code Debugger</h6>
+                    <p class="small text-muted mb-2">Python, JS, या HTML कोड में गलतियाँ ढूँढें या कोड लिखें।</p>
+                    <form action="/search" method="GET" class="mt-auto">
+                        <input type="hidden" name="mode" value="deep">
+                        <input type="text" name="q" class="form-control form-control-sm mb-2" placeholder="e.g. Python loop code or bug fix" required>
+                        <button type="submit" class="btn btn-dark btn-sm w-100 rounded-pill fw-bold">Debug / Write Code</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tool 5: Finance & EMI Calculators -->
+            <div class="col-12 text-center mt-2">
+                <div class="card p-3 shadow-sm rounded-4 border bg-warning bg-opacity-10">
+                    <h6 class="fw-bold text-dark"><i class="bi bi-calculator me-2"></i>Bharat Financial Calculators</h6>
+                    <p class="small text-muted mb-2">EMI, SIP, Loan Interest और Tax गणना के लिए सीधे खोजें:</p>
+                    <div class="d-flex gap-2 justify-content-center flex-wrap">
+                        <a href="/search?q=EMI+Calculator" class="btn btn-sm btn-outline-dark rounded-pill">EMI Calc</a>
+                        <a href="/search?q=SIP+Calculator" class="btn btn-sm btn-outline-dark rounded-pill">SIP Calc</a>
+                        <a href="/search?q=Income+Tax+Calculator" class="btn btn-sm btn-outline-dark rounded-pill">Tax Calc</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     """ + get_footer("converters")
 
 @app.route("/convert_jpg_to_pdf", methods=["POST"])
 def convert_jpg_to_pdf():
-    _, tier_info = get_user_tier_info()
-    if tier_info["level"] < 1: return redirect("/vip_tiers")
     if not Image: return "Image library missing."
     file = request.files.get('image_file')
     if not file: return redirect("/converters")
@@ -597,17 +690,28 @@ def convert_jpg_to_pdf():
         return send_file(pdf_bytes, mimetype='application/pdf', as_attachment=True, download_name='converted.pdf')
     except Exception as e: return str(e)
 
+@app.route("/convert_image_format", methods=["POST"])
+def convert_image_format():
+    if not Image: return "Image library missing."
+    file = request.files.get('image_file')
+    if not file: return redirect("/converters")
+    try:
+        image = Image.open(file.stream)
+        if image.mode != 'RGB': image = image.convert('RGB')
+        img_bytes = io.BytesIO()
+        image.save(img_bytes, format='JPEG')
+        img_bytes.seek(0)
+        return send_file(img_bytes, mimetype='image/jpeg', as_attachment=True, download_name='converted.jpg')
+    except Exception as e: return str(e)
+
 # -------------------------------------------------------------
-# 🎮 VIP GAMES (PROTECTED LEVEL 1+)
+# 🎮 GAMES ARCADE (UNLOCKED FOR ALL)
 # -------------------------------------------------------------
 @app.route("/games")
 def games():
-    block_ui = enforce_tier_access(required_level=1, required_plan_name="VIP")
-    if block_ui: return get_html_header() + block_ui + get_footer("home")
-
     return get_html_header() + """
     <div class="container mt-4 mb-5" style="max-width: 600px;">
-        <h4 class="fw-bold mb-3"><i class="bi bi-controller text-success me-2"></i>VIP Games Arcade</h4>
+        <h4 class="fw-bold mb-3"><i class="bi bi-controller text-success me-2"></i>Games Arcade</h4>
         <div class="row g-3">
             <div class="col-6"><div class="card p-4 text-center shadow-sm rounded-4 border">🚀 Space Runner</div></div>
             <div class="col-6"><div class="card p-4 text-center shadow-sm rounded-4 border">💡 Brain Quiz</div></div>
@@ -616,13 +720,10 @@ def games():
     """ + get_footer("games")
 
 # -------------------------------------------------------------
-# 📚 RESEARCH WORKSPACE (PROTECTED LEVEL 2+)
+# 📚 RESEARCH WORKSPACE (UNLOCKED FOR ALL)
 # -------------------------------------------------------------
 @app.route("/research")
 def research():
-    block_ui = enforce_tier_access(required_level=2, required_plan_name="VIP Pro")
-    if block_ui: return get_html_header() + block_ui + get_footer("research")
-
     return get_html_header() + """
     <div class="container mt-4 mb-5" style="max-width: 650px;">
         <div class="card p-4 rounded-4 shadow-sm border bg-white">
@@ -634,13 +735,10 @@ def research():
     """ + get_footer("research")
 
 # -------------------------------------------------------------
-# 🛡️ PRIVACY CENTER (PROTECTED LEVEL 3)
+# 🛡️ PRIVACY CENTER (UNLOCKED FOR ALL)
 # -------------------------------------------------------------
 @app.route("/privacy_center")
 def privacy_center():
-    block_ui = enforce_tier_access(required_level=3, required_plan_name="VIP Ultra")
-    if block_ui: return get_html_header() + block_ui + get_footer("home")
-
     return get_html_header() + """
     <div class="container mt-4 mb-5" style="max-width: 650px;">
         <div class="card p-4 rounded-4 shadow-sm border bg-white">
@@ -824,7 +922,7 @@ def remove_ads():
     """ + get_footer("vip")
 
 # -------------------------------------------------------------
-# 👑 OWNER DASHBOARD (AUTOMATIC + DIRECT MANUAL UPGRADE)
+# 👑 OWNER DASHBOARD
 # -------------------------------------------------------------
 @app.route("/owner_dashboard", methods=["GET", "POST"])
 def owner_dashboard():
@@ -834,7 +932,7 @@ def owner_dashboard():
     if request.method == "POST":
         form_type = request.form.get("form_type")
 
-        # 1. 🚀 DIRECT MANUAL USER UPGRADE (सबसे पक्का तरीका)
+        # 1. DIRECT MANUAL USER UPGRADE
         if form_type == "direct_upgrade":
             target_user = request.form.get("username", "").strip()
             selected_tier = request.form.get("tier", "VIP")
@@ -844,7 +942,6 @@ def owner_dashboard():
                 cursor = conn.cursor()
                 expiry_date = (datetime.now() + timedelta(days=VIP_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
                 
-                # Check if user exists
                 cursor.execute("SELECT id FROM users WHERE username = ?", (target_user,))
                 user_exists = cursor.fetchone()
                 
@@ -858,7 +955,7 @@ def owner_dashboard():
                 conn.commit()
                 conn.close()
 
-        # 2. ⚡ APPROVE / REJECT FROM PENDING TABLE
+        # 2. APPROVE / REJECT FROM PENDING TABLE
         elif form_type == "payment_action":
             action = request.form.get("action")
             target_user = request.form.get("username")
@@ -878,7 +975,7 @@ def owner_dashboard():
             conn.commit()
             conn.close()
 
-        # 3. 🌐 ADD NEW LINK TO SEARCH INDEX
+        # 3. ADD NEW LINK TO SEARCH INDEX
         elif form_type == "add_link":
             title, url, snippet, category = request.form.get("title"), request.form.get("url"), request.form.get("snippet"), request.form.get("category")
             if title and url:
@@ -890,7 +987,6 @@ def owner_dashboard():
                 bharat_engine.index_item(title, url, snippet, category)
                 message = f"✅ नई लिंक इंडेक्स हो गई: {title}"
 
-    # Database से रिक्वेस्ट्स फेच करें
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -937,7 +1033,7 @@ def owner_dashboard():
             
             {f'<div class="alert alert-success py-2 small mb-3">{message}</div>' if message else ''}
 
-            <!-- 🚀 1. DIRECT MANUAL USER UPGRADE (100% WORKING GUARANTEED) -->
+            <!-- 🚀 1. DIRECT MANUAL USER UPGRADE -->
             <div class="card p-3 border-danger bg-danger bg-opacity-10 mb-4 rounded-4">
                 <h6 class="fw-bold text-danger mb-1"><i class="bi bi-lightning-charge-fill me-1"></i>Direct VIP Upgrade (1-Click Approval)</h6>
                 <p class="text-muted small mb-2">अगर पेंडिंग टेबल में यूजर का नाम नहीं दिख रहा है, तो यहाँ उसका Username दर्ज करके सीधे एक्टिवेट करें:</p>
@@ -1004,7 +1100,7 @@ def owner_dashboard():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 💬 OTHER ROUTES & AUTH
+# 💬 CHATS, HISTORY & AUTH
 # -------------------------------------------------------------
 @app.route("/chats", methods=["GET", "POST"])
 def chats():
