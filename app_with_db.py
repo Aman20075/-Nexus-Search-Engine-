@@ -199,22 +199,16 @@ def suggestions():
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         search_kw = f"%{q}%"
-        cursor.execute("SELECT DISTINCT title FROM local_search_index WHERE title LIKE ? OR category LIKE ? LIMIT 6", (search_kw, search_kw))
+        cursor.execute("SELECT DISTINCT title FROM local_search_index WHERE title LIKE ? LIMIT 5", (search_kw,))
         results = [r[0] for r in cursor.fetchall()]
         conn.close()
         return jsonify(results)
     except Exception:
         return jsonify([])
 
-NEWS_CATEGORIES = {
-    "top": "https://news.google.com/rss?hl=hi&gl=IN&ceid=IN:hi",
-    "tech": "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=hi&gl=IN&ceid=IN:hi",
-    "sports": "https://news.google.com/rss/headlines/section/topic/SPORTS?hl=hi&gl=IN&ceid=IN:hi"
-}
-
 def fetch_unlimited_news(category="top"):
     news_items = []
-    rss_url = NEWS_CATEGORIES.get(category, NEWS_CATEGORIES["top"])
+    rss_url = "https://news.google.com/rss?hl=hi&gl=IN&ceid=IN:hi"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
         resp = requests.get(rss_url, headers=headers, timeout=5)
@@ -240,7 +234,9 @@ def fetch_unlimited_news(category="top"):
 # -------------------------------------------------------------
 def get_html_header():
     is_owner = session.get("owner_logged", False)
-    username = session.get("username", "Owner" if is_owner else "Guest User")
+    username = session.get("username", OWNER_USERNAME if is_owner else "Guest User")
+    badge_label = "👑 OWNER (Aman Giri)" if is_owner else "🟢 USER"
+    badge_cls = "bg-danger" if is_owner else "bg-secondary"
     tabs_bar = get_chrome_tabs_html()
 
     return f"""<!DOCTYPE html>
@@ -269,8 +265,6 @@ def get_html_header():
         .google-search-container {{ max-width: 620px; width: 92%; margin: 15px auto; position: relative; }}
         .google-input {{ height: 50px; border-radius: 25px; padding-left: 45px; padding-right: 85px; border: 2px solid #ffaa44; font-size: 15px; background: #fff; }}
         .search-left-icon {{ position: absolute; left: 16px; top: 16px; color: #e67300; font-size: 18px; z-index: 10; }}
-        .search-right-actions {{ position: absolute; right: 14px; top: 10px; display: flex; align-items: center; gap: 6px; z-index: 10; }}
-        .search-action-btn {{ background: none; border: none; font-size: 20px; color: #e67300; cursor: pointer; padding: 4px; }}
         
         .suggestions-box {{ position: absolute; top: 55px; left: 0; right: 0; background: #fff; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #ffe0b2; z-index: 9999; display: none; text-align: left; overflow: hidden; }}
         .suggestion-item {{ padding: 10px 18px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #fff3e0; display: flex; align-items: center; gap: 10px; color: #333; }}
@@ -292,9 +286,9 @@ def get_html_header():
         .nav-link-item {{ text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; flex: 1; }}
         .nav-link-item.active {{ color: #ff7700 !important; font-weight: 700; }}
         
-        .chat-container {{ height: calc(100vh - 180px); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; background: #e5ddd5; border-radius: 12px; }}
-        .msg {{ padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; max-width: 75%; font-size: 14px; }}
-        .msg-sent {{ align-self: flex-end; background: #dcf8c6; color: #000; }}
+        .chat-container {{ height: calc(100vh - 230px); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; background: #efeae2; border-radius: 12px; }}
+        .msg {{ padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; max-width: 75%; font-size: 14px; }}
+        .msg-sent {{ align-self: flex-end; background: #d9fdd3; color: #000; }}
         .msg-recv {{ align-self: flex-start; background: #ffffff; color: #000; }}
 
         .chrome-menu {{ width: 280px; border-radius: 20px; padding: 8px 0; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }}
@@ -310,7 +304,10 @@ def get_html_header():
 <div class="sticky-top-header">
     {tabs_bar}
     <div class="top-bar-chrome">
-        <div class="fw-bold text-dark" style="font-size:15px;">🚀 Bharat OS</div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-bold text-dark" style="font-size:14px;">🚀 Bharat OS</span>
+            <span class="badge {badge_cls} rounded-pill" style="font-size:10px;">{badge_label}</span>
+        </div>
         <div class="d-flex align-items-center gap-2">
             <a href="/app_store" class="icon-btn text-success" title="App Store"><i class="bi bi-bag-check-fill"></i></a>
             <a href="/research" class="icon-btn text-info" title="Research Workspace"><i class="bi bi-journal-bookmark-fill"></i></a>
@@ -320,16 +317,21 @@ def get_html_header():
                 <button class="icon-btn" type="button" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
                 <div class="dropdown-menu dropdown-menu-end chrome-menu shadow-lg">
                     <div class="chrome-menu-header">
-                        <a href="javascript:history.forward()" class="chrome-top-icon"><i class="bi bi-arrow-right"></i></a>
-                        <a href="/add_bookmark" class="chrome-top-icon"><i class="bi bi-star"></i></a>
-                        <a href="/research" class="chrome-top-icon"><i class="bi bi-journal-check"></i></a>
-                        <a href="javascript:location.reload()" class="chrome-top-icon"><i class="bi bi-arrow-clockwise"></i></a>
+                        <a href="javascript:history.forward()" class="chrome-top-icon" title="Forward"><i class="bi bi-arrow-right"></i></a>
+                        <a href="/bookmarks" class="chrome-top-icon" title="Bookmarks"><i class="bi bi-star"></i></a>
+                        <a href="/converters" class="chrome-top-icon" title="Downloads"><i class="bi bi-download"></i></a>
+                        <a href="javascript:location.reload()" class="chrome-top-icon" title="Reload"><i class="bi bi-arrow-clockwise"></i></a>
                     </div>
-                    <a class="chrome-menu-item" href="/app_store"><i class="bi bi-bag-check-fill fs-5 text-success"></i> App Store</a>
-                    <a class="chrome-menu-item" href="/research"><i class="bi bi-journal-bookmark fs-5 text-info"></i> Research Workspace</a>
+                    <a class="chrome-menu-item" href="/app_store"><i class="bi bi-bag-check-fill fs-5 text-success"></i> Bharat App Store</a>
                     <a class="chrome-menu-item" href="/api/tab/new"><i class="bi bi-plus-square fs-5"></i> New tab</a>
+                    <a class="chrome-menu-item" href="/api/tab/new?incognito=true"><i class="bi bi-incognito fs-5"></i> New Incognito tab</a>
+                    <div class="chrome-menu-divider"></div>
                     <a class="chrome-menu-item" href="/my_history"><i class="bi bi-clock-history fs-5"></i> History</a>
-                    <a class="chrome-menu-item" href="/clear_browsing_data"><i class="bi bi-trash fs-5 text-danger"></i> Clear Data</a>
+                    <a class="chrome-menu-item" href="/bookmarks"><i class="bi bi-star-fill fs-5 text-warning"></i> Bookmarks</a>
+                    <a class="chrome-menu-item" href="/converters"><i class="bi bi-file-earmark-pdf fs-5 text-primary"></i> Downloads / Tools</a>
+                    <a class="chrome-menu-item" href="/clear_browsing_data"><i class="bi bi-trash fs-5 text-danger"></i> Clear browsing data</a>
+                    <div class="chrome-menu-divider"></div>
+                    <a class="chrome-menu-item text-danger fw-bold" href="/owner_login"><i class="bi bi-speedometer2 fs-5"></i> Owner Control Center</a>
                 </div>
             </div>
 
@@ -350,13 +352,13 @@ def get_footer(active_tab="home"):
         <i class="bi bi-bag-check-fill fs-5 d-block text-success"></i>
         <span>Apps</span>
     </a>
-    <a href="/research" class="nav-link-item {'active' if active_tab == 'research' else ''}">
-        <i class="bi bi-journal-bookmark fs-5 d-block text-info"></i>
-        <span>Research</span>
-    </a>
     <a href="/chats" class="nav-link-item {'active' if active_tab == 'chats' else ''}">
         <i class="bi bi-chat-dots-fill fs-5 d-block text-primary"></i>
         <span>Chats</span>
+    </a>
+    <a href="/owner_dashboard" class="nav-link-item {'active' if active_tab == 'owner' else ''}">
+        <i class="bi bi-speedometer2 fs-5 d-block text-danger"></i>
+        <span>Owner</span>
     </a>
 </div>
 
@@ -414,20 +416,6 @@ def get_footer(active_tab="home"):
         if (suggestionsBox) suggestionsBox.style.display = "none";
         if (searchForm) searchForm.submit();
     }}
-
-    function startVoiceSearch() {{
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {{ alert("सपोर्ट नहीं है।"); return; }}
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'hi-IN';
-        recognition.onresult = function(event) {{
-            if(searchInput) {{
-                searchInput.value = event.results[0][0].transcript;
-                if(searchForm) searchForm.submit();
-            }}
-        }};
-        recognition.start();
-    }}
 </script>
 </body>
 </html>
@@ -467,8 +455,8 @@ def home():
         <div class="row g-2 text-start mt-3">
             <div class="col-6 col-md-3"><a href="/app_store" class="card p-3 text-decoration-none text-dark shadow-sm text-center rounded-4 bg-white"><div class="fs-3 text-success">🛍️</div><div class="fw-bold small mt-1">App Store</div></a></div>
             <div class="col-6 col-md-3"><a href="/research" class="card p-3 text-decoration-none text-dark shadow-sm text-center rounded-4 bg-white"><div class="fs-3 text-info">📚</div><div class="fw-bold small mt-1">Research</div></a></div>
-            <div class="col-6 col-md-3"><a href="/chats" class="card p-3 text-decoration-none text-dark shadow-sm text-center rounded-4 bg-white"><div class="fs-3 text-primary">💬</div><div class="fw-bold small mt-1">Chat AI</div></a></div>
-            <div class="col-6 col-md-3"><a href="/search?q=State+Bank" class="card p-3 text-decoration-none text-dark shadow-sm text-center rounded-4 bg-white"><div class="fs-3 text-warning">🏧</div><div class="fw-bold small mt-1">SBI Bank</div></a></div>
+            <div class="col-6 col-md-3"><a href="/chats" class="card p-3 text-decoration-none text-dark shadow-sm text-center rounded-4 bg-white"><div class="fs-3 text-primary">💬</div><div class="fw-bold small mt-1">Bharat Chat</div></a></div>
+            <div class="col-6 col-md-3"><a href="/owner_dashboard" class="card p-3 text-decoration-none text-dark shadow-sm text-center rounded-4 bg-white"><div class="fs-3 text-danger">👑</div><div class="fw-bold small mt-1">Owner Panel</div></a></div>
         </div>
 
         <div class="text-start mt-4">
@@ -479,14 +467,11 @@ def home():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 💎 ADVANCED SUPER-SEARCH ROUTE (WITH BHARAT ENGINE)
+# 💎 ADVANCED SUPER-SEARCH ROUTE
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
     query = request.args.get("q", "").strip()
-    file_type = request.args.get("file_type", "all")
-    mode = request.args.get("mode", "fast")
-
     if not query or not is_safe_query(query): return redirect("/")
 
     if "tabs" in session:
@@ -495,7 +480,6 @@ def search():
                 t["title"] = query
         session.modified = True
 
-    # Save Search History
     username = session.get("username", "Guest")
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -506,7 +490,6 @@ def search():
     except Exception: pass
 
     engine_data = bharat_engine.process_super_search(query)
-    intent_data = engine_data.get("intent", {})
     kg_card = engine_data.get("knowledge_card")
     vector_results = engine_data.get("results", [])
 
@@ -547,9 +530,6 @@ def search():
 
     return get_html_header() + f"""
     <div class="container mt-3 mb-5" style="max-width: 680px;">
-        <div class="d-flex gap-2 mb-3">
-            <span class="badge bg-warning text-dark">Category: {intent_data.get('category', 'General').upper()}</span>
-        </div>
         {kg_html}
         {f'<div class="card p-3 rounded-4 shadow-sm border-0 bg-white mb-3 border-start border-4 border-warning"><b>Bharat AI Insight:</b> {ai_answer}</div>' if ai_answer else ''}
         <h6 class="fw-bold text-muted mb-2">Smart In-App Matches</h6>
@@ -558,79 +538,80 @@ def search():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 📚 RESEARCH WORKSPACE ROUTE
+# 💬 BHARAT WHATSAPP CHAT & REAL PHONE/WHATSAPP INTEGRATION
 # -------------------------------------------------------------
-@app.route("/research")
-def research():
-    return get_html_header() + """
-    <div class="container mt-3 mb-5" style="max-width: 650px;">
-        <h4 class="fw-bold text-dark mb-1">📚 Research Workspace</h4>
-        <p class="text-muted small mb-3">Academic Research, Summarizer & Fact Checker</p>
-        <div class="card p-4 border-0 shadow-sm rounded-4 bg-white text-center">
-            <p class="text-muted">अपने रिसर्च टॉपिक या डॉक्यूमेंट का विषय यहाँ दर्ज करें:</p>
-            <input type="text" class="form-control mb-3" placeholder="Research Topic...">
-            <button class="btn btn-info text-white rounded-pill fw-bold px-4">Generate Report</button>
-        </div>
-    </div>
-    """ + get_footer("research")
+CONTACTS_LIST = [
+    {"id": "aman", "name": "Aman Giri (Owner)", "phone": "+919876543210", "status": "Online 🟢", "avatar": "👑"},
+    {"id": "support", "name": "Bharat Support", "phone": "+919123456789", "status": "Available", "avatar": "📞"},
+    {"id": "piramal", "name": "Piramal Loan Help", "phone": "+919988776655", "status": "Bank Support", "avatar": "🏦"}
+]
 
-# -------------------------------------------------------------
-# 🛍️ BHARAT APP STORE
-# -------------------------------------------------------------
-@app.route("/app_store")
-def app_store():
-    daily_apps = [
-        {"name": "SBI Net Banking", "desc": "Official banking portal", "icon": "🏧", "url": "https://sbi.co.in/"},
-        {"name": "Piramal Finance", "desc": "Personal & home loans", "icon": "🏦", "url": "https://www.piramalfinance.com/"},
-        {"name": "Bharat Chat AI", "desc": "WhatsApp style chat", "icon": "💬", "url": "/chats"},
-        {"name": "Research Workspace", "desc": "Academic helper", "icon": "📚", "url": "/research"}
-    ]
-    apps_html = "".join([f"""
-    <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white d-flex flex-row align-items-center gap-3">
-        <div class="fs-1 p-2 bg-light rounded-4">{a['icon']}</div>
-        <div class="flex-grow-1">
-            <h6 class="fw-bold mb-0 text-dark">{a['name']}</h6>
-            <small class="text-muted">{a['desc']}</small>
-        </div>
-        <a href="{a['url']}" class="btn btn-success btn-sm rounded-pill px-3 fw-bold">Open</a>
-    </div>
-    """ for a in daily_apps])
-
-    return get_html_header() + f"""
-    <div class="container mt-3 mb-5" style="max-width: 650px;">
-        <h4 class="fw-bold text-dark mb-1">🛍️ Bharat App Store</h4>
-        <p class="text-muted small mb-3">Verified Daily Needs Apps & Tools</p>
-        {apps_html}
-    </div>
-    """ + get_footer("apps")
-
-# -------------------------------------------------------------
-# 💬 BHARAT CHAT
-# -------------------------------------------------------------
-@app.route("/chats", methods=["GET", "POST"])
+@app.route("/chats")
 def chats():
-    if "messages" not in session:
-        session["messages"] = [{"sender": "recv", "text": "नमस्ते! Bharat Chat में आपका स्वागत है।"}]
+    return get_html_header() + f"""
+    <div class="container mt-3 mb-5" style="max-width: 600px;">
+        <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-4 shadow-sm mb-3">
+            <h5 class="fw-bold mb-0 text-success"><i class="bi bi-whatsapp me-2"></i>Bharat WhatsApp</h5>
+            <span class="badge bg-success px-2 py-1 rounded-pill">SIM & WhatsApp Link</span>
+        </div>
+        <div class="list-group shadow-sm rounded-4 overflow-hidden border-0">
+            {''.join([f'''
+            <a href="/chat_room/{c['id']}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 border-0 border-bottom bg-white">
+                <div class="fs-2 p-2 bg-light rounded-circle">{c['avatar']}</div>
+                <div class="flex-grow-1">
+                    <h6 class="fw-bold mb-0 text-dark">{c['name']}</h6>
+                    <small class="text-muted">{c['phone']} • {c['status']}</small>
+                </div>
+                <i class="bi bi-chevron-right text-muted small"></i>
+            </a>
+            ''' for c in CONTACTS_LIST])}
+        </div>
+    </div>
+    """ + get_footer("chats")
+
+@app.route("/chat_room/<contact_id>", methods=["GET", "POST"])
+def chat_room(contact_id):
+    contact = next((c for c in CONTACTS_LIST if c["id"] == contact_id), CONTACTS_LIST[0])
+    session_key = f"chat_{contact_id}"
+    
+    if session_key not in session:
+        session[session_key] = [{"sender": "recv", "text": f"नमस्ते! मैं {contact['name']} हूँ।"}]
 
     if request.method == "POST":
         msg = request.form.get("message")
         if msg:
-            session["messages"].append({"sender": "sent", "text": msg})
-            session["messages"].append({"sender": "recv", "text": f"ऑटो-रिप्लाई: '{msg}' मिला!"})
+            session[session_key].append({"sender": "sent", "text": msg})
+            session[session_key].append({"sender": "recv", "text": f"ऑटो-रिप्लाई [{contact['name']}]: संदेश मिल गया!"})
             session.modified = True
-        return redirect("/chats")
+        return redirect(f"/chat_room/{contact_id}")
 
-    msgs_html = "".join([f'<div class="msg msg-{m["sender"]}">{m["text"]}</div>' for m in session["messages"]])
+    msgs_html = "".join([f'<div class="msg msg-{m["sender"]}">{m["text"]}</div>' for m in session[session_key]])
+    wa_link = f"https://wa.me/{contact['phone'].replace('+', '')}?text=Hello%20{quote_plus(contact['name'])}"
+    tel_link = f"tel:{contact['phone']}"
 
     return get_html_header() + f"""
     <div class="container mt-2 mb-5" style="max-width: 600px;">
-        <div class="d-flex align-items-center bg-white p-2 rounded-top-4 shadow-sm border-bottom">
-            <span class="fs-4 me-2">💬</span>
-            <h6 class="fw-bold mb-0 text-success">Bharat WhatsApp Chat</h6>
+        <div class="d-flex align-items-center justify-content-between bg-white p-2 px-3 rounded-top-4 shadow-sm border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <a href="/chats" class="text-dark fs-5 me-1"><i class="bi bi-arrow-left"></i></a>
+                <span class="fs-4">{contact['avatar']}</span>
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark" style="font-size:14px;">{contact['name']}</h6>
+                    <small class="text-success" style="font-size:10px;">{contact['phone']}</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <!-- Direct Phone Call via SIM Dialer -->
+                <a href="{tel_link}" class="text-success fs-5" title="Direct Phone Call"><i class="bi bi-telephone-fill"></i></a>
+                <!-- Direct WhatsApp Chat -->
+                <a href="{wa_link}" target="_blank" class="text-success fs-5" title="Open Real WhatsApp"><i class="bi bi-whatsapp"></i></a>
+            </div>
         </div>
+
         <div class="chat-container shadow-sm mb-2" id="chatBox">
             {msgs_html}
         </div>
+
         <form method="POST" class="input-group bg-white p-2 rounded-bottom-4 shadow-sm">
             <input type="text" name="message" class="form-control rounded-pill border-0 bg-light px-3" placeholder="संदेश टाइप करें..." autocomplete="off" required>
             <button type="submit" class="btn btn-success rounded-circle ms-2" style="width:40px; height:40px;"><i class="bi bi-send-fill"></i></button>
@@ -642,38 +623,117 @@ def chats():
     </script>
     """ + get_footer("chats")
 
+# -------------------------------------------------------------
+# 👑 OWNER LOGIN & DASHBOARD (AMAN GIRI)
+# -------------------------------------------------------------
 @app.route("/owner_login", methods=["GET", "POST"])
 def owner_login():
+    error = ""
     if request.method == "POST":
-        if request.form.get("username") == OWNER_USERNAME and request.form.get("password") == OWNER_PASSWORD:
+        u = request.form.get("username")
+        p = request.form.get("password")
+        if u == OWNER_USERNAME and p == OWNER_PASSWORD:
             session["owner_logged"] = True
             return redirect("/owner_dashboard")
-    return get_html_header() + """
+        else:
+            error = "गलत यूज़रनेम या पासवर्ड!"
+
+    return get_html_header() + f"""
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
             <h4 class="mb-3 text-center text-danger fw-bold">👑 Owner Login</h4>
-            <input type="text" name="username" class="form-control mb-3" placeholder="Username" required>
-            <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
-            <button type="submit" class="btn btn-danger w-100 rounded-pill fw-bold">Login</button>
+            <p class="text-muted small text-center mb-3">सिर्फ ओनर (Aman Giri) के लिए</p>
+            {f'<div class="alert alert-danger py-1 small">{error}</div>' if error else ''}
+            <input type="text" name="username" class="form-control mb-3" placeholder="Username (Aman Giri)" required>
+            <input type="password" name="password" class="form-control mb-3" placeholder="Password (@Aman2007)" required>
+            <button type="submit" class="btn btn-danger w-100 rounded-pill fw-bold">Login as Owner</button>
         </form>
     </div>
     """ + get_footer("home")
 
-@app.route("/owner_dashboard")
+@app.route("/owner_dashboard", methods=["GET", "POST"])
 def owner_dashboard():
-    if not session.get("owner_logged"): return redirect("/owner_login")
-    return get_html_header() + """
-    <div class="container mt-4 text-center" style="max-width: 600px;">
-        <h4 class="fw-bold text-danger">👑 Owner Control Center</h4>
-        <p class="text-muted">सिस्टम और क्रॉलर पूरी तरह एक्टिव हैं।</p>
-        <a href="/" class="btn btn-dark rounded-pill px-4">Home</a>
-    </div>
-    """ + get_footer("home")
+    if not session.get("owner_logged"): 
+        return redirect("/owner_login")
 
-@app.route("/add_bookmark")
-def add_bookmark(): return redirect("/")
+    message = ""
+    if request.method == "POST":
+        form_type = request.form.get("form_type")
+        if form_type == "run_crawler":
+            try:
+                sync_db_to_vector_engine(DB_PATH)
+                message = "🕷️ <b>Web Crawler Resync Complete!</b>"
+            except Exception as e:
+                message = f"⚠️ एरर: {str(e)}"
+        elif form_type == "add_link":
+            title, url, snippet, category = request.form.get("title"), request.form.get("url"), request.form.get("snippet"), request.form.get("category")
+            if title and url:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("INSERT OR REPLACE INTO local_search_index (title, url, snippet, category) VALUES (?, ?, ?, ?)", (title, url, snippet, category))
+                conn.commit()
+                conn.close()
+                bharat_engine.index_item(title, url, snippet, category)
+                message = f"✅ नई लिंक जोड़ी गई: {title}"
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total_users_count = cursor.fetchone()[0]
+    cursor.execute("SELECT id, username, tier FROM users ORDER BY id DESC")
+    all_users_list = cursor.fetchall()
+    cursor.execute("SELECT COUNT(*) FROM local_search_index")
+    total_indexed_count = cursor.fetchone()[0]
+    conn.close()
+
+    users_table_rows = "".join([f"<tr><td>#{u[0]}</td><td><b>{u[1]}</b></td><td><span class='badge bg-secondary'>{u[2] or 'Free'}</span></td></tr>" for u in all_users_list]) if all_users_list else "<tr><td colspan='3' class='text-center text-muted'>कोई यूज़र नहीं है।</td></tr>"
+
+    return get_html_header() + f"""
+    <div class="container mt-4 mb-5" style="max-width: 800px;">
+        <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold text-danger mb-0"><i class="bi bi-speedometer2 me-2"></i>Owner Control Center</h4>
+                <a href="/logout" class="btn btn-outline-danger btn-sm rounded-pill">Logout (Aman Giri)</a>
+            </div>
+            {f'<div class="alert alert-success py-2 small mb-3">{message}</div>' if message else ''}
+            <div class="card p-3 border-warning bg-warning bg-opacity-10 mb-4 rounded-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-bug-fill text-warning me-2"></i>Bharat Web Crawler Engine</h6>
+                        <small class="text-muted">इंडेक्स सिंक करें (कुल इंडेक्स: {total_indexed_count})</small>
+                    </div>
+                    <form method="POST" class="mb-0">
+                        <input type="hidden" name="form_type" value="run_crawler">
+                        <button type="submit" class="btn btn-warning btn-sm rounded-pill fw-bold px-3">Run Crawler</button>
+                    </form>
+                </div>
+            </div>
+            <div class="card p-3 border-secondary bg-light rounded-4">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-people-fill text-primary me-2"></i>Registered App Users ({total_users_count})</h6>
+                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                    <table class="table table-sm table-hover align-middle small mb-0 bg-white rounded-3">
+                        <thead class="table-dark"><tr><th>ID</th><th>Username</th><th>Tier</th></tr></thead>
+                        <tbody>{users_table_rows}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    """ + get_footer("owner")
+
+# -------------------------------------------------------------
+# 📌 HELPER PAGES
+# -------------------------------------------------------------
+@app.route("/bookmarks")
+def bookmarks(): return get_html_header() + '<div class="container mt-4 text-center" style="max-width:600px;"><h5 class="fw-bold mb-3"><i class="bi bi-star-fill text-warning me-2"></i>Bookmarked Pages</h5><p class="text-muted">कोई बुकमार्क सेव नहीं है।</p></div>' + get_footer("home")
 @app.route("/my_history")
-def my_history(): return redirect("/")
+def my_history(): return get_html_header() + '<div class="container mt-4 text-center" style="max-width:600px;"><h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-warning"></i>Search History</h5><p class="text-muted">हिस्ट्री खाली है।</p></div>' + get_footer("home")
+@app.route("/converters")
+def converters(): return get_html_header() + '<div class="container mt-4 text-center" style="max-width:600px;"><h4 class="fw-bold">🛠️ Tools & Downloads</h4><p class="text-muted">JPG to PDF Converter active.</p></div>' + get_footer("home")
+@app.route("/research")
+def research(): return get_html_header() + '<div class="container mt-4 text-center" style="max-width:600px;"><h4 class="fw-bold">📚 Research Workspace</h4><p class="text-muted">Academic AI helper ready.</p></div>' + get_footer("research")
+@app.route("/app_store")
+def app_store(): return get_html_header() + '<div class="container mt-4 text-center" style="max-width:600px;"><h4 class="fw-bold">🛍️ Bharat App Store</h4><p class="text-muted">Daily needs apps available.</p></div>' + get_footer("apps")
 @app.route("/clear_browsing_data")
 def clear_data():
     session["tabs"] = [{"id": 1, "title": "New Tab", "query": "", "incognito": False}]
