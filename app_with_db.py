@@ -674,26 +674,30 @@ def search():
             </div>
         </div>
         """
-
+    # 4. Generate AI Answer using Gemini SDK (With Automatic Fallback)
     prompt_prefix = "Explain like I'm 5 years old:" if mode == "eli5" else ("Provide a detailed academic research report with citation facts for:" if mode == "deep" else "Provide a concise summary for:")
     ai_answer = ""
 
     if genai_client:
-        try:
-            response = genai_client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=f"{prompt_prefix} {query}. उत्तर सरल हिंदी में दें।"
-            )
-            if response and response.text:
-                ai_answer = format_markdown_to_html(response.text)
-        except Exception as e:
-            ai_answer = f"⚠️ Gemini 3.6 Flash SDK Error: {str(e)}"
-    else:
-        ai_answer = "⚠️ Google GenAI SDK इनिशियलाइज़ नहीं हो सका।"
+        # प्राथमिक और फ़ॉलबैक मॉडल्स की लिस्ट
+        models_to_try = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+        
+        for model_name in models_to_try:
+            try:
+                response = genai_client.models.generate_content(
+                    model=model_name,
+                    contents=f"{prompt_prefix} {query}. उत्तर सरल हिंदी में दें।"
+                )
+                if response and response.text:
+                    ai_answer = format_markdown_to_html(response.text)
+                    break  # अगर उत्तर मिल गया तो लूप रोक दें
+            except Exception as e:
+                # अगर Quota Exceeded (429) आया तो अगले मॉडल पर स्विच करेगा
+                continue
 
     if not ai_answer:
-        ai_answer = f"<b>'{query}'</b> के लिए खोज पूर्ण हुई।"
-
+        ai_answer = f"<b>'{query}'</b> के लिए खोज पूर्ण हुई। विस्तृत जानकारी नीचे देखें।"
+    
     fallback_web_link = f"https://www.google.com/search?q={quote_plus(query)}"
     if not local_html:
         local_html = f"""
