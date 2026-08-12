@@ -16,7 +16,7 @@ except ImportError:
 
 import requests
 
-# 🤖 GOOGLE GENAI SDK IMPORT
+# 🤖 GOOGLE GENAI SDK IMPORT (Gemini Direct Support)
 try:
     from google import genai
     genai_client = genai.Client()
@@ -42,6 +42,7 @@ db_dir = os.path.dirname(DB_PATH)
 if db_dir and not os.path.exists(db_dir):
     os.makedirs(db_dir)
 
+# 👑 OWNER & ADMIN CREDENTIALS (AMAN GIRI)
 OWNER_USERNAME = "Aman Giri"
 OWNER_PASSWORD = "@Aman2007"
 
@@ -61,7 +62,7 @@ def format_markdown_to_html(text):
     return text.replace('\n', '<br>')
 
 # -------------------------------------------------------------
-# 🗄️ DATABASE & CRAWLER INITIALIZATION
+# 🗄️ DATABASE & TABLES INITIALIZATION
 # -------------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -73,9 +74,7 @@ def init_db():
             username TEXT UNIQUE,
             password TEXT,
             role TEXT DEFAULT 'user',
-            tier TEXT DEFAULT 'Free',
-            is_premium INTEGER DEFAULT 0,
-            vip_expires_at TEXT
+            tier TEXT DEFAULT 'Free'
         )
     """)
 
@@ -109,6 +108,18 @@ def init_db():
         )
     """)
 
+    # 📺 YOUTUBE STYLE CONTENT UPLOAD TABLE
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS bharat_videos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            video_url TEXT,
+            description TEXT,
+            uploader TEXT,
+            timestamp TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()
     auto_seed_master_data()
@@ -116,11 +127,11 @@ def init_db():
 
 def auto_seed_master_data():
     master_apps = [
-        ("Bharat Chat AI", "/chats", "WhatsApp style secure chat & calls", "Apps", "💬"),
-        ("SBI Net Banking", "https://sbi.co.in/", "Official banking & loan portal", "Apps", "🏧"),
-        ("Piramal Finance", "https://www.piramalfinance.com/", "Personal & home loans easily", "Apps", "🏦"),
-        ("Research Workspace", "/research", "Academic Research & Summarizer", "Apps", "📚"),
-        ("JPG to PDF Tool", "/converters", "Fast offline document converter", "Apps", "📄")
+        ("Bharat Studio", "/studio", "Upload your own videos and content like YouTube", "Studio", "📺"),
+        ("Bharat AI Chat", "/ai_chat", "Direct Gemini AI Assistant Chat", "AI Tools", "🤖"),
+        ("SBI Net Banking", "https://sbi.co.in/", "Official banking & loan portal", "Bank", "🏧"),
+        ("Piramal Finance", "https://www.piramalfinance.com/", "Personal & home loans easily", "Loans", "🏦"),
+        ("Khan Academy", "https://www.khanacademy.org/", "Free online education courses", "Education", "🎓")
     ]
 
     try:
@@ -200,7 +211,7 @@ def suggestions():
     except Exception:
         return jsonify([])
 
-def fetch_unlimited_news(category="top"):
+def fetch_unlimited_news():
     news_items = []
     rss_url = "https://news.google.com/rss?hl=hi&gl=IN&ceid=IN:hi"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -224,12 +235,15 @@ def fetch_unlimited_news(category="top"):
     return news_items
 
 # -------------------------------------------------------------
-# 🎨 HEADER & FOOTER ENGINE
+# 🎨 HEADER & FOOTER ENGINE (KEYBOARD OVERLAP FIXED & OWNER ONLY ACCESS)
 # -------------------------------------------------------------
 def get_html_header():
     is_owner = session.get("owner_logged", False)
-    badge_label = "👑 OWNER (Aman Giri)" if is_owner else "🟢 USER"
-    badge_cls = "bg-danger" if is_owner else "bg-secondary"
+    
+    owner_badge = '<span class="badge bg-danger rounded-pill ms-1" style="font-size:10px;">👑 ADMIN / OWNER</span>' if is_owner else ''
+    owner_menu_item = '<a class="chrome-menu-item text-danger fw-bold" href="/owner_dashboard"><i class="bi bi-speedometer2 fs-5"></i> Owner Control Center</a>' if is_owner else ''
+    owner_footer_btn = '<a href="/owner_dashboard" class="nav-link-item"><i class="bi bi-speedometer2 fs-5 d-block text-danger"></i><span>Admin</span></a>' if is_owner else ''
+
     tabs_bar = get_chrome_tabs_html()
 
     return f"""<!DOCTYPE html>
@@ -263,6 +277,7 @@ def get_html_header():
         .suggestion-item {{ padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #fff3e0; display: flex; align-items: center; gap: 10px; color: #333; }}
         .suggestion-item:hover {{ background-color: #fff3e0; color: #d96b00; }}
 
+        /* 📱 KEYBOARD PROOF FIXED BOTTOM NAVIGATION BAR */
         .bottom-nav-bar {{ 
             position: fixed; 
             bottom: 0; 
@@ -299,11 +314,12 @@ def get_html_header():
     <div class="top-bar-chrome">
         <div class="d-flex align-items-center gap-2">
             <span class="fw-bold text-dark" style="font-size:14px;">🚀 Bharat OS</span>
-            <span class="badge {badge_cls} rounded-pill" style="font-size:10px;">{badge_label}</span>
+            {owner_badge}
         </div>
         <div class="d-flex align-items-center gap-2">
             <a href="/app_store" class="icon-btn text-success" title="Play Store"><i class="bi bi-bag-check-fill"></i></a>
-            <a href="/chats" class="icon-btn text-primary" title="Bharat Chat"><i class="bi bi-chat-dots-fill"></i></a>
+            <a href="/studio" class="icon-btn text-danger" title="Bharat Studio"><i class="bi bi-youtube"></i></a>
+            <a href="/ai_chat" class="icon-btn text-primary" title="Gemini AI Chat"><i class="bi bi-robot"></i></a>
             
             <div class="dropdown">
                 <button class="icon-btn" type="button" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
@@ -311,29 +327,31 @@ def get_html_header():
                     <div class="chrome-menu-header">
                         <a href="javascript:history.forward()" class="chrome-top-icon" title="Forward"><i class="bi bi-arrow-right"></i></a>
                         <a href="/bookmarks" class="chrome-top-icon" title="Bookmarks"><i class="bi bi-star"></i></a>
-                        <a href="/converters" class="chrome-top-icon" title="Downloads"><i class="bi bi-download"></i></a>
+                        <a href="/studio" class="chrome-top-icon" title="Studio"><i class="bi bi-youtube"></i></a>
                         <a href="javascript:location.reload()" class="chrome-top-icon" title="Reload"><i class="bi bi-arrow-clockwise"></i></a>
                     </div>
                     <a class="chrome-menu-item" href="/app_store"><i class="bi bi-bag-check-fill fs-5 text-success"></i> Bharat Play Store</a>
+                    <a class="chrome-menu-item" href="/studio"><i class="bi bi-youtube fs-5 text-danger"></i> Bharat Studio (Upload)</a>
+                    <a class="chrome-menu-item" href="/ai_chat"><i class="bi bi-robot fs-5 text-primary"></i> Direct Gemini AI Chat</a>
                     <a class="chrome-menu-item" href="/api/tab/new"><i class="bi bi-plus-square fs-5"></i> New tab</a>
-                    <a class="chrome-menu-item" href="/api/tab/new?incognito=true"><i class="bi bi-incognito fs-5"></i> New Incognito tab</a>
                     <div class="chrome-menu-divider"></div>
                     <a class="chrome-menu-item" href="/my_history"><i class="bi bi-clock-history fs-5"></i> History</a>
                     <a class="chrome-menu-item" href="/bookmarks"><i class="bi bi-star-fill fs-5 text-warning"></i> Bookmarks</a>
-                    <a class="chrome-menu-item" href="/converters"><i class="bi bi-file-earmark-pdf fs-5 text-primary"></i> Downloads / Tools</a>
-                    <a class="chrome-menu-item" href="/clear_browsing_data"><i class="bi bi-trash fs-5 text-danger"></i> Clear browsing data</a>
                     <div class="chrome-menu-divider"></div>
-                    <a class="chrome-menu-item text-danger fw-bold" href="/owner_login"><i class="bi bi-speedometer2 fs-5"></i> Owner Control Center</a>
+                    {owner_menu_item}
                 </div>
             </div>
 
-            {f'<a href="/owner_dashboard" class="icon-btn text-danger" title="Owner Panel"><i class="bi bi-speedometer2"></i></a>' if is_owner else ''}
+            {f'<a href="/owner_dashboard" class="icon-btn text-danger" title="Admin Panel"><i class="bi bi-speedometer2"></i></a>' if is_owner else ''}
         </div>
     </div>
 </div>
 """
 
 def get_footer(active_tab="home"):
+    is_owner = session.get("owner_logged", False)
+    owner_footer_btn = '<a href="/owner_dashboard" class="nav-link-item"><i class="bi bi-speedometer2 fs-5 d-block text-danger"></i><span>Admin</span></a>' if is_owner else ''
+
     return f"""
 <div class="bottom-nav-bar" id="bottomNavBar">
     <a href="/" class="nav-link-item {'active' if active_tab == 'home' else ''}">
@@ -344,14 +362,15 @@ def get_footer(active_tab="home"):
         <i class="bi bi-bag-check-fill fs-5 d-block text-success"></i>
         <span>Play Store</span>
     </a>
-    <a href="/chats" class="nav-link-item {'active' if active_tab == 'chats' else ''}">
-        <i class="bi bi-chat-dots-fill fs-5 d-block text-primary"></i>
-        <span>Chats</span>
+    <a href="/studio" class="nav-link-item {'active' if active_tab == 'studio' else ''}">
+        <i class="bi bi-youtube fs-5 d-block text-danger"></i>
+        <span>Studio</span>
     </a>
-    <a href="/owner_dashboard" class="nav-link-item {'active' if active_tab == 'owner' else ''}">
-        <i class="bi bi-speedometer2 fs-5 d-block text-danger"></i>
-        <span>Owner</span>
+    <a href="/ai_chat" class="nav-link-item {'active' if active_tab == 'chat' else ''}">
+        <i class="bi bi-robot fs-5 d-block text-primary"></i>
+        <span>AI Chat</span>
     </a>
+    {owner_footer_btn}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -360,6 +379,7 @@ def get_footer(active_tab="home"):
     function switchTab(tabId) {{ window.location.href = "/api/tab/switch/" + tabId; }}
     function closeTab(tabId) {{ window.location.href = "/api/tab/close/" + tabId; }}
 
+    // 📱 Keyboard Overlap Proof Script
     const navBar = document.getElementById("bottomNavBar");
     if (window.visualViewport) {{
         window.visualViewport.addEventListener('resize', () => {{
@@ -418,7 +438,7 @@ def get_footer(active_tab="home"):
 # -------------------------------------------------------------
 @app.route("/")
 def home():
-    news_list = fetch_unlimited_news("top")
+    news_list = fetch_unlimited_news()
     news_html = "".join([f"""
     <div class="col-12 col-md-6 mb-2">
         <a href="{n['link']}" target="_blank" class="text-decoration-none text-dark">
@@ -442,16 +462,16 @@ def home():
 
         <form action="/search" method="GET" id="searchForm" class="google-search-container">
             <i class="bi bi-search search-left-icon"></i>
-            <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="कुछ भी टाइप करें (जैसे: इतिहास, विज्ञान, कोडिंग)..." autocomplete="off" required>
+            <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="सर्च करें, कुछ भी पूछें या खोजें..." autocomplete="off" required>
             <div id="suggestionsBox" class="suggestions-box"></div>
         </form>
 
         <div class="container my-3" style="max-width: 680px;">
             <div class="row g-2 text-start">
                 <div class="col-6 col-md-3"><a href="/app_store" class="card p-2 text-decoration-none text-dark shadow-sm text-center rounded-3 bg-white"><div class="fs-4 text-success">🛍️</div><div class="fw-bold small" style="font-size:12px;">Play Store</div></a></div>
-                <div class="col-6 col-md-3"><a href="/chats" class="card p-2 text-decoration-none text-dark shadow-sm text-center rounded-3 bg-white"><div class="fs-4 text-primary">💬</div><div class="fw-bold small" style="font-size:12px;">Bharat Chat</div></a></div>
-                <div class="col-6 col-md-3"><a href="/research" class="card p-2 text-decoration-none text-dark shadow-sm text-center rounded-3 bg-white"><div class="fs-4 text-info">📚</div><div class="fw-bold small" style="font-size:12px;">Research</div></a></div>
-                <div class="col-6 col-md-3"><a href="/owner_dashboard" class="card p-2 text-decoration-none text-dark shadow-sm text-center rounded-3 bg-white"><div class="fs-4 text-danger">👑</div><div class="fw-bold small" style="font-size:12px;">Owner Panel</div></a></div>
+                <div class="col-6 col-md-3"><a href="/studio" class="card p-2 text-decoration-none text-dark shadow-sm text-center rounded-3 bg-white"><div class="fs-4 text-danger">📺</div><div class="fw-bold small" style="font-size:12px;">Bharat Studio</div></a></div>
+                <div class="col-6 col-md-3"><a href="/ai_chat" class="card p-2 text-decoration-none text-dark shadow-sm text-center rounded-3 bg-white"><div class="fs-4 text-primary">🤖</div><div class="fw-bold small" style="font-size:12px;">Gemini AI</div></a></div>
+                <div class="col-6 col-md-3"><a href="/owner_login" class="card p-2 text-decoration-none text-dark shadow-sm text-center rounded-3 bg-white"><div class="fs-4 text-warning">🔑</div><div class="fw-bold small" style="font-size:12px;">Admin Login</div></a></div>
             </div>
         </div>
 
@@ -463,7 +483,7 @@ def home():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 💎 UNIVERSAL SEARCH & AI ENGINE (ANY QUERY ANSWERED)
+# 💎 EXACT MATCH DATABASE + DIRECT GEMINI AI SEARCH
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -476,53 +496,29 @@ def search():
                 t["title"] = query
         session.modified = True
 
-    username = session.get("username", "Guest")
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO search_history (username, query, timestamp) VALUES (?, ?, ?)", (username, query, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-        conn.commit()
-        conn.close()
-    except Exception: pass
-
-    # 1. Local Database / Vector Engine Search
-    engine_data = bharat_engine.process_super_search(query)
-    kg_card = engine_data.get("knowledge_card")
-    vector_results = engine_data.get("results", [])
-
-    kg_html = ""
-    if kg_card:
-        kg_html = f"""
-        <div class="card p-3 mb-4 rounded-4 shadow-sm border-warning bg-warning bg-opacity-10">
-            <span class="badge bg-warning text-dark align-self-start mb-2">🇮🇳 {kg_card['category']}</span>
-            <h5 class="fw-bold text-dark">{kg_card['title']}</h5>
-            <p class="small mb-1"><b>विभाग:</b> {kg_card['department']}</p>
-            <p class="small mb-2"><b>लाभ:</b> {kg_card['benefits']}</p>
-            <a href="{kg_card['official_website']}" class="btn btn-warning btn-sm rounded-pill fw-bold">पोर्टल पर जाएँ</a>
-        </div>
-        """
+    # 1. Exact Match Search in Local DB
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT title, url, snippet, category, logo_url FROM local_search_index WHERE title LIKE ? COLLATE NOCASE", (f"%{query}%",))
+    exact_matches = cursor.fetchall()
+    conn.close()
 
     local_html = ""
-    for item in vector_results:
-        title, url, snippet, category = item["title"], item["url"], item["snippet"], item["category"]
-        domain = urlparse(url).netloc if url else 'bharat.app'
-        favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+    for item in exact_matches:
+        title, url, snippet, category, logo = item[0], item[1], item[2], item[3], item[4] or "🌐"
         local_html += f"""
         <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white">
-            <div class="d-flex align-items-center gap-2 mb-2">
-                <img src="{favicon}" width="22" height="22" class="rounded-circle border p-1">
-                <div>
-                    <div class="fw-bold text-dark" style="font-size: 12px; line-height: 1;">{domain.replace('www.', '')}</div>
-                    <small class="text-muted" style="font-size: 10px;">{url[:45]}...</small>
-                </div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="fs-5">{logo}</span>
+                <span class="badge bg-success bg-opacity-10 text-success">Exact Match Found</span>
             </div>
-            <h5 class="mb-1"><a href="{url}" class="text-primary text-decoration-none fw-bold" style="font-size:16px;">{title}</a></h5>
-            <p class="text-secondary small mb-2" style="font-size: 13px; line-height: 1.5;">{snippet}</p>
+            <h5 class="mb-1"><a href="{url}" target="_blank" class="text-primary text-decoration-none fw-bold" style="font-size:16px;">{title}</a></h5>
+            <p class="text-secondary small mb-2" style="font-size: 13px;">{snippet}</p>
             <span class="badge bg-light text-dark border">{category}</span>
         </div>
         """
 
-    # 2. Universal AI Engine (Answers ANY question typed by user)
+    # 2. Direct Gemini AI Response (ChatGPT / Gemini Performance)
     ai_answer = ""
     if genai_client:
         models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-3.6-flash"]
@@ -530,7 +526,7 @@ def search():
             try:
                 response = genai_client.models.generate_content(
                     model=m_name,
-                    contents=f"यूज़र ने सर्च किया है: '{query}'. इस विषय पर एक सटीक, विस्तृत और उपयोगी उत्तर हिंदी में दें।"
+                    contents=f"यूज़र ने सर्च किया है: '{query}'. इस विषय पर बिल्कुल सटीक, विस्तृत और प्रोफेशनल उत्तर (जैसे ChatGPT/Gemini देता है) हिंदी में दें।"
                 )
                 if response and response.text:
                     ai_answer = format_markdown_to_html(response.text)
@@ -539,36 +535,156 @@ def search():
                 continue
 
     if not ai_answer:
-        ai_answer = f"<b>'{query}'</b> के संबंध में जानकारी प्राप्त की जा रही है।"
+        ai_answer = f"<b>'{query}'</b> के संबंध में जानकारी संसाधित की जा रही है।"
 
     return get_html_header() + f"""
     <div class="container mt-4 mb-5" style="max-width: 720px;">
         <div class="d-flex align-items-center justify-content-between mb-3">
-            <h5 class="fw-bold text-dark mb-0">🔍 परिणाम: "{query}"</h5>
+            <h5 class="fw-bold text-dark mb-0">🔍 सर्च रिजल्ट: "{query}"</h5>
             <a href="/" class="btn btn-outline-warning btn-sm rounded-pill">नया सर्च करें</a>
         </div>
 
-        {kg_html}
+        {local_html}
 
-        <!-- UNIVERSAL AI ANSWER CARD (Answers anything typed) -->
+        <!-- GEMINI / CHATGPT STYLE DIRECT AI RESPONSE -->
         <div class="card p-4 rounded-4 shadow-sm border-0 bg-white mb-4" style="border-left: 4px solid #ff7700 !important;">
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="d-flex align-items-center gap-2">
                     <span class="fs-4">🤖</span>
-                    <h6 class="fw-bold text-primary mb-0">Bharat AI Universal Assistant</h6>
+                    <h6 class="fw-bold text-primary mb-0">Gemini & ChatGPT Direct Intelligence</h6>
                 </div>
-                <span class="badge bg-success bg-opacity-10 text-success">Live Answer</span>
+                <span class="badge bg-primary bg-opacity-10 text-primary">Live AI Answer</span>
             </div>
             <hr class="my-2 text-muted">
             <div style="line-height: 1.7; font-size: 15px; color: #202124;">
                 {ai_answer}
             </div>
         </div>
-
-        <h6 class="fw-bold text-muted mb-3"><i class="bi bi-cpu me-2"></i>संबंधित लिंक्स और ऐप्स</h6>
-        {local_html if local_html else '<div class="card p-4 text-center text-muted bg-white rounded-4">इस विषय पर कोई अतिरिक्त लोकल लिंक नहीं है, लेकिन ऊपर AI उत्तर उपलब्ध है।</div>'}
     </div>
     """ + get_footer("home")
+
+# -------------------------------------------------------------
+# 🤖 DIRECT GEMINI AI CHAT ROUTE
+# -------------------------------------------------------------
+@app.route("/ai_chat", methods=["GET", "POST"])
+def ai_chat():
+    if "gemini_chat" not in session:
+        session["gemini_chat"] = [{"sender": "recv", "text": "नमस्ते! मैं आपका डायरेक्ट Gemini AI असिस्टेंट हूँ। आप मुझसे कोई भी सवाल पूछ सकते हैं।"}]
+
+    if request.method == "POST":
+        user_msg = request.form.get("message", "").strip()
+        if user_msg and genai_client:
+            session["gemini_chat"].append({"sender": "sent", "text": user_msg})
+            
+            ai_reply = "माफ़ कीजिए, AI से संपर्क स्थापित नहीं हो पा रहा है।"
+            try:
+                response = genai_client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=user_msg
+                )
+                if response and response.text:
+                    ai_reply = response.text
+            except Exception as e:
+                ai_reply = f"एरर: {str(e)}"
+
+            session["gemini_chat"].append({"sender": "recv", "text": ai_reply})
+            session.modified = True
+        return redirect("/ai_chat")
+
+    msgs_html = "".join([f'<div class="msg msg-{m["sender"]}">{format_markdown_to_html(m["text"])}</div>' for m in session["gemini_chat"]])
+
+    return get_html_header() + f"""
+    <div class="container mt-2 mb-5" style="max-width: 650px;">
+        <div class="d-flex align-items-center justify-content-between bg-white p-3 rounded-top-4 shadow-sm border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fs-3">🤖</span>
+                <h5 class="fw-bold mb-0 text-primary">Bharat Gemini AI Chat</h5>
+            </div>
+            <span class="badge bg-primary px-2 py-1 rounded-pill">ChatGPT / Gemini Engine</span>
+        </div>
+        <div class="chat-container shadow-sm mb-2" id="chatBox" style="height: calc(100vh - 240px);">
+            {msgs_html}
+        </div>
+        <form method="POST" class="input-group bg-white p-2 rounded-bottom-4 shadow-sm">
+            <input type="text" name="message" class="form-control rounded-pill border-0 bg-light px-3" placeholder="Gemini से कुछ भी पूछें..." autocomplete="off" required>
+            <button type="submit" class="btn btn-primary rounded-circle ms-2 shadow-sm" style="width:42px; height:42px;"><i class="bi bi-send-fill"></i></button>
+        </form>
+    </div>
+    <script>
+        const chatBox = document.getElementById("chatBox");
+        if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+    </script>
+    """ + get_footer("chat")
+
+# -------------------------------------------------------------
+# 📺 BHARAT STUDIO (YOUTUBE STYLE CONTENT UPLOADER & FEED)
+# -------------------------------------------------------------
+@app.route("/studio", methods=["GET", "POST"])
+def studio():
+    message = ""
+    if request.method == "POST":
+        title = request.form.get("title")
+        video_url = request.form.get("video_url")
+        description = request.form.get("description")
+        uploader = session.get("username", "Aman Giri (Creator)")
+
+        if title and video_url:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO bharat_videos (title, video_url, description, uploader, timestamp) VALUES (?, ?, ?, ?, ?)", 
+                           (title, video_url, description, uploader, datetime.now().strftime("%Y-%m-%d %H:%M")))
+            conn.commit()
+            conn.close()
+            message = "✅ आपका वीडियो/कॉन्टेन्ट Bharat Studio पर सफलता पूर्वक पब्लिश हो गया है!"
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT title, video_url, description, uploader, timestamp FROM bharat_videos ORDER BY id DESC")
+    videos = cursor.fetchall()
+    conn.close()
+
+    videos_html = ""
+    for v in videos:
+        v_title, v_url, v_desc, v_up, v_time = v[0], v[1], v[2], v[3], v[4]
+        videos_html += f"""
+        <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="bg-danger text-white rounded-circle p-2 d-flex align-items-center justify-content-center" style="width:35px; height:35px;"><i class="bi bi-play-fill fs-5"></i></div>
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark">{v_title}</h6>
+                    <small class="text-muted">Creator: <b>{v_up}</b> • {v_time}</small>
+                </div>
+            </div>
+            <p class="text-secondary small mb-2">{v_desc}</p>
+            <a href="{v_url}" target="_blank" class="btn btn-outline-danger btn-sm rounded-pill fw-bold w-100"><i class="bi bi-play-circle me-1"></i> Watch Video / Open Content</a>
+        </div>
+        """
+
+    return get_html_header() + f"""
+    <div class="container mt-3 mb-5" style="max-width: 700px;">
+        <div class="text-center mb-4">
+            <span class="badge bg-danger px-3 py-1 rounded-pill fw-bold">📺 BHARAT STUDIO (YOUTUBE STYLE)</span>
+            <h3 class="fw-bold mt-2">Creator Content Platform</h3>
+            <p class="text-muted small">यहाँ कोई भी अपना वास्तविक या वर्चुअल कॉन्टेन्ट / वीडियो अपलोड कर सकता है</p>
+        </div>
+
+        {f'<div class="alert alert-success py-2 small mb-3">{message}</div>' if message else ''}
+
+        <!-- UPLOAD FORM -->
+        <div class="card p-4 border-0 shadow-sm rounded-4 bg-white mb-4">
+            <h5 class="fw-bold text-danger mb-3"><i class="bi bi-cloud-upload-fill me-2"></i>Upload New Video / Content</h5>
+            <form method="POST">
+                <input type="text" name="title" class="form-control mb-2" placeholder="Video Title (शीर्षक)" required>
+                <input type="url" name="video_url" class="form-control mb-2" placeholder="Video / Media URL (https://...)" required>
+                <textarea name="description" class="form-control mb-3" rows="2" placeholder="Description (विवरण)"></textarea>
+                <button type="submit" class="btn btn-danger rounded-pill fw-bold w-100">Publish to Bharat Feed</button>
+            </form>
+        </div>
+
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-collection-play-fill text-danger me-2"></i>Community Uploads Feed</h5>
+        {videos_html if videos_html else '<div class="card p-4 text-center text-muted bg-white rounded-4">अभी कोई वीडियो अपलोड नहीं किया गया है। पहला वीडियो ऊपर अपलोड करें!</div>'}
+    </div>
+    """ + get_footer("studio")
 
 # -------------------------------------------------------------
 # 🛍️ BHARAT PLAY STORE
@@ -577,7 +693,7 @@ def search():
 def app_store():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT title, url, snippet, logo_url FROM local_search_index WHERE category = 'Apps' OR category = 'AI Tools' OR category = 'Bank'")
+    cursor.execute("SELECT title, url, snippet, logo_url FROM local_search_index")
     apps_data = cursor.fetchall()
     conn.close()
 
@@ -592,7 +708,7 @@ def app_store():
             <div class="flex-grow-1">
                 <h6 class="fw-bold mb-0 text-dark">{title}</h6>
                 <small class="text-muted d-block" style="font-size:12px;">{snippet}</small>
-                <small class="text-success fw-bold" style="font-size:10px;">★ 4.9 • Instant Verified App</small>
+                <small class="text-success fw-bold" style="font-size:10px;">★ 4.9 • Official Bharat App</small>
             </div>
             <a href="{url}" target="_blank" class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm">
                 <i class="bi bi-download me-1"></i> Open / Install
@@ -606,96 +722,12 @@ def app_store():
             <span class="badge bg-success px-3 py-1 rounded-pill fw-bold">🛍️ OFFICIAL BHARAT PLAY STORE</span>
             <h3 class="fw-bold mt-2">Daily Needs & Super Apps</h3>
         </div>
-        {apps_html if apps_html else '<div class="card p-4 text-center text-muted bg-white rounded-4">कोई ऐप उपलब्ध नहीं है।</div>'}
+        {apps_html}
     </div>
     """ + get_footer("apps")
 
 # -------------------------------------------------------------
-# 💬 BHARAT WHATSAPP CHAT
-# -------------------------------------------------------------
-CONTACTS_LIST = [
-    {"id": "aman", "name": "Aman Giri (Owner)", "phone": "+919876543210", "status": "Online 🟢", "avatar": "👑"},
-    {"id": "support", "name": "Bharat Support", "phone": "+919123456789", "status": "Available", "avatar": "📞"},
-    {"id": "piramal", "name": "Piramal Loan Help", "phone": "+919988776655", "status": "Bank Support", "avatar": "🏦"}
-]
-
-@app.route("/chats")
-def chats():
-    return get_html_header() + f"""
-    <div class="container mt-3 mb-5" style="max-width: 600px;">
-        <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-4 shadow-sm mb-3">
-            <h5 class="fw-bold mb-0 text-success"><i class="bi bi-whatsapp me-2"></i>Bharat WhatsApp</h5>
-            <span class="badge bg-success px-2 py-1 rounded-pill">SIM & WhatsApp Link</span>
-        </div>
-        <div class="list-group shadow-sm rounded-4 overflow-hidden border-0">
-            {''.join([f'''
-            <a href="/chat_room/{c['id']}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 border-0 border-bottom bg-white">
-                <div class="fs-2 p-2 bg-light rounded-circle">{c['avatar']}</div>
-                <div class="flex-grow-1">
-                    <h6 class="fw-bold mb-0 text-dark">{c['name']}</h6>
-                    <small class="text-muted">{c['phone']} • {c['status']}</small>
-                </div>
-                <i class="bi bi-chevron-right text-muted small"></i>
-            </a>
-            ''' for c in CONTACTS_LIST])}
-        </div>
-    </div>
-    """ + get_footer("chats")
-
-@app.route("/chat_room/<contact_id>", methods=["GET", "POST"])
-def chat_room(contact_id):
-    contact = next((c for c in CONTACTS_LIST if c["id"] == contact_id), CONTACTS_LIST[0])
-    session_key = f"chat_{contact_id}"
-    
-    if session_key not in session:
-        session[session_key] = [{"sender": "recv", "text": f"नमस्ते! मैं {contact['name']} हूँ।"}]
-
-    if request.method == "POST":
-        msg = request.form.get("message")
-        if msg:
-            session[session_key].append({"sender": "sent", "text": msg})
-            session[session_key].append({"sender": "recv", "text": f"ऑटो-रिप्लाई [{contact['name']}]: संदेश मिल गया!"})
-            session.modified = True
-        return redirect(f"/chat_room/{contact_id}")
-
-    msgs_html = "".join([f'<div class="msg msg-{m["sender"]}">{m["text"]}</div>' for m in session[session_key]])
-    wa_link = f"https://wa.me/{contact['phone'].replace('+', '')}?text=Hello%20{quote_plus(contact['name'])}"
-    tel_link = f"tel:{contact['phone']}"
-
-    return get_html_header() + f"""
-    <div class="container mt-2 mb-5" style="max-width: 600px;">
-        <div class="d-flex align-items-center justify-content-between bg-white p-2 px-3 rounded-top-4 shadow-sm border-bottom">
-            <div class="d-flex align-items-center gap-2">
-                <a href="/chats" class="text-dark fs-5 me-1"><i class="bi bi-arrow-left"></i></a>
-                <span class="fs-4">{contact['avatar']}</span>
-                <div>
-                    <h6 class="fw-bold mb-0 text-dark" style="font-size:14px;">{contact['name']}</h6>
-                    <small class="text-success" style="font-size:10px;">{contact['phone']}</small>
-                </div>
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <a href="{tel_link}" class="text-success fs-5" title="Direct Phone Call"><i class="bi bi-telephone-fill"></i></a>
-                <a href="{wa_link}" target="_blank" class="text-success fs-5" title="Open Real WhatsApp"><i class="bi bi-whatsapp"></i></a>
-            </div>
-        </div>
-
-        <div class="chat-container shadow-sm mb-2" id="chatBox">
-            {msgs_html}
-        </div>
-
-        <form method="POST" class="input-group bg-white p-2 rounded-bottom-4 shadow-sm">
-            <input type="text" name="message" class="form-control rounded-pill border-0 bg-light px-3" placeholder="संदेश टाइप करें..." autocomplete="off" required>
-            <button type="submit" class="btn btn-success rounded-circle ms-2" style="width:40px; height:40px;"><i class="bi bi-send-fill"></i></button>
-        </form>
-    </div>
-    <script>
-        const chatBox = document.getElementById("chatBox");
-        if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
-    </script>
-    """ + get_footer("chats")
-
-# -------------------------------------------------------------
-# 👑 OWNER LOGIN & CONTROL CENTER
+# 👑 OWNER / ADMIN DASHBOARD (SECURE ACCESS ONLY FOR AMAN GIRI)
 # -------------------------------------------------------------
 @app.route("/owner_login", methods=["GET", "POST"])
 def owner_login():
@@ -707,17 +739,17 @@ def owner_login():
             session["owner_logged"] = True
             return redirect("/owner_dashboard")
         else:
-            error = "गलत यूज़रनेम या पासवर्ड! (Aman Giri / @Aman2007)"
+            error = "गलत यूज़रनेम या पासवर्ड! केवल ओनर (Aman Giri) के लिए।"
 
     return get_html_header() + f"""
     <div class="container mt-5" style="max-width: 400px;">
         <form method="POST" class="bg-white p-4 rounded-4 shadow-sm border">
-            <h4 class="mb-3 text-center text-danger fw-bold">👑 Owner Login</h4>
-            <p class="text-muted small text-center mb-3">Aman Giri के लिए सुरक्षित पोर्टल</p>
+            <h4 class="mb-3 text-center text-danger fw-bold">👑 Admin / Owner Login</h4>
+            <p class="text-muted small text-center mb-3">यह पोर्टल केवल एडमिन (Aman Giri) के लिए है</p>
             {f'<div class="alert alert-danger py-1 small">{error}</div>' if error else ''}
             <input type="text" name="username" class="form-control mb-3" placeholder="Username (Aman Giri)" required>
             <input type="password" name="password" class="form-control mb-3" placeholder="Password (@Aman2007)" required>
-            <button type="submit" class="btn btn-danger w-100 rounded-pill fw-bold">Login as Owner</button>
+            <button type="submit" class="btn btn-danger w-100 rounded-pill fw-bold">Login as Admin</button>
         </form>
     </div>
     """ + get_footer("home")
@@ -745,7 +777,7 @@ def owner_dashboard():
                 conn.commit()
                 conn.close()
                 bharat_engine.index_item(title, url, snippet, category)
-                message = f"✅ नया ऐप/लिंक Bharat Play Store में जोड़ा गया: {title}"
+                message = f"✅ नया ऐप/लिंक जोड़ा गया: {title}"
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -763,25 +795,25 @@ def owner_dashboard():
     <div class="container mt-4 mb-5" style="max-width: 800px;">
         <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="fw-bold text-danger mb-0"><i class="bi bi-speedometer2 me-2"></i>Owner Control Center</h4>
+                <h4 class="fw-bold text-danger mb-0"><i class="bi bi-speedometer2 me-2"></i>Admin / Owner Control Center</h4>
                 <a href="/logout" class="btn btn-outline-danger btn-sm rounded-pill">Logout (Aman Giri)</a>
             </div>
             {f'<div class="alert alert-success py-2 small mb-3">{message}</div>' if message else ''}
             
             <div class="card p-3 border-secondary bg-white mb-4 rounded-4">
-                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-bag-plus-fill text-success me-2"></i>Add App to Bharat Play Store</h6>
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-bag-plus-fill text-success me-2"></i>Add App / Link to Database</h6>
                 <form method="POST">
                     <input type="hidden" name="form_type" value="add_link">
                     <input type="hidden" name="category" value="Apps">
                     <div class="row g-2 mb-2">
-                        <div class="col-12 col-md-6"><input type="text" name="title" class="form-control form-control-sm" placeholder="App Name (e.g. YouTube)" required></div>
-                        <div class="col-12 col-md-6"><input type="url" name="url" class="form-control form-control-sm" placeholder="App URL (https://...)" required></div>
+                        <div class="col-12 col-md-6"><input type="text" name="title" class="form-control form-control-sm" placeholder="Title / App Name" required></div>
+                        <div class="col-12 col-md-6"><input type="url" name="url" class="form-control form-control-sm" placeholder="URL (https://...)" required></div>
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-12 col-md-8"><input type="text" name="snippet" class="form-control form-control-sm" placeholder="Short Description" required></div>
                         <div class="col-12 col-md-4"><input type="text" name="logo_url" class="form-control form-control-sm" placeholder="Icon Emoji" value="📱" required></div>
                     </div>
-                    <button type="submit" class="btn btn-success btn-sm rounded-pill fw-bold w-100">Publish App to Play Store</button>
+                    <button type="submit" class="btn btn-success btn-sm rounded-pill fw-bold w-100">Add to System Index</button>
                 </form>
             </div>
 
@@ -799,7 +831,7 @@ def owner_dashboard():
             </div>
             
             <div class="card p-3 border-secondary bg-light rounded-4">
-                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-people-fill text-primary me-2"></i>Registered App Users ({total_users_count})</h6>
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-people-fill text-primary me-2"></i>Registered Users ({total_users_count})</h6>
                 <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
                     <table class="table table-sm table-hover align-middle small mb-0 bg-white rounded-3">
                         <thead class="table-dark"><tr><th>ID</th><th>Username</th><th>Tier</th></tr></thead>
@@ -812,7 +844,7 @@ def owner_dashboard():
     """ + get_footer("owner")
 
 # -------------------------------------------------------------
-# 📌 HELPER PAGES
+# 📌 HELPER ROUTES
 # -------------------------------------------------------------
 @app.route("/bookmarks")
 def bookmarks(): return get_html_header() + '<div class="container mt-4 text-center" style="max-width:600px;"><h5 class="fw-bold mb-3"><i class="bi bi-star-fill text-warning me-2"></i>Bookmarked Pages</h5><p class="text-muted">कोई बुकमार्क सेव नहीं है।</p></div>' + get_footer("home")
