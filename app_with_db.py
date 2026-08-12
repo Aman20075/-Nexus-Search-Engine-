@@ -237,7 +237,7 @@ def get_html_header():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bharat OS | Advanced SuperApp Engine</title>
+    <title>Bharat OS | Universal SuperApp Engine</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
@@ -302,8 +302,7 @@ def get_html_header():
             <span class="badge {badge_cls} rounded-pill" style="font-size:10px;">{badge_label}</span>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <a href="/app_store" class="icon-btn text-success" title="Bharat Play Store"><i class="bi bi-bag-check-fill"></i></a>
-            <a href="/research" class="icon-btn text-info" title="Research Workspace"><i class="bi bi-journal-bookmark-fill"></i></a>
+            <a href="/app_store" class="icon-btn text-success" title="Play Store"><i class="bi bi-bag-check-fill"></i></a>
             <a href="/chats" class="icon-btn text-primary" title="Bharat Chat"><i class="bi bi-chat-dots-fill"></i></a>
             
             <div class="dropdown">
@@ -312,7 +311,7 @@ def get_html_header():
                     <div class="chrome-menu-header">
                         <a href="javascript:history.forward()" class="chrome-top-icon" title="Forward"><i class="bi bi-arrow-right"></i></a>
                         <a href="/bookmarks" class="chrome-top-icon" title="Bookmarks"><i class="bi bi-star"></i></a>
-                        <a href="/app_store" class="chrome-top-icon" title="Bharat Play Store"><i class="bi bi-bag-check-fill"></i></a>
+                        <a href="/converters" class="chrome-top-icon" title="Downloads"><i class="bi bi-download"></i></a>
                         <a href="javascript:location.reload()" class="chrome-top-icon" title="Reload"><i class="bi bi-arrow-clockwise"></i></a>
                     </div>
                     <a class="chrome-menu-item" href="/app_store"><i class="bi bi-bag-check-fill fs-5 text-success"></i> Bharat Play Store</a>
@@ -443,7 +442,7 @@ def home():
 
         <form action="/search" method="GET" id="searchForm" class="google-search-container">
             <i class="bi bi-search search-left-icon"></i>
-            <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="सर्च करें, ऐप्स ढूंढें या AI से पूछें..." autocomplete="off" required>
+            <input type="text" id="searchInput" name="q" class="form-control google-input" placeholder="कुछ भी टाइप करें (जैसे: इतिहास, विज्ञान, कोडिंग)..." autocomplete="off" required>
             <div id="suggestionsBox" class="suggestions-box"></div>
         </form>
 
@@ -464,48 +463,7 @@ def home():
     """ + get_footer("home")
 
 # -------------------------------------------------------------
-# 🛍️ BHARAT PLAY STORE (DYNAMIC DATABASE APPS)
-# -------------------------------------------------------------
-@app.route("/app_store")
-def app_store():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT title, url, snippet, logo_url FROM local_search_index WHERE category = 'Apps' OR category = 'AI Tools' OR category = 'Bank'")
-    apps_data = cursor.fetchall()
-    conn.close()
-
-    apps_html = ""
-    for app_item in apps_data:
-        title, url, snippet, logo = app_item[0], app_item[1], app_item[2], app_item[3] or "📦"
-        icon_display = f"<span class='fs-2'>{logo}</span>" if len(logo) <= 2 else f"<img src='{logo}' width='40' height='40' class='rounded-3'>"
-        
-        apps_html += f"""
-        <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white d-flex flex-row align-items-center gap-3">
-            <div class="p-2 bg-light rounded-4 d-flex align-items-center justify-content-center" style="width:55px; height:55px;">{icon_display}</div>
-            <div class="flex-grow-1">
-                <h6 class="fw-bold mb-0 text-dark">{title}</h6>
-                <small class="text-muted d-block" style="font-size:12px;">{snippet}</small>
-                <small class="text-success fw-bold" style="font-size:10px;">★ 4.9 • Instant Verified App</small>
-            </div>
-            <a href="{url}" target="_blank" class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm">
-                <i class="bi bi-download me-1"></i> Open / Install
-            </a>
-        </div>
-        """
-
-    return get_html_header() + f"""
-    <div class="container mt-3 mb-5" style="max-width: 650px;">
-        <div class="text-center mb-4">
-            <span class="badge bg-success px-3 py-1 rounded-pill fw-bold">🛍️ OFFICIAL BHARAT PLAY STORE</span>
-            <h3 class="fw-bold mt-2">Daily Needs & Super Apps</h3>
-            <p class="text-muted small">ओनर डैशबोर्ड से जोड़े गए सभी ऐप्स यहाँ लाइव दिखाई देते हैं</p>
-        </div>
-        {apps_html if apps_html else '<div class="card p-4 text-center text-muted bg-white rounded-4">कोई ऐप उपलब्ध नहीं है।</div>'}
-    </div>
-    """ + get_footer("apps")
-
-# -------------------------------------------------------------
-# 💎 ADVANCED SEARCH ROUTE
+# 💎 UNIVERSAL SEARCH & AI ENGINE (ANY QUERY ANSWERED)
 # -------------------------------------------------------------
 @app.route("/search")
 def search():
@@ -527,6 +485,7 @@ def search():
         conn.close()
     except Exception: pass
 
+    # 1. Local Database / Vector Engine Search
     engine_data = bharat_engine.process_super_search(query)
     kg_card = engine_data.get("knowledge_card")
     vector_results = engine_data.get("results", [])
@@ -563,32 +522,93 @@ def search():
         </div>
         """
 
+    # 2. Universal AI Engine (Answers ANY question typed by user)
     ai_answer = ""
     if genai_client:
-        try:
-            response = genai_client.models.generate_content(model="gemini-2.5-flash", contents=f"Provide detailed summary for: {query}. उत्तर हिंदी में दें।")
-            if response and response.text: ai_answer = format_markdown_to_html(response.text)
-        except Exception: ai_answer = "खोज पूर्ण हुई।"
+        models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-3.6-flash"]
+        for m_name in models_to_try:
+            try:
+                response = genai_client.models.generate_content(
+                    model=m_name,
+                    contents=f"यूज़र ने सर्च किया है: '{query}'. इस विषय पर एक सटीक, विस्तृत और उपयोगी उत्तर हिंदी में दें।"
+                )
+                if response and response.text:
+                    ai_answer = format_markdown_to_html(response.text)
+                    break
+            except Exception:
+                continue
+
+    if not ai_answer:
+        ai_answer = f"<b>'{query}'</b> के संबंध में जानकारी प्राप्त की जा रही है।"
 
     return get_html_header() + f"""
     <div class="container mt-4 mb-5" style="max-width: 720px;">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h5 class="fw-bold text-dark mb-0">🔍 परिणाम: "{query}"</h5>
+            <a href="/" class="btn btn-outline-warning btn-sm rounded-pill">नया सर्च करें</a>
+        </div>
+
         {kg_html}
+
+        <!-- UNIVERSAL AI ANSWER CARD (Answers anything typed) -->
         <div class="card p-4 rounded-4 shadow-sm border-0 bg-white mb-4" style="border-left: 4px solid #ff7700 !important;">
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="d-flex align-items-center gap-2">
                     <span class="fs-4">🤖</span>
-                    <h6 class="fw-bold text-primary mb-0">Bharat AI Insight</h6>
+                    <h6 class="fw-bold text-primary mb-0">Bharat AI Universal Assistant</h6>
                 </div>
+                <span class="badge bg-success bg-opacity-10 text-success">Live Answer</span>
             </div>
             <hr class="my-2 text-muted">
-            <div style="line-height: 1.6; font-size: 14px; color: #202124;">
+            <div style="line-height: 1.7; font-size: 15px; color: #202124;">
                 {ai_answer}
             </div>
         </div>
-        <h6 class="fw-bold text-muted mb-3"><i class="bi bi-cpu me-2"></i>Organic Web Matches</h6>
-        {local_html if local_html else '<div class="card p-4 text-center text-muted bg-white rounded-4">कोई सीधा परिणाम नहीं मिला।</div>'}
+
+        <h6 class="fw-bold text-muted mb-3"><i class="bi bi-cpu me-2"></i>संबंधित लिंक्स और ऐप्स</h6>
+        {local_html if local_html else '<div class="card p-4 text-center text-muted bg-white rounded-4">इस विषय पर कोई अतिरिक्त लोकल लिंक नहीं है, लेकिन ऊपर AI उत्तर उपलब्ध है।</div>'}
     </div>
     """ + get_footer("home")
+
+# -------------------------------------------------------------
+# 🛍️ BHARAT PLAY STORE
+# -------------------------------------------------------------
+@app.route("/app_store")
+def app_store():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT title, url, snippet, logo_url FROM local_search_index WHERE category = 'Apps' OR category = 'AI Tools' OR category = 'Bank'")
+    apps_data = cursor.fetchall()
+    conn.close()
+
+    apps_html = ""
+    for app_item in apps_data:
+        title, url, snippet, logo = app_item[0], app_item[1], app_item[2], app_item[3] or "📦"
+        icon_display = f"<span class='fs-2'>{logo}</span>" if len(logo) <= 2 else f"<img src='{logo}' width='40' height='40' class='rounded-3'>"
+        
+        apps_html += f"""
+        <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white d-flex flex-row align-items-center gap-3">
+            <div class="p-2 bg-light rounded-4 d-flex align-items-center justify-content-center" style="width:55px; height:55px;">{icon_display}</div>
+            <div class="flex-grow-1">
+                <h6 class="fw-bold mb-0 text-dark">{title}</h6>
+                <small class="text-muted d-block" style="font-size:12px;">{snippet}</small>
+                <small class="text-success fw-bold" style="font-size:10px;">★ 4.9 • Instant Verified App</small>
+            </div>
+            <a href="{url}" target="_blank" class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm">
+                <i class="bi bi-download me-1"></i> Open / Install
+            </a>
+        </div>
+        """
+
+    return get_html_header() + f"""
+    <div class="container mt-3 mb-5" style="max-width: 650px;">
+        <div class="text-center mb-4">
+            <span class="badge bg-success px-3 py-1 rounded-pill fw-bold">🛍️ OFFICIAL BHARAT PLAY STORE</span>
+            <h3 class="fw-bold mt-2">Daily Needs & Super Apps</h3>
+        </div>
+        {apps_html if apps_html else '<div class="card p-4 text-center text-muted bg-white rounded-4">कोई ऐप उपलब्ध नहीं है।</div>'}
+    </div>
+    """ + get_footer("apps")
 
 # -------------------------------------------------------------
 # 💬 BHARAT WHATSAPP CHAT
@@ -717,7 +737,7 @@ def owner_dashboard():
             except Exception as e:
                 message = f"⚠️ एरर: {str(e)}"
         elif form_type == "add_link":
-            title, url, snippet, category, logo = request.form.get("title"), request.form.get("url"), request.form.get("snippet"), request.form.get("category", "Apps"), request.form.get("logo_url", "📦")
+            title, url, snippet, category, logo = request.form.get("title"), request.form.get("url"), request.form.get("snippet"), request.form.get("category", "Apps"), request.form.get("logo_url", "📱")
             if title and url:
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
@@ -748,7 +768,6 @@ def owner_dashboard():
             </div>
             {f'<div class="alert alert-success py-2 small mb-3">{message}</div>' if message else ''}
             
-            <!-- ADD NEW APP TO PLAY STORE FORM -->
             <div class="card p-3 border-secondary bg-white mb-4 rounded-4">
                 <h6 class="fw-bold text-dark mb-2"><i class="bi bi-bag-plus-fill text-success me-2"></i>Add App to Bharat Play Store</h6>
                 <form method="POST">
@@ -760,7 +779,7 @@ def owner_dashboard():
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-12 col-md-8"><input type="text" name="snippet" class="form-control form-control-sm" placeholder="Short Description" required></div>
-                        <div class="col-12 col-md-4"><input type="text" name="logo_url" class="form-control form-control-sm" placeholder="Icon Emoji or Image URL" value="📱" required></div>
+                        <div class="col-12 col-md-4"><input type="text" name="logo_url" class="form-control form-control-sm" placeholder="Icon Emoji" value="📱" required></div>
                     </div>
                     <button type="submit" class="btn btn-success btn-sm rounded-pill fw-bold w-100">Publish App to Play Store</button>
                 </form>
