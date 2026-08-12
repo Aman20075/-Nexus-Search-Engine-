@@ -16,7 +16,28 @@ except ImportError:
 
 import requests
 
-# 🤖 GOOGLE GENAI SDK IMPORT (Gemini Multi-Model Fallback Engine)
+# ☁️ CLOUDINARY API IMPORT (FOR FAST YOUTUBE-STYLE VIDEO STREAMING)
+try:
+    import cloudinary
+    import cloudinary.uploader
+    import cloudinary.api
+
+    # Environment variables or direct credentials
+    CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME", "YOUR_CLOUD_NAME")
+    CLOUDINARY_API_KEY = os.environ.get("CLOUDINARY_API_KEY", "YOUR_API_KEY")
+    CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET", "YOUR_API_SECRET")
+
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True
+    )
+    CLOUDINARY_READY = True
+except Exception:
+    CLOUDINARY_READY = False
+
+# 🤖 GOOGLE GENAI SDK IMPORT
 try:
     from google import genai
     genai_client = genai.Client()
@@ -46,7 +67,7 @@ db_dir = os.path.dirname(DB_PATH)
 if db_dir and not os.path.exists(db_dir):
     os.makedirs(db_dir)
 
-# 📁 MEDIA UPLOAD FOLDER CONFIGURATION
+# 📁 LOCAL FALLBACK UPLOAD FOLDER
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 ALLOWED_EXTENSIONS = {'mp4', 'webm', 'ogg', 'mp3', 'wav', 'jpg', 'png'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -58,7 +79,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# 👑 OWNER & ADMIN CREDENTIALS (AMAN GIRI)
+# 👑 OWNER & ADMIN CREDENTIALS
 OWNER_USERNAME = "Aman Giri"
 OWNER_PASSWORD = "@Aman2007"
 
@@ -87,7 +108,7 @@ def generate_gemini_smart_search(query):
     prompt = f"""
     यूज़र ने सर्च किया है: '{query}'
     1. अगर यह किसी सवाल का जवाब है, तो विस्तृत और सटीक उत्तर हिंदी में दें।
-    2. अगर यह किसी ऐप, वेबसाइट या सर्विस (जैसे Banking, Video, Loan, AI Tools, Social) के बारे में है, तो उत्तर के साथ-साथ उसकी ऑफिसियल वेबसाइट/ऐप का पूरा URL भी HTML <a> टैग के साथ दें ताकि यूज़र उसपर क्लिक कर सके।
+    2. अगर यह किसी ऐप, वेबसाइट या सर्विस के बारे में है, तो उत्तर के साथ-साथ उसकी ऑफिसियल वेबसाइट/ऐप का पूरा URL भी HTML <a> टैग के साथ दें।
     """
 
     for model_name in GEMINI_MODELS:
@@ -285,11 +306,14 @@ def api_close_tab(tab_id):
 # -------------------------------------------------------------
 # 🎨 HEADER & FOOTER ENGINE
 # -------------------------------------------------------------
-def get_html_header():
+def get_html_header(is_studio_page=False):
     is_owner = session.get("owner_logged", False)
     owner_badge = '<span class="badge bg-danger rounded-pill ms-1" style="font-size:10px;">👑 ADMIN</span>' if is_owner else ''
     owner_menu_item = '<a class="chrome-menu-item text-danger fw-bold" href="/owner_dashboard"><i class="bi bi-speedometer2 fs-5"></i> Owner Dashboard</a>' if is_owner else ''
     tabs_bar = get_chrome_tabs_html()
+
+    bg_color = "#0f0f0f" if is_studio_page else "#fff9f2"
+    text_color = "#ffffff" if is_studio_page else "#202124"
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -300,7 +324,12 @@ def get_html_header():
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        :root {{ --bg-color: #fff9f2; --text-color: #202124; --card-bg: rgba(255, 255, 255, 0.95); --border-color: #f1d3b3; }}
+        :root {{ 
+            --bg-color: {bg_color}; 
+            --text-color: {text_color}; 
+            --card-bg: {"#212121" if is_studio_page else "rgba(255, 255, 255, 0.95)"}; 
+            --border-color: {"#383838" if is_studio_page else "#f1d3b3"}; 
+        }}
         html {{ height: 100%; margin: 0; }}
         body {{ 
             min-height: 100%; 
@@ -310,9 +339,9 @@ def get_html_header():
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
             padding-bottom: 95px !important; 
         }}
-        .sticky-top-header {{ position: sticky; top: 0; z-index: 9999; background-color: var(--bg-color); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }}
+        .sticky-top-header {{ position: sticky; top: 0; z-index: 9999; background-color: var(--bg-color); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }}
         .top-bar-chrome {{ display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background-color: var(--bg-color); }}
-        .icon-btn {{ background: none; border: none; font-size: 22px; color: #d96b00; cursor: pointer; text-decoration: none; padding: 4px; }}
+        .icon-btn {{ background: none; border: none; font-size: 22px; color: {"#ff0000" if is_studio_page else "#d96b00"}; cursor: pointer; text-decoration: none; padding: 4px; }}
         
         .google-search-container {{ max-width: 620px; width: 92%; margin: 15px auto; position: relative; }}
         .google-input {{ height: 54px; border-radius: 27px; padding-left: 48px; padding-right: 90px; border: 2px solid #ffaa44; background: var(--card-bg); color: var(--text-color); box-shadow: 0 4px 12px rgba(255, 153, 51, 0.2); font-size: 15px; }}
@@ -323,25 +352,25 @@ def get_html_header():
             bottom: 0; 
             left: 0; 
             right: 0; 
-            background: var(--bg-color); 
+            background: {"#0f0f0f" if is_studio_page else "var(--bg-color)"}; 
             border-top: 1px solid var(--border-color); 
             display: flex; 
             justify-content: space-around; 
             padding: 8px 0; 
             z-index: 9998; 
-            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
         }}
-        .nav-link-item {{ text-decoration: none; color: #5f6368; font-size: 11px; text-align: center; flex: 1; }}
-        .nav-link-item.active {{ color: #ff7700 !important; font-weight: 700; transform: translateY(-2px); }}
+        .nav-link-item {{ text-decoration: none; color: {"#aaa" if is_studio_page else "#5f6368"}; font-size: 11px; text-align: center; flex: 1; }}
+        .nav-link-item.active {{ color: {"#ff0000" if is_studio_page else "#ff7700"} !important; font-weight: 700; transform: translateY(-2px); }}
         
         .chat-container {{ height: calc(100vh - 230px); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; background: #efeae2; border-radius: 12px; }}
         .msg {{ padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; max-width: 75%; font-size: 14px; }}
         .msg-sent {{ align-self: flex-end; background: #d9fdd3; color: #000; }}
         .msg-recv {{ align-self: flex-start; background: #ffffff; color: #000; }}
 
-        .chrome-menu {{ width: 280px; border-radius: 20px; padding: 8px 0; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }}
-        .chrome-menu-item {{ padding: 10px 20px; font-size: 14px; color: #3c4043; display: flex; align-items: center; gap: 14px; text-decoration: none; font-weight: 500; }}
-        .chrome-menu-item:hover {{ background-color: #f8f9fa; color: #000; }}
+        .chrome-menu {{ width: 280px; border-radius: 20px; padding: 8px 0; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3); background-color: {"#212121" if is_studio_page else "#ffffff"}; color: {"#fff" if is_studio_page else "#000"}; }}
+        .chrome-menu-item {{ padding: 10px 20px; font-size: 14px; color: {"#aaa" if is_studio_page else "#3c4043"}; display: flex; align-items: center; gap: 14px; text-decoration: none; font-weight: 500; }}
+        .chrome-menu-item:hover {{ background-color: {"#383838" if is_studio_page else "#f8f9fa"}; color: {"#fff" if is_studio_page else "#000"}; }}
     </style>
 </head>
 <body>
@@ -350,7 +379,7 @@ def get_html_header():
     {tabs_bar}
     <div class="top-bar-chrome">
         <div class="d-flex align-items-center gap-2">
-            <span class="fw-bold text-dark" style="font-size:14px;">🚀 Bharat OS</span>
+            <span class="fw-bold {"text-white" if is_studio_page else "text-dark"}" style="font-size:14px;">🚀 Bharat OS</span>
             {owner_badge}
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -375,7 +404,7 @@ def get_html_header():
 </div>
 """
 
-def get_footer(active_tab="home"):
+def get_footer(active_tab="home", is_studio_page=False):
     is_owner = session.get("owner_logged", False)
     owner_footer_btn = '<a href="/owner_dashboard" class="nav-link-item"><i class="bi bi-speedometer2 fs-5 d-block text-danger"></i><span>Admin</span></a>' if is_owner else ''
 
@@ -571,7 +600,7 @@ def ai_chat():
     """ + get_footer("chat")
 
 # -------------------------------------------------------------
-# 📺 BHARAT STUDIO (WITH VIEWS, LIKES, COMMENTS & UPI TIP ENGINE)
+# 📺 BHARAT STUDIO (CLOUDINARY FAST STREAMING + YOUTUBE LOOK)
 # -------------------------------------------------------------
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -612,12 +641,22 @@ def studio():
         uploader = session.get("username", "Aman Giri (Creator)")
         
         file_path = ""
+        # ☁️ CLOUDINARY FAST UPLOAD OR LOCAL FALLBACK
         if 'video_file' in request.files:
             file = request.files['video_file']
             if file and allowed_file(file.filename):
-                filename = secure_filename(f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}")
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                file_path = f"/uploads/{filename}"
+                if CLOUDINARY_READY:
+                    try:
+                        upload_res = cloudinary.uploader.upload(file, resource_type="auto")
+                        file_path = upload_res.get("secure_url", "")
+                    except Exception:
+                        file_path = ""
+                
+                # Local fallback if Cloudinary not configured yet
+                if not file_path:
+                    filename = secure_filename(f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}")
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                    file_path = f"/uploads/{filename}"
 
         if title:
             conn = sqlite3.connect(DB_PATH)
@@ -642,64 +681,72 @@ def studio():
 
         cursor.execute("SELECT username, comment FROM content_comments WHERE video_id = ? ORDER BY id DESC LIMIT 3", (v_id,))
         comments_data = cursor.fetchall()
-        comments_html = "".join([f'<div class="small bg-light p-1 px-2 rounded mb-1"><b>{c[0]}:</b> {c[1]}</div>' for c in comments_data])
+        comments_html = "".join([f'<div class="small text-light p-1 px-2 rounded mb-1" style="background:#2a2a2a;"><b>{c[0]}:</b> {c[1]}</div>' for c in comments_data])
 
         badge_cls = "bg-danger" if c_type == "live" else ("bg-warning text-dark" if c_type == "shorts" else "bg-primary")
         
         media_player = ""
         if f_path:
-            media_player = f'<video src="{f_path}" controls class="w-100 rounded-3 my-2" style="max-height:320px;"></video>'
+            media_player = f'<video src="{f_path}" controls class="w-100 rounded-3 my-2" style="max-height:340px; background:#000;"></video>'
         elif url:
-            media_player = f'<a href="{url}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill fw-bold my-2">Watch Video / View Link</a>'
+            media_player = f'<a href="{url}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill fw-bold my-2 w-100">▶ Watch Video / View Link</a>'
 
         upi_tip_url = f"upi://pay?pa={YOUR_UPI_ID}&pn={quote_plus(YOUR_UPI_NAME)}&am=50&cu=INR&tn=Tip%20for%20{quote_plus(title)}"
 
         feed_html += f"""
-        <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 bg-white">
+        <div class="card p-3 mb-3 border-0 shadow-sm rounded-4 text-white" style="background-color:#212121; border:1px solid #333 !important;">
             <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="badge {badge_cls} text-uppercase">{c_type}</span>
+                <span class="badge {badge_cls} text-uppercase px-2 py-1">{c_type}</span>
                 <small class="text-muted"><i class="bi bi-eye-fill me-1"></i>{views+1} Views • {time_str}</small>
             </div>
-            <h6 class="fw-bold mb-1">{title}</h6>
+            <h6 class="fw-bold mb-1 text-white" style="font-size:16px;">{title}</h6>
             <p class="text-secondary small mb-1">{desc}</p>
             {media_player}
             
-            <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">
+            <div class="d-flex align-items-center justify-content-between mt-2 pt-2" style="border-top:1px solid #333;">
                 <div class="d-flex align-items-center gap-2">
-                    <a href="/studio/like/{v_id}" class="btn btn-sm btn-outline-danger rounded-pill">
-                        <i class="bi bi-heart-fill me-1"></i> {likes} Likes
+                    <a href="/studio/like/{v_id}" class="btn btn-sm btn-outline-light rounded-pill">
+                        <i class="bi bi-heart-fill text-danger me-1"></i> {likes}
                     </a>
-                    <a href="{upi_tip_url}" class="btn btn-sm btn-warning text-dark rounded-pill fw-bold">
+                    <a href="{upi_tip_url}" class="btn btn-sm btn-danger rounded-pill fw-bold">
                         💰 ₹50 SuperTip
                     </a>
                 </div>
-                <small class="text-muted">By <b>{uploader}</b></small>
+                <small class="text-muted">By <b class="text-white">{uploader}</b></small>
             </div>
 
             <div class="mt-3">
                 {comments_html}
                 <form action="/studio/comment/{v_id}" method="POST" class="input-group input-group-sm mt-2">
-                    <input type="text" name="comment" class="form-control rounded-pill-start" placeholder="कमेंट लिखें..." required>
-                    <button type="submit" class="btn btn-outline-secondary rounded-pill-end">Post</button>
+                    <input type="text" name="comment" class="form-control bg-dark text-white border-secondary rounded-pill-start" placeholder="Add a comment..." required>
+                    <button type="submit" class="btn btn-danger rounded-pill-end">Comment</button>
                 </form>
             </div>
         </div>
         """
     conn.close()
 
-    return get_html_header() + f"""
+    return get_html_header(is_studio_page=True) + f"""
     <div class="container mt-3 mb-5" style="max-width: 700px;">
-        <div class="text-center mb-3">
-            <span class="badge bg-danger px-3 py-1 rounded-pill fw-bold">📺 BHARAT STUDIO ENGINE</span>
-            <h3 class="fw-bold mt-2">YouTube Style Creator Hub</h3>
+        <!-- YOUTUBE STUDIO HEADER LOGO BAR -->
+        <div class="d-flex align-items-center justify-content-between bg-dark p-3 rounded-4 border border-secondary mb-3 shadow">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-youtube fs-1 text-danger"></i>
+                <div>
+                    <h4 class="fw-bold text-white mb-0" style="letter-spacing:-0.5px;">Bharat <span class="text-danger">Studio</span></h4>
+                    <small class="text-muted" style="font-size:11px;">Official YouTube OS Creator Engine</small>
+                </div>
+            </div>
+            <span class="badge bg-danger px-3 py-2 rounded-pill fw-bold">PRO DASHBOARD</span>
         </div>
 
         {f'<div class="alert alert-success py-2 small mb-3">{message}</div>' if message else ''}
 
-        <div class="card p-4 border-0 shadow-sm rounded-4 bg-white mb-4">
-            <h6 class="fw-bold text-danger mb-3"><i class="bi bi-camera-reels-fill me-2"></i>Record & Upload Content</h6>
+        <!-- 📷 CAMERA RECORDER & UPLOAD FORM (YOUTUBE DARK STYLE) -->
+        <div class="card p-4 border-0 shadow-lg rounded-4 text-white mb-4" style="background-color:#1f1f1f; border:1px solid #333 !important;">
+            <h6 class="fw-bold text-danger mb-3"><i class="bi bi-camera-reels-fill me-2"></i>Create Content & Upload Video</h6>
             
-            <div id="cameraPreviewBox" class="text-center bg-dark text-white rounded-3 p-2 mb-3" style="display:none;">
+            <div id="cameraPreviewBox" class="text-center bg-black text-white rounded-3 p-2 mb-3" style="display:none; border:1px solid #444;">
                 <video id="liveCamera" autoplay playsinline muted class="w-100 rounded-3" style="max-height:280px;"></video>
                 <div class="mt-2 d-flex justify-content-center gap-2">
                     <button type="button" id="startRecBtn" onclick="startRecording()" class="btn btn-danger btn-sm rounded-pill fw-bold">🔴 Start Recording</button>
@@ -710,10 +757,10 @@ def studio():
             <form method="POST" enctype="multipart/form-data" id="uploadForm">
                 <div class="row g-2 mb-2">
                     <div class="col-8">
-                        <input type="text" name="title" class="form-control form-control-sm" placeholder="Title (शीर्षक)" required>
+                        <input type="text" name="title" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Video Title (शीर्षक)" required>
                     </div>
                     <div class="col-4">
-                        <select name="content_type" class="form-select form-select-sm fw-bold border-danger">
+                        <select name="content_type" class="form-select form-select-sm fw-bold bg-dark text-danger border-danger">
                             <option value="shorts">📱 Shorts</option>
                             <option value="videos">🎬 Long Video</option>
                             <option value="live">🔴 Live Stream</option>
@@ -730,27 +777,29 @@ def studio():
                 </div>
 
                 <div class="mb-2">
-                    <label class="form-label small fw-bold text-muted mb-1">Choose File or Recorded Video:</label>
-                    <input type="file" id="videoFileInput" name="video_file" accept="video/*,audio/*" class="form-control form-control-sm">
+                    <label class="form-label small fw-bold text-muted mb-1">Choose Video/Audio File:</label>
+                    <input type="file" id="videoFileInput" name="video_file" accept="video/*,audio/*" class="form-control form-control-sm bg-dark text-white border-secondary">
                 </div>
 
-                <input type="url" name="media_url" class="form-control form-control-sm mb-2" placeholder="या वीडियो लिंक पेस्ट करें (Optional URL)">
-                <textarea name="description" class="form-control form-control-sm mb-3" rows="2" placeholder="Description"></textarea>
-                <button type="submit" class="btn btn-danger btn-sm rounded-pill fw-bold w-100">Publish File to Studio</button>
+                <input type="url" name="media_url" class="form-control form-control-sm bg-dark text-white border-secondary mb-2" placeholder="या वीडियो लिंक पेस्ट करें (Optional URL)">
+                <textarea name="description" class="form-control form-control-sm bg-dark text-white border-secondary mb-3" rows="2" placeholder="Description..."></textarea>
+                <button type="submit" class="btn btn-danger btn-sm rounded-pill fw-bold w-100 shadow">Publish Video to Studio</button>
             </form>
         </div>
 
+        <!-- YOUTUBE FEATURE TABS (DARK RED EFFECT) -->
         <div class="d-flex gap-2 overflow-auto mb-3 pb-1 no-scrollbar">
-            <a href="/studio?tab=shorts" class="btn btn-sm {'btn-danger fw-bold' if active_tab == 'shorts' else 'btn-light'} rounded-pill px-3">⚡ Shorts</a>
-            <a href="/studio?tab=videos" class="btn btn-sm {'btn-danger fw-bold' if active_tab == 'videos' else 'btn-light'} rounded-pill px-3">🎬 Videos</a>
-            <a href="/studio?tab=live" class="btn btn-sm {'btn-danger fw-bold' if active_tab == 'live' else 'btn-light'} rounded-pill px-3">🔴 Live</a>
-            <a href="/studio?tab=podcasts" class="btn btn-sm {'btn-danger fw-bold' if active_tab == 'podcasts' else 'btn-light'} rounded-pill px-3">🎙️ Podcasts</a>
-            <a href="/studio?tab=posts" class="btn btn-sm {'btn-danger fw-bold' if active_tab == 'posts' else 'btn-light'} rounded-pill px-3">📝 Posts</a>
+            <a href="/studio?tab=shorts" class="btn btn-sm {'btn-danger fw-bold' if active_tab == 'shorts' else 'btn-dark text-secondary'} rounded-pill px-3 border border-secondary">⚡ Shorts</a>
+            <a href="/studio?tab=videos" class="btn btn-sm {'btn-danger fw-bold' if active_tab == 'videos' else 'btn-dark text-secondary'} rounded-pill px-3 border border-secondary">🎬 Videos</a>
+            <a href="/studio?tab=live" class="btn btn-sm {'btn-danger fw-bold' if active_tab == 'live' else 'btn-dark text-secondary'} rounded-pill px-3 border border-secondary">🔴 Live</a>
+            <a href="/studio?tab=podcasts" class="btn btn-sm {'btn-danger fw-bold' if active_tab == 'podcasts' else 'btn-dark text-secondary'} rounded-pill px-3 border border-secondary">🎙️ Podcasts</a>
+            <a href="/studio?tab=posts" class="btn btn-sm {'btn-danger fw-bold' if active_tab == 'posts' else 'btn-dark text-secondary'} rounded-pill px-3 border border-secondary">📝 Posts</a>
         </div>
 
-        {feed_html if feed_html else '<div class="card p-4 text-center text-muted bg-white rounded-4">इस सेक्शन में अभी कोई कंटेंट नहीं है।</div>'}
+        {feed_html if feed_html else '<div class="card p-4 text-center text-muted bg-dark rounded-4 border border-secondary">इस सेक्शन में अभी कोई वीडियो या कंटेंट उपलब्ध नहीं है।</div>'}
     </div>
 
+    <!-- HTML5 Camera Script -->
     <script>
         let mediaRecorder;
         let recordedChunks = [];
@@ -793,7 +842,7 @@ def studio():
             document.getElementById('stopRecBtn').style.display = 'none';
         }}
     </script>
-    """ + get_footer("studio")
+    """ + get_footer("studio", is_studio_page=True)
 
 # -------------------------------------------------------------
 # 🛍️ BHARAT PLAY STORE
